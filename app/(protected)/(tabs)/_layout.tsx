@@ -90,6 +90,7 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           headerTitle: "Profile",
+          headerShown: false,
           headerTitleAlign: "center",
           headerTitleStyle: {
             fontFamily: "NotoSans-Bold",

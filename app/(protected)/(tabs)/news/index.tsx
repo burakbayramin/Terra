@@ -45,24 +45,6 @@ export default function NewsScreen() {
             <Text>Güncel Haberler</Text>
           </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.segmentButton,
-            activeSegment === "experts" && styles.activeSegmentButton,
-          ]}
-          onPress={() => setActiveSegment("experts")}
-        >
-          <Text
-            style={[
-              styles.segmentText,
-              activeSegment === "experts" && styles.activeSegmentText,
-            ]}
-          >
-            <Text>Uzman Görüşleri</Text>
-          </Text>
-        </TouchableOpacity>
-
         <TouchableOpacity
           style={[
             styles.segmentButton,
@@ -77,6 +59,22 @@ export default function NewsScreen() {
             ]}
           >
             <Text>Analizler</Text>
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.segmentButton,
+            activeSegment === "experts" && styles.activeSegmentButton,
+          ]}
+          onPress={() => setActiveSegment("experts")}
+        >
+          <Text
+            style={[
+              styles.segmentText,
+              activeSegment === "experts" && styles.activeSegmentText,
+            ]}
+          >
+            <Text>Uzman Görüşleri</Text>
           </Text>
         </TouchableOpacity>
       </View>

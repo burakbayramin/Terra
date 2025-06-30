@@ -6,12 +6,14 @@ import {
   TouchableOpacity,
   Dimensions,
 } from "react-native";
+import { Divider } from "react-native-paper";
 import React, { useState, useRef } from "react";
 import { useSharedValue } from "react-native-reanimated";
 import { ICarouselInstance } from "react-native-reanimated-carousel";
 import { colors } from "@/constants/colors";
 import EarthquakeCarousel from "@/components/EarthquakeCarousel"; // Import your carousel component
 import { Earthquake } from "@/types/types";
+import EarthquakeStats from "@/components/EarthquakeStats";
 
 const { width } = Dimensions.get("window");
 const CARD_HEIGHT = width * 0.5; // Adjust height based on width for better responsiveness
@@ -36,6 +38,13 @@ export default function HomeScreen() {
   };
 
   const { earthquakes }: { earthquakes: Earthquake[] } = require("@/data");
+
+  // Dummy stats for earthquake statistics
+  const stats = {
+    last24Hours: 12,
+    last7Days: 37,
+    last30Days: 142,
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -95,18 +104,23 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-
-      <View style={styles.carouselContainer}>
-        <EarthquakeCarousel
-          carouselData={earthquakes}
-          filter={activeSegment}
-          width={width}
-          CARD_HEIGHT={CARD_HEIGHT}
-          carouselRef={carouselRef}
-          progress={progress}
-          styles={carouselStyles}
-          formatDate={formatDate}
-        />
+      <View style={styles.content}>
+        <View style={styles.carouselContainer}>
+          <EarthquakeCarousel
+            carouselData={earthquakes}
+            filter={activeSegment}
+            width={width}
+            CARD_HEIGHT={CARD_HEIGHT}
+            carouselRef={carouselRef}
+            progress={progress}
+            styles={carouselStyles}
+            formatDate={formatDate}
+          />
+        </View>
+        <Divider style={styles.divider} />
+        <EarthquakeStats stats={stats} />
+        <Divider style={styles.divider} />
+        
       </View>
     </SafeAreaView>
   );
@@ -116,6 +130,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.light.background,
+  },
+  content: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
   },
   mainHeader: {
     padding: 10,
@@ -156,7 +175,14 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   carouselContainer: {
-    flex: 1,
+    marginBottom: 15,
+  },
+  divider: {
+    height: 3,
+    backgroundColor: colors.light.surface,
+    marginHorizontal: 12,
+    marginVertical: 20,
+    borderRadius: 10,
   },
 });
 
