@@ -90,71 +90,69 @@ export default function NewsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.light.background,
   },
   header: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    borderBottomColor: colors.light.surface,
   },
   mainHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 15,
-    marginBottom: 20,
-    marginTop: 10, // İkonların altındaki boşluk için
+    marginBottom: 15,
+    marginTop: 15,
   },
   inboxText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    flex: 1, // Inbox metninin ortalanması için
-    textAlign: "center", // Inbox metnini ortalamak için
+    fontSize: 25,
+    fontFamily: "NotoSans-Bold",
+    flex: 1,
+    textAlign: "center",
   },
   segmentedControl: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-    marginBottom: 10, // FlashList ile arasındaki boşluk
-    paddingHorizontal: 15, // Yan boşluklar
+    borderBottomColor: colors.light.surface,
+    marginBottom: 10,
+    paddingHorizontal: 15,
   },
   segmentButton: {
     flex: 1,
     alignItems: "center",
     paddingVertical: 10,
-    position: "relative", // Bildirim rozeti için
+    position: "relative",
   },
   activeSegmentButton: {
     borderBottomWidth: 2,
-    borderBottomColor: colors.primary, // Mavi alt çizgi
+    borderBottomColor: colors.primary,
   },
   segmentText: {
     fontSize: 14,
-    color: "#808080",
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Medium",
     fontWeight: "500",
   },
   activeSegmentText: {
-    color: "#000",
+    color: colors.light.textPrimary,
+    fontFamily: "NotoSans-Medium",
     fontWeight: "600",
   },
-  notificationBadge: {
-    position: "absolute",
-    top: -5,
-    right: 35, // Butonun sağ kenarına göre ayarlandı
-    backgroundColor: "red",
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  notificationBadgeText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
+  // notificationBadge: {
+  //   position: "absolute",
+  //   top: -5,
+  //   right: 35,
+  //   backgroundColor: "red",
+  //   borderRadius: 10,
+  //   width: 20,
+  //   height: 20,
+  //   justifyContent: "center",
+  //   alignItems: "center",
+  // },
+  // notificationBadgeText: {
+  //   color: "white",
+  //   fontSize: 12,
+  //   fontWeight: "bold",
+  // },
 });

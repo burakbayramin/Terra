@@ -98,7 +98,13 @@ const EarthquakeCarousel: React.FC<EarthquakeCarouselProps> = ({
               <Text style={styles.depth}>Derinlik: {item.depth} km</Text>
             </View>
 
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                // Expo Router'da parantezli klasörler route'da görünmez
+                const { router } = require("expo-router");
+                router.push(`/earthquakes/${item.id}`);
+              }}
+            >
               <LinearGradient
                 colors={[colors.gradientOne, colors.gradientTwo]}
                 start={{ x: 0, y: 0 }}

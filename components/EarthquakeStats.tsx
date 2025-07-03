@@ -38,9 +38,10 @@ const styles = StyleSheet.create({
   statsTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#333",
+    color: colors.light.textPrimary,
     marginBottom: 12,
     textAlign: "center",
+    fontFamily: "NotoSans-Bold",
   },
   statsBoxContainer: {
     flexDirection: "row",
@@ -49,15 +50,15 @@ const styles = StyleSheet.create({
   },
   statsBox: {
     flex: 1,
-    backgroundColor: colors.light.surface,
+    backgroundColor: colors.light.background,
     borderRadius: 12,
     padding: 15,
     marginHorizontal: 5,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 2,
     borderWidth: 1,
@@ -68,11 +69,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.primary,
     marginBottom: 5,
+    fontFamily: "NotoSans-Bold",
   },
   statsLabel: {
     fontSize: 12,
-    color: "#777",
+    color: colors.light.textPrimary,
     textAlign: "center",
+    fontFamily: "NotoSans-Regular",
   },
 });
 

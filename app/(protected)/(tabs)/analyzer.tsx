@@ -6,10 +6,12 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
 } from "react-native";
 import React, { useState } from "react";
 import { colors } from "../../../constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
+import { Divider } from "react-native-paper";
 
 interface ChatMessage {
   id: string;
@@ -91,10 +93,12 @@ export default function AnalyzerScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
+    <SafeAreaView style={styles.container}>
+      <View style={styles.mainHeader}>
+        <Text style={styles.inboxText}>Terra AI</Text>
+      </View>
+      <Divider style={styles.divider} />
+
       <ScrollView
         style={styles.chatContainer}
         showsVerticalScrollIndicator={false}
@@ -154,7 +158,7 @@ export default function AnalyzerScreen() {
             ))}
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -163,23 +167,44 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.light.background,
   },
-  header: {
-    backgroundColor: colors.primary,
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+  // header: {
+  //   backgroundColor: colors.primary,
+  //   paddingTop: 50,
+  //   paddingBottom: 20,
+  //   paddingHorizontal: 20,
+  //   alignItems: "center",
+  // },
+  mainHeader: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    marginTop: 15,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 5,
+  inboxText: {
+    fontSize: 25,
+    fontFamily: "NotoSans-Bold",
+    flex: 1,
+    textAlign: "center",
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.9)",
+  divider: {
+    height: 3,
+    backgroundColor: colors.light.surface,
+    // marginHorizontal: 12,
+    // marginVertical: 20,
+    borderRadius: 10,
   },
+  // headerTitle: {
+  //   fontSize: 24,
+  //   fontWeight: "bold",
+  //   color: "white",
+  //   marginBottom: 5,
+  // },
+  // headerSubtitle: {
+  //   fontSize: 14,
+  //   color: "rgba(255,255,255,0.9)",
+  // },
   chatContainer: {
     flex: 1,
     paddingHorizontal: 15,

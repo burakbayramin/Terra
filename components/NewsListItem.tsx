@@ -66,12 +66,12 @@ const styles = StyleSheet.create({
     marginVertical: 9,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.09,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 4,
     gap: 10,
     borderWidth: 1,
-    borderColor: "#F0F0F0",
+    borderColor: colors.light.surface,
   },
   headerRow: {
     flexDirection: "row",
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     marginVertical: 6,
     backgroundColor: colors.light.surface,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: colors.light.surface,
   },
   snippet: {
     fontSize: 15,

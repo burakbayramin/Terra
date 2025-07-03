@@ -10,6 +10,8 @@ import {
   SafeAreaView,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
+import { colors } from "@/constants/colors";
+import { Divider } from "react-native-paper";
 
 export default function EarthquakesScreen() {
   const { width } = Dimensions.get("window");
@@ -87,6 +89,7 @@ export default function EarthquakesScreen() {
             ))}
           </MapView>
         </View>
+          <Divider style={styles.divider} />
 
         {/* Earthquake List */}
         <View style={styles.listContainer}>
@@ -152,32 +155,39 @@ export default function EarthquakesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: colors.light.background,
   },
-  header: {
-    backgroundColor: "#1a365d",
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
+  divider: {
+    height: 3,
+    backgroundColor: colors.light.surface,
+    marginHorizontal: 12,
+    marginVertical: 15,
+    borderRadius: 10,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#ffffff",
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "#cbd5e0",
-    opacity: 0.8,
-  },
+  // header: {
+  //   backgroundColor: "#1a365d",
+  //   paddingTop: 60,
+  //   paddingBottom: 20,
+  //   paddingHorizontal: 20,
+  //   borderBottomLeftRadius: 20,
+  //   borderBottomRightRadius: 20,
+  //   shadowColor: "#000",
+  //   shadowOffset: { width: 0, height: 4 },
+  //   shadowOpacity: 0.1,
+  //   shadowRadius: 8,
+  //   elevation: 8,
+  // },
+  // headerTitle: {
+  //   fontSize: 24,
+  //   fontWeight: "bold",
+  //   color: "#ffffff",
+  //   marginBottom: 4,
+  // },
+  // headerSubtitle: {
+  //   fontSize: 14,
+  //   color: "#cbd5e0",
+  //   opacity: 0.8,
+  // },
   scrollView: {
     flex: 1,
   },
@@ -311,11 +321,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 15,
-    // marginBottom:,
+    marginBottom: 10,
     marginTop: 10, // İkonların altındaki boşluk için
   },
   inboxText: {
-    fontSize: 24,
+    fontSize: 25,
     fontWeight: "bold",
     flex: 1, // Inbox metninin ortalanması için
     textAlign: "center", // Inbox metnini ortalamak için

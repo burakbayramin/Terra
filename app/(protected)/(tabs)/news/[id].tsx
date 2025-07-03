@@ -30,8 +30,6 @@ export default function NewsDetailScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
-
-        {/* Kategori Chipleri ve Zaman */}
         <View style={styles.headerRow}>
           <View style={styles.categoryRow}>
             {item.category.map((cat, idx) => (
@@ -80,7 +78,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 15,
+    marginTop: 30,
     marginHorizontal: 16,
   },
   categoryRow: {
@@ -89,7 +87,9 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   chip: {
-    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+    backgroundColor: "#fff",
     borderRadius: 16,
     paddingVertical: 3,
     paddingHorizontal: 10,
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 12,
-    color: "#fff",
+    color: colors.primary,
     fontWeight: "500",
     fontFamily: "NotoSans-Medium",
   },

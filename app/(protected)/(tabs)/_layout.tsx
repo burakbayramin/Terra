@@ -35,6 +35,7 @@ export default function TabLayout() {
         options={{
           title: "Analyzer",
           headerTitle: "Analyzer",
+          headerShown: false,
           headerTitleAlign: "center",
           headerTitleStyle: {
             fontFamily: "NotoSans-Bold",

@@ -81,6 +81,17 @@ export default function ProfileScreen() {
                 </View>
                 <Text style={styles.menuItemText}>Profil</Text>
               </View>
+              <TouchableOpacity
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                onPress={() => router.push("/profile/complete-profile")}
+              >
+              </TouchableOpacity>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuItem}>
@@ -145,6 +156,17 @@ export default function ProfileScreen() {
                 </View>
                 <Text style={styles.menuItemText}>Hizmet Şartları</Text>
               </View>
+              <TouchableOpacity
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                onPress={() => router.push("/profile/terms-of-service")}
+              >
+              </TouchableOpacity>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuItem}>
@@ -154,6 +176,17 @@ export default function ProfileScreen() {
                 </View>
                 <Text style={styles.menuItemText}>Topluluk Kuralları</Text>
               </View>
+              <TouchableOpacity
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                onPress={() => router.push("/profile/community-rules")}
+              >
+              </TouchableOpacity>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuItem}>
@@ -167,6 +200,17 @@ export default function ProfileScreen() {
                 </View>
                 <Text style={styles.menuItemText}>Destek</Text>
               </View>
+              <TouchableOpacity
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                onPress={() => router.push("/profile/support")}
+              >
+              </TouchableOpacity>
             </TouchableOpacity>
           </View>
         </View>
@@ -220,7 +264,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        
         {/* Katkıda Bulun viewinin altına iletişim bölümü eklendi */}
         <View style={styles.contactContainer}>
           <Text style={styles.statsTitle}>İletişime Geç</Text>
