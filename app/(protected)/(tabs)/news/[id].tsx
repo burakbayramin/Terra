@@ -59,15 +59,67 @@ export default function NewsDetailScreen() {
         )}
 
         {/* Snippet */}
-        <Text style={styles.snippet}>{item.snippet}</Text>
+        {/* <Text style={styles.snippet}>{item.snippet}</Text> */}
+
+        {/* ...existing code... */}
 
         {/* Tam İçerik */}
         <View style={styles.contentBox}>
           <Text style={styles.contentText}>{item.content}</Text>
         </View>
 
-        {/* Kaynak */}
-        <Text style={styles.sourceText}>Kaynak: {item.source}</Text>
+        {/* Kaynak ve Deprem Bilgisine Git Butonu */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginHorizontal: 16,
+            marginBottom: 18,
+            marginTop: 2,
+          }}
+        >
+          <Pressable
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: colors.primary,
+              borderRadius: 20,
+              paddingVertical: 8,
+              paddingHorizontal: 18,
+              shadowColor: colors.primary,
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.15,
+              shadowRadius: 4,
+              elevation: 2,
+            }}
+            onPress={() => router.push("/earthquakes")}
+          >
+            <Entypo
+              name="info-with-circle"
+              size={20}
+              color="#fff"
+              style={{ marginRight: 8 }}
+            />
+            <Text
+              style={{
+                color: "#fff",
+                fontSize: 15,
+                fontFamily: "NotoSans-Bold",
+              }}
+            >
+              Deprem Bilgisine Git
+            </Text>
+          </Pressable>
+          <Text
+            style={[
+              styles.sourceText,
+              { marginLeft: 12, marginBottom: 0, textAlign: "right" },
+            ]}
+          >
+            Kaynak: {item.source}
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

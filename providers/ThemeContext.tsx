@@ -19,7 +19,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const systemColorScheme = useColorScheme();
   const [theme, setTheme] = useState("light");
 
-  // Load theme from storage or use system theme
   useEffect(() => {
     const loadSavedTheme = async () => {
       try {
@@ -34,10 +33,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       }
     };
     loadSavedTheme();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [systemColorScheme]);
 
-  // Save theme to storage when changed
   useEffect(() => {
     const saveTheme = async () => {
       try {

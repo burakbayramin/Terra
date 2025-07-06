@@ -5,9 +5,8 @@ export const news: News[] = [
     id: "1",
     title: "İzmir'de 5.2 Büyüklüğünde Deprem",
     snippet: "İzmir'de meydana gelen deprem çevre illerde de hissedildi.",
-    content:
-      "Afet ve Acil Durum Yönetimi Başkanlığı (AFAD) verilerine göre, İzmir'in Seferihisar ilçesi açıklarında 5.2 büyüklüğünde bir deprem meydana geldi. Deprem çevre illerde de hissedildi ve vatandaşlar kısa süreli panik yaşadı.",
-    image: "https://picsum.photos/300/200",
+    content:"3 Haziran 2025’te sabaha karşı saat 02:17’de Akdeniz’in Muğla Marmaris açıklarında 5,8 büyüklüğünde meydana gelen deprem, yaklaşık 68 kilometre derinlikte gerçekleşti; sarsıntı Antalya’dan İzmir’e kadar geniş bir alanda hissedilirken, Marmaris’te duvar çatlakları ve eşya devrilmeleri yaşandı, 14 yaşındaki Afranur Günlü hayatını kaybederken 69 kişi yaralandı ve mobil sağlık ekipleri ile psikolojik destek hatları devreye sokuldu; AFAD, UMKE, jandarma ve gönüllülerden oluşan 150 kişilik arama-kurtarma ekibi 24 saat esasına göre hasar tespiti ve enkaz taraması yaparken, İçişleri ve Ulaştırma Bakanlıkları krizi koordine edip alternatif güzergâhlar oluşturdu; uzmanlar artçı sarsıntıların birkaç gün sürebileceğini, deniz kenarında teknelerin kontrollerinin yapılmasını ve vatandaşların açık alanlarda kalmalarını önerirken, yerel halk sosyal medyada bilgileri paylaşarak okullar ve spor salonlarını geçici barınma alanı olarak kullanmaya başladı.",
+    image: "https://www.rudaw.net/s3/rudaw.net/ContentFiles/871171Image1.jpg?version=7666282",
     createdAt: "2025-06-27T08:32:00Z",
     category: ["latest", "experts"],
     source: "AFAD",
@@ -19,7 +18,7 @@ export const news: News[] = [
       "İstanbul'da akşam saatlerinde etkili olan fırtına ağaçları devirdi.",
     content:
       "İstanbul'da yaşanan şiddetli fırtına nedeniyle bazı bölgelerde ağaçlar devrildi, çatı uçmaları yaşandı. Yetkililer, vatandaşları dikkatli olmaları konusunda uyardı.",
-    image: "https://picsum.photos/300/200",
+    image: "https://www.indyturk.com/sites/default/files/styles/1368x911/public/article/main_image/2022/09/06/1005476-559994866.jpg?itok=rjXWEv_g",
     createdAt: "2025-06-26T19:55:00Z",
     category: ["latest"],
     source: "CNN Türk",

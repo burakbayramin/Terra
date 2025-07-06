@@ -117,8 +117,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Personalization Section */}
-          <View style={styles.sectionContainer}>
+          {/* <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Kişiselleştirmeler</Text>
 
             <View style={styles.menuItem}>
@@ -128,12 +127,6 @@ export default function ProfileScreen() {
                 </View>
                 <Text style={styles.menuItemText}>Karanlık Mod</Text>
               </View>
-              {/* <Switch
-              value={isDarkMode}
-              onValueChange={setIsDarkMode}
-              trackColor={{ false: "#E5E5E5", true: "#007AFF" }}
-              thumbColor={isDarkMode ? "#FFFFFF" : "#FFFFFF"}
-            /> */}
             </View>
 
             <TouchableOpacity style={styles.menuItem}>
@@ -144,7 +137,7 @@ export default function ProfileScreen() {
                 <Text style={styles.menuItemText}>Dil</Text>
               </View>
             </TouchableOpacity>
-          </View>
+          </View> */}
 
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Destek ve Politikalar</Text>
@@ -216,7 +209,7 @@ export default function ProfileScreen() {
         </View>
         <Divider style={styles.divider} />
 
-        <View style={styles.supportContainer}>
+        {/* <View style={styles.supportContainer}>
           <Text style={styles.statsTitle}>Geliştiricilere Destek Ol</Text>
           <View style={styles.supportContentImproved}>
             <Text style={styles.supportTextImproved}>
@@ -264,7 +257,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Katkıda Bulun viewinin altına iletişim bölümü eklendi */}
         <View style={styles.contactContainer}>
           <Text style={styles.statsTitle}>İletişime Geç</Text>
           <View style={styles.contactContent}>
@@ -282,7 +274,7 @@ export default function ProfileScreen() {
               <Text style={styles.contactButtonText}>İletişime Geç</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </View> */}
 
         <View style={styles.signOutContainer}>
           <TouchableOpacity
@@ -406,10 +398,10 @@ const styles = StyleSheet.create({
   },
   signOutContainer: {
     padding: 20,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: colors.light.background,
   },
   signOutButton: {
-    backgroundColor: colors.gradientTwo, // gradientTwo rengi
+    backgroundColor: colors.gradientTwo,
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: "center",

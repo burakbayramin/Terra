@@ -9,8 +9,9 @@ import {
   Image,
 } from "react-native";
 import { Divider } from "react-native-paper";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState, useRef } from "react";
+import { useRouter } from "expo-router";
 import { useSharedValue } from "react-native-reanimated";
 import { ICarouselInstance } from "react-native-reanimated-carousel";
 import { colors } from "@/constants/colors";
@@ -86,6 +87,7 @@ const { width } = Dimensions.get("window");
 const CARD_HEIGHT = width * 0.5; // Adjust height based on width for better responsiveness
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [activeSegment, setActiveSegment] = useState<
     "afad" | "kandilli" | "usgs"
   >("kandilli");
@@ -235,7 +237,58 @@ export default function HomeScreen() {
           <Divider style={styles.divider} />
           <EarthquakeStats stats={stats} />
           <Divider style={styles.divider} />
-
+          {/* Quick Access Buttons */}
+          <Text style={styles.sectionTitle}>Hızlı Erişim</Text>
+          <View style={styles.quickAccessContainer}>
+            <TouchableOpacity
+              style={[styles.quickAccessButton, { backgroundColor: "#e74c3c" }]}
+              activeOpacity={0.8}
+              onPress={() => {
+                router.push("/(protected)/what-to-do-earthquake");
+              }}
+            >
+              <MaterialCommunityIcons
+                name="home-alert"
+                size={28}
+                color="#fff"
+                style={{ marginBottom: 4 }}
+              />
+              <Text style={styles.quickAccessText}>
+                Deprem Esnası ve Sonrası
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.quickAccessButton, { backgroundColor: "#f39c12" }]}
+              activeOpacity={0.8}
+              onPress={() => {
+                router.push("/(protected)/whistle");
+              }}
+            >
+              <MaterialCommunityIcons
+                name="whistle"
+                size={28}
+                color="#fff"
+                style={{ marginBottom: 4 }}
+              />
+              <Text style={styles.quickAccessText}>Deprem Düdüğü</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.quickAccessButton, { backgroundColor: "#27ae60" }]}
+              activeOpacity={0.8}
+              onPress={() => {
+                router.push("/(protected)/first-aid");
+              }}
+            >
+              <Ionicons
+                name="medkit"
+                size={28}
+                color="#fff"
+                style={{ marginBottom: 4 }}
+              />
+              <Text style={styles.quickAccessText}>İlk Yardım</Text>
+            </TouchableOpacity>
+          </View>
+          <Divider style={styles.divider} />
           <View style={styles.aiQuestionsSection}>
             <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>
               AI'a Sor
@@ -388,6 +441,60 @@ export default function HomeScreen() {
           </View>
 
           <Divider style={styles.divider} />
+          {/* Depremzedelere Destek Ol */}
+          <View style={styles.supportContainer}>
+            <Text style={styles.statsTitle}>Depremzedelere Destek Ol</Text>
+            <View style={styles.supportContentImproved}>
+              <Text style={styles.supportTextImproved}>
+                Depremden etkilenenlere yardım etmek için çeşitli kuruluşlara
+                bağışta bulunabilir veya gönüllü olabilirsiniz. Küçük bir destek
+                bile büyük bir fark yaratabilir.
+              </Text>
+              <View style={styles.supportButtonsRowImproved}>
+                <TouchableOpacity
+                  style={styles.supportButtonImproved}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    // Bağış sayfasına yönlendirme
+                  }}
+                >
+                  <View style={styles.supportButtonInner}>
+                    <Ionicons
+                      name="hand-left"
+                      size={18}
+                      color="#fff"
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={styles.supportButtonTextImproved}>
+                      Bağış Yap
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.supportButtonImproved,
+                    styles.secondarySupportButtonImproved,
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    // Gönüllü olma sayfasına yönlendirme
+                  }}
+                >
+                  <View style={styles.supportButtonInner}>
+                    <Ionicons
+                      name="people"
+                      size={18}
+                      color={colors.gradientTwo}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={styles.secondarySupportButtonTextImproved}>
+                      Gönüllü Ol
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
 
           <View style={styles.supportContainer}>
             <Text style={styles.statsTitle}>Geliştiricilere Destek Ol</Text>
@@ -463,6 +570,34 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  quickAccessContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginHorizontal: 18,
+    marginBottom: 8,
+    gap: 10,
+  },
+  quickAccessButton: {
+    width: 100,
+    height: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+    marginHorizontal: 4,
+  },
+  quickAccessText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
+    fontFamily: "NotoSans-Bold",
+    textAlign: "center",
+  },
   container: {
     flex: 1,
     backgroundColor: colors.light.background,
@@ -628,7 +763,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-    newsSection: {
+  newsSection: {
     // paddingVertical: 1,
     backgroundColor: colors.light.background,
   },
@@ -664,7 +799,6 @@ const styles = StyleSheet.create({
     fontFamily: "NotoSans-Medium",
     lineHeight: 16,
   },
-
 
   // Eski stiller (değişmedi)
   taskCard: {

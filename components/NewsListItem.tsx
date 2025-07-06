@@ -3,6 +3,7 @@ import { Link } from "expo-router";
 import { formatDistanceToNowStrict } from "date-fns";
 import { tr } from "date-fns/locale";
 import { View, Text, Image, Pressable, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 
 type NewsCardProps = {
@@ -10,7 +11,10 @@ type NewsCardProps = {
   isDetailed?: boolean;
 };
 
+import React, { useState } from "react";
+
 export default function NewsListItem({ news, isDetailed }: NewsCardProps) {
+  const [saved, setSaved] = useState(false);
   return (
     <Link href={`/news/${news.id}`} asChild>
       <Pressable style={styles.card}>
@@ -48,9 +52,37 @@ export default function NewsListItem({ news, isDetailed }: NewsCardProps) {
         <Text style={styles.snippet} numberOfLines={isDetailed ? undefined : 3}>
           {news.snippet}
         </Text>
-        {/* Kaynak */}
+        {/* Kaynak ve Butonlar */}
         <View style={styles.footerRow}>
           <Text style={styles.sourceText}>{news.source}</Text>
+          <View style={styles.buttonRow}>
+            <Pressable
+              style={
+                saved
+                  ? [styles.actionButton, styles.actionButtonActive]
+                  : styles.actionButton
+              }
+              onPress={() => setSaved((prev) => !prev)}
+            >
+              <Ionicons
+                name={saved ? "bookmark" : "bookmark-outline"}
+                size={18}
+                color={saved ? "#fff" : colors.primary}
+              />
+            </Pressable>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => {
+                /* TODO: implement share */
+              }}
+            >
+              <Ionicons
+                name="share-social-outline"
+                size={18}
+                color={colors.primary}
+              />
+            </Pressable>
+          </View>
         </View>
       </Pressable>
     </Link>
@@ -72,6 +104,38 @@ const styles = StyleSheet.create({
     gap: 10,
     borderWidth: 1,
     borderColor: colors.light.surface,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginLeft: "auto",
+  },
+  actionButton: {
+    backgroundColor: colors.light.background,
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    marginLeft: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    shadowColor: "transparent",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  actionButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  actionButtonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "NotoSans-Medium",
+    fontWeight: "600",
   },
   headerRow: {
     flexDirection: "row",
