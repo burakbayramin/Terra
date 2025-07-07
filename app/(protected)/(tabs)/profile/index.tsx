@@ -90,8 +90,7 @@ export default function ProfileScreen() {
                   bottom: 0,
                 }}
                 onPress={() => router.push("/profile/complete-profile")}
-              >
-              </TouchableOpacity>
+              ></TouchableOpacity>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuItem}>
@@ -158,8 +157,7 @@ export default function ProfileScreen() {
                   bottom: 0,
                 }}
                 onPress={() => router.push("/profile/terms-of-service")}
-              >
-              </TouchableOpacity>
+              ></TouchableOpacity>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuItem}>
@@ -178,8 +176,7 @@ export default function ProfileScreen() {
                   bottom: 0,
                 }}
                 onPress={() => router.push("/profile/community-rules")}
-              >
-              </TouchableOpacity>
+              ></TouchableOpacity>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.menuItem}>
@@ -202,8 +199,7 @@ export default function ProfileScreen() {
                   bottom: 0,
                 }}
                 onPress={() => router.push("/profile/support")}
-              >
-              </TouchableOpacity>
+              ></TouchableOpacity>
             </TouchableOpacity>
           </View>
         </View>
@@ -282,7 +278,7 @@ export default function ProfileScreen() {
             onPress={() => supabase.auth.signOut()}
             activeOpacity={0.8}
           >
-            <Text style={styles.signOutButtonText}>Sign Out</Text>
+            <Text style={styles.signOutButtonText}>Çıkış Yap</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

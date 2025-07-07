@@ -7,6 +7,7 @@ export type News = {
   createdAt: string;
   category: string[];
   source: string;
+  earthquakeId?: string | null;
 };
 
 export interface Earthquake {
@@ -19,5 +20,3 @@ export interface Earthquake {
   longitude: number;
   latitude: number;
 }
-
-

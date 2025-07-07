@@ -2,16 +2,11 @@ import { View, Text, TouchableOpacity } from "react-native";
 import React from "react";
 import { Earthquake } from "@/types/types";
 import MapView, { Marker } from "react-native-maps";
-import {
-  ScrollView,
-  StyleSheet,
-  Dimensions,
-  StatusBar,
-  SafeAreaView,
-} from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { ScrollView, StyleSheet, Dimensions, SafeAreaView } from "react-native";
+import { useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { Divider } from "react-native-paper";
+import { supabase } from "@/lib/supabase";
 
 export default function EarthquakesScreen() {
   const { width } = Dimensions.get("window");
@@ -25,7 +20,27 @@ export default function EarthquakesScreen() {
     longitudeDelta: 17.5,
   };
 
-  const { earthquakes }: { earthquakes: Earthquake[] } = require("@/data");
+  const [earthquakes, setEarthquakes] = React.useState<Earthquake[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchEarthquakes = async () => {
+      setLoading(true);
+      setError(null);
+      const { data, error } = await supabase
+        .from("earthquakes")
+        .select("id, provider, title, date, mag, depth, longitude, latitude");
+      if (error) {
+        setError("Depremler alınamadı.");
+        setEarthquakes([]);
+      } else {
+        setEarthquakes(data || []);
+      }
+      setLoading(false);
+    };
+    fetchEarthquakes();
+  }, []);
 
   const getMagnitudeColor = (magnitude: number) => {
     if (magnitude >= 5.0) return "#FF4444";
@@ -61,93 +76,110 @@ export default function EarthquakesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* <StatusBar barStyle="light-content" backgroundColor="#1a365d" /> */}
       <View style={styles.mainHeader}>
         <Text style={styles.inboxText}>Depremler</Text>
       </View>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Map Container */}
-        <View style={styles.mapContainer}>
-          <MapView
-            style={[styles.map, { width: width - 32, height: mapHeight }]}
-            initialRegion={region}
-            showsUserLocation={false}
-            showsMyLocationButton={false}
-            toolbarEnabled={false}
-          >
-            {earthquakes.map((eq: Earthquake) => (
-              <Marker
-                key={eq.id}
-                coordinate={{ latitude: eq.latitude, longitude: eq.longitude }}
-                title={eq.title}
-                description={`Büyüklük: ${eq.mag} - Derinlik: ${eq.depth} km`}
-                pinColor={getMagnitudeColor(eq.mag)}
-              />
-            ))}
-          </MapView>
+      {loading ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text>Yükleniyor...</Text>
         </View>
+      ) : error ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text style={{ color: "red" }}>{error}</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Map Container */}
+          <View style={styles.mapContainer}>
+            <MapView
+              style={[styles.map, { width: width - 32, height: mapHeight }]}
+              initialRegion={region}
+              showsUserLocation={false}
+              showsMyLocationButton={false}
+              toolbarEnabled={false}
+            >
+              {earthquakes.map((eq: Earthquake) => (
+                <Marker
+                  key={eq.id}
+                  coordinate={{
+                    latitude: eq.latitude,
+                    longitude: eq.longitude,
+                  }}
+                  title={eq.title}
+                  description={`Büyüklük: ${eq.mag} - Derinlik: ${eq.depth} km`}
+                  pinColor={getMagnitudeColor(eq.mag)}
+                />
+              ))}
+            </MapView>
+          </View>
           <Divider style={styles.divider} />
 
-        {/* Earthquake List */}
-        <View style={styles.listContainer}>
-          <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>Deprem Listesi</Text>
-          </View>
+          {/* Earthquake List */}
+          <View style={styles.listContainer}>
+            <View style={styles.listHeader}>
+              <Text style={styles.listTitle}>Deprem Listesi</Text>
+            </View>
 
-          {earthquakes.map((eq: Earthquake, index: number) => (
-            <TouchableOpacity
-              key={eq.id}
-              style={[styles.earthquakeCard, index === 0 && styles.firstCard]}
-              activeOpacity={0.7}
-              onPress={() => router.push(`/earthquakes/${eq.id}`)}
-            >
-              {/* Magnitude Chip */}
-              <View
-                style={[
-                  styles.magnitudeChip,
-                  { backgroundColor: getMagnitudeColor(eq.mag) },
-                ]}
+            {earthquakes.map((eq: Earthquake, index: number) => (
+              <TouchableOpacity
+                key={eq.id}
+                style={[styles.earthquakeCard, index === 0 && styles.firstCard]}
+                activeOpacity={0.7}
+                onPress={() => router.push(`/earthquakes/${eq.id}`)}
               >
-                <Text style={styles.magnitudeText}>{eq.mag}</Text>
-                <Text style={styles.magnitudeLabel}>
-                  {getMagnitudeLabel(eq.mag)}
-                </Text>
-              </View>
+                {/* Magnitude Chip */}
+                <View
+                  style={[
+                    styles.magnitudeChip,
+                    { backgroundColor: getMagnitudeColor(eq.mag) },
+                  ]}
+                >
+                  <Text style={styles.magnitudeText}>{eq.mag}</Text>
+                  <Text style={styles.magnitudeLabel}>
+                    {getMagnitudeLabel(eq.mag)}
+                  </Text>
+                </View>
 
-              {/* Main Content */}
-              <View style={styles.cardContent}>
-                <Text style={styles.earthquakeTitle} numberOfLines={2}>
-                  {eq.title}
-                </Text>
+                {/* Main Content */}
+                <View style={styles.cardContent}>
+                  <Text style={styles.earthquakeTitle} numberOfLines={2}>
+                    {eq.title}
+                  </Text>
 
-                <View style={styles.detailsRow}>
-                  <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>Zaman</Text>
-                    <Text style={styles.detailValue}>
-                      {formatDate(eq.date)}
-                    </Text>
-                  </View>
+                  <View style={styles.detailsRow}>
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>Zaman</Text>
+                      <Text style={styles.detailValue}>
+                        {formatDate(eq.date)}
+                      </Text>
+                    </View>
 
-                  <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>Derinlik</Text>
-                    <Text style={styles.detailValue}>{eq.depth} km</Text>
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>Derinlik</Text>
+                      <Text style={styles.detailValue}>{eq.depth} km</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
 
-              {/* Time Badge for recent earthquakes */}
-              {new Date().getTime() - new Date(eq.date).getTime() < 3600000 && (
-                <View style={styles.recentBadge}>
-                  <Text style={styles.recentText}>YENİ</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
+                {/* Time Badge for recent earthquakes */}
+                {new Date().getTime() - new Date(eq.date).getTime() <
+                  3600000 && (
+                  <View style={styles.recentBadge}>
+                    <Text style={styles.recentText}>YENİ</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
