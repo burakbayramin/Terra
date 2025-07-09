@@ -28,7 +28,7 @@ export default function NewsListItem({ news, isDetailed }: NewsCardProps) {
             ))}
           </View>
           <Text style={styles.timeText}>
-            {formatDistanceToNowStrict(new Date(news.createdAt), {
+            {formatDistanceToNowStrict(new Date(news.created_at), {
               locale: tr,
               addSuffix: true,
             })}

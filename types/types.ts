@@ -4,10 +4,10 @@ export type News = {
   snippet: string;
   content: string;
   image: string;
-  createdAt: string;
+  created_at: string;
   category: string[];
   source: string;
-  earthquakeId?: string | null;
+  earthquake_id?: string | null;
 };
 
 export interface Earthquake {

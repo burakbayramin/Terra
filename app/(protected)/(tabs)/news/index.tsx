@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { news } from "data";
+// import { news } from "data";
 import { FlashList } from "@shopify/flash-list";
 import NewsListItem from "@/components/NewsListItem";
 import {
@@ -10,16 +10,48 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { colors } from "@/constants/colors";
+import { supabase } from "@/lib/supabase";
+import { News } from "@/types/types";
 
 export default function NewsScreen() {
+  const [news, setNews] = React.useState<News[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchNews = async () => {
+      setLoading(true);
+      setError(null);
+      const { data, error } = await supabase
+        .from("news")
+        .select(
+          "id, title, snippet, content, image, created_at, category, source, earthquake_id"
+        );
+      if (error) {
+        setError("Depremler alınamadı.");
+        setNews([]);
+      } else {
+        setNews(data || []);
+      }
+      setLoading(false);
+    };
+    fetchNews();
+  }, []);
+
   const [activeSegment, setActiveSegment] = useState<
     "latest" | "experts" | "analysis"
   >("latest");
 
   const filteredNews = news.filter((item) => {
-    if (activeSegment === "latest") return item.category.includes("latest");
-    if (activeSegment === "experts") return item.category.includes("experts");
-    if (activeSegment === "analysis") return item.category.includes("analysis");
+    const categories = Array.isArray(item.category) 
+      ? item.category 
+      : typeof item.category === 'string' 
+        ? (item.category as string).replace(/[{}]/g, '').split(',').map((cat: string) => cat.trim().replace(/"/g, ''))
+        : [];
+    
+    if (activeSegment === "latest") return categories.includes("latest");
+    if (activeSegment === "experts") return categories.includes("experts");
+    if (activeSegment === "analysis") return categories.includes("analysis");
     return true;
   });
 
