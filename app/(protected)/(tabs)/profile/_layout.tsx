@@ -53,7 +53,7 @@ export default function NewsLayout() {
         }}
       />
       <Stack.Screen
-        name="complete-profile"
+        name="profile-settings"
         options={{
           headerTitleAlign: "center",
           headerShown: false,
@@ -62,8 +62,8 @@ export default function NewsLayout() {
             color: colors.light.textPrimary,
             fontSize: 20,
           },
-          presentation: "modal",
-          animation: "slide_from_bottom",
+          // presentation: "modal",
+          // animation: "slide_from_bottom",
         }}
       />
     </Stack>

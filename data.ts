@@ -7,7 +7,7 @@ export const news: News[] = [
     snippet: "İzmir'de meydana gelen deprem çevre illerde de hissedildi.",
     content:"3 Haziran 2025’te sabaha karşı saat 02:17’de Akdeniz’in Muğla Marmaris açıklarında 5,8 büyüklüğünde meydana gelen deprem, yaklaşık 68 kilometre derinlikte gerçekleşti; sarsıntı Antalya’dan İzmir’e kadar geniş bir alanda hissedilirken, Marmaris’te duvar çatlakları ve eşya devrilmeleri yaşandı, 14 yaşındaki Afranur Günlü hayatını kaybederken 69 kişi yaralandı ve mobil sağlık ekipleri ile psikolojik destek hatları devreye sokuldu; AFAD, UMKE, jandarma ve gönüllülerden oluşan 150 kişilik arama-kurtarma ekibi 24 saat esasına göre hasar tespiti ve enkaz taraması yaparken, İçişleri ve Ulaştırma Bakanlıkları krizi koordine edip alternatif güzergâhlar oluşturdu; uzmanlar artçı sarsıntıların birkaç gün sürebileceğini, deniz kenarında teknelerin kontrollerinin yapılmasını ve vatandaşların açık alanlarda kalmalarını önerirken, yerel halk sosyal medyada bilgileri paylaşarak okullar ve spor salonlarını geçici barınma alanı olarak kullanmaya başladı.",
     image: "https://www.rudaw.net/s3/rudaw.net/ContentFiles/871171Image1.jpg?version=7666282",
-    createdAt: "2025-06-27T08:32:00Z",
+    created_at: "2025-06-27T08:32:00Z",
     category: ["latest", "experts"],
     source: "AFAD",
   },
@@ -19,7 +19,7 @@ export const news: News[] = [
     content:
       "İstanbul'da yaşanan şiddetli fırtına nedeniyle bazı bölgelerde ağaçlar devrildi, çatı uçmaları yaşandı. Yetkililer, vatandaşları dikkatli olmaları konusunda uyardı.",
     image: "https://www.indyturk.com/sites/default/files/styles/1368x911/public/article/main_image/2022/09/06/1005476-559994866.jpg?itok=rjXWEv_g",
-    createdAt: "2025-06-26T19:55:00Z",
+    created_at: "2025-06-26T19:55:00Z",
     category: ["latest"],
     source: "CNN Türk",
   },
@@ -30,7 +30,7 @@ export const news: News[] = [
     content:
       "Ankara'da öğle saatlerinde başlayan şiddetli yağış, kısa sürede sele dönüştü. İki kişi hayatını kaybederken, birçok ev ve iş yeri zarar gördü.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-25T14:20:00Z",
+    created_at: "2025-06-25T14:20:00Z",
     category: ["latest", "analysis"],
     source: "NTV",
   },
@@ -41,7 +41,7 @@ export const news: News[] = [
     content:
       "İstanbul’da düzenlenen Ekonomi Zirvesi’nde, finans dünyasının önde gelen isimleri küresel ekonomi ve Türkiye'nin yatırım fırsatları hakkında görüş alışverişinde bulundu.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-25T09:00:00Z",
+    created_at: "2025-06-25T09:00:00Z",
     category: ["experts", "analysis"],
     source: "Bloomberg HT",
   },
@@ -52,7 +52,7 @@ export const news: News[] = [
     content:
       "Van'ın Tuşba ilçesinde 4.1 büyüklüğünde deprem yaşandı. İlk belirlemelere göre can kaybı veya yaralanma olmadı.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-24T22:11:00Z",
+    created_at: "2025-06-24T22:11:00Z",
     category: ["latest", "experts", "analysis"],
     source: "AFAD",
   },
@@ -64,7 +64,7 @@ export const news: News[] = [
     content:
       "Dünyada ve Türkiye'de yapay zekâ kullanılarak deprem tahmini çalışmaları hız kazandı. Uzmanlar, erken uyarı sistemlerinin geliştirilmesi için büyük veri analizi kullanıyor.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-24T17:40:00Z",
+    created_at: "2025-06-24T17:40:00Z",
     category: ["experts", "analysis"],
     source: "BBC",
   },
@@ -75,7 +75,7 @@ export const news: News[] = [
     content:
       "DSÖ, Avrupa'da önümüzdeki hafta beklenen aşırı sıcaklıklara karşı vatandaşları uyardı. Uzmanlar, yaşlılar ve çocukların dikkatli olmasını öneriyor.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-23T12:00:00Z",
+    created_at: "2025-06-23T12:00:00Z",
     category: ["latest"],
     source: "BBC",
   },
@@ -86,7 +86,7 @@ export const news: News[] = [
     content:
       "İstanbul'daki Teknoloji Zirvesi’nde afet yönetimi, deprem erken uyarı sistemleri ve dijitalleşme ana gündem oldu.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-22T16:10:00Z",
+    created_at: "2025-06-22T16:10:00Z",
     category: ["experts"],
     source: "Webrazzi",
   },
@@ -97,7 +97,7 @@ export const news: News[] = [
     content:
       "Kandilli Rasathanesi uzmanları, Marmara Bölgesi'nde olası bir büyük depremin hazırlıkları konusunda kamuoyunu bilgilendirdi.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-21T10:00:00Z",
+    created_at: "2025-06-21T10:00:00Z",
     category: ["experts", "analysis"],
     source: "Kandilli Rasathanesi",
   },
@@ -108,7 +108,7 @@ export const news: News[] = [
     content:
       "EURO 2024’te mücadele eden Türkiye Milli Takımı, rakibini mağlup ederek çeyrek finale yükseldi.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-20T22:50:00Z",
+    created_at: "2025-06-20T22:50:00Z",
     category: ["latest"],
     source: "NTV Spor",
   },
@@ -119,7 +119,7 @@ export const news: News[] = [
     content:
       "Küresel ısınma nedeniyle 2025 yılının yaz aylarında sıcaklıkların rekor seviyelere çıkabileceği açıklandı.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-20T14:37:00Z",
+    created_at: "2025-06-20T14:37:00Z",
     category: ["experts", "analysis"],
     source: "BBC",
   },
@@ -130,7 +130,7 @@ export const news: News[] = [
     content:
       "Uzmanlar, deprem öncesinde ve sırasında alınabilecek önlemlerle birçok hayatın kurtarılabileceğini belirtiyor. İşte en önemli 10 öneri...",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-19T09:22:00Z",
+    created_at: "2025-06-19T09:22:00Z",
     category: ["analysis"],
     source: "AFAD",
   },
@@ -141,7 +141,7 @@ export const news: News[] = [
     content:
       "İstanbul Büyükşehir Belediyesi, toplu taşıma ücretlerine yüzde 20 oranında zam yapıldığını açıkladı.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-19T07:10:00Z",
+    created_at: "2025-06-19T07:10:00Z",
     category: ["latest"],
     source: "Hürriyet",
   },
@@ -152,7 +152,7 @@ export const news: News[] = [
     content:
       "Kadıköy’de açılan yeni çağdaş sanat sergisi, yerli ve yabancı sanatçıların eserlerini bir araya getiriyor. Sergi bir ay boyunca ziyaretçilere açık olacak.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-18T16:35:00Z",
+    created_at: "2025-06-18T16:35:00Z",
     category: ["latest", "experts"],
     source: "ArtNews",
   },
@@ -163,7 +163,7 @@ export const news: News[] = [
     content:
       "Ege Denizi’nde sabah saatlerinde 4.6 büyüklüğünde deprem kaydedildi. AFAD, depremin merkez üssünü Aydın açıkları olarak açıkladı.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-18T06:11:00Z",
+    created_at: "2025-06-18T06:11:00Z",
     category: ["latest", "analysis"],
     source: "AFAD",
   },
@@ -174,7 +174,7 @@ export const news: News[] = [
     content:
       "Dünya Kupası finalinde Arjantin, rakibini penaltılarla mağlup ederek şampiyonluğa ulaştı. Tüm dünyada büyük sevinç yaşandı.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-17T21:19:00Z",
+    created_at: "2025-06-17T21:19:00Z",
     category: ["latest"],
     source: "Reuters",
   },
@@ -185,7 +185,7 @@ export const news: News[] = [
     content:
       "Borsa İstanbul'da BIST 100 endeksi, haftanın son işlem gününü rekor bir seviyede tamamladı. Ekonomistler yatırımcıları dikkatli olmaya çağırdı.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-17T17:00:00Z",
+    created_at: "2025-06-17T17:00:00Z",
     category: ["experts", "analysis"],
     source: "Bloomberg HT",
   },
@@ -196,7 +196,7 @@ export const news: News[] = [
     content:
       "Deprem bölgesinde yaşayan çocuklara yönelik psikososyal destek programları başlatıldı. Uzmanlar, çocukların yaşadığı travmanın en aza indirilmesi için ailelere de destek sağlıyor.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-16T14:00:00Z",
+    created_at: "2025-06-16T14:00:00Z",
     category: ["experts", "analysis"],
     source: "AFAD",
   },
@@ -207,7 +207,7 @@ export const news: News[] = [
     content:
       "Antalya'nın Manavgat ilçesinde başlayan orman yangını, ekiplerin yoğun çalışması sonucu kontrol altına alındı. Yangında bazı tarım arazileri zarar gördü.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-16T10:44:00Z",
+    created_at: "2025-06-16T10:44:00Z",
     category: ["latest", "experts"],
     source: "NTV",
   },
@@ -218,7 +218,7 @@ export const news: News[] = [
     content:
       "NASA’nın InSight uzay aracı, Mars yüzeyinde şimdiye kadar kaydedilmiş en büyük depremi tespit etti. Bilim insanları bu verinin gezegenin yapısı hakkında önemli ipuçları verdiğini açıkladı.",
     image: "https://picsum.photos/300/200",
-    createdAt: "2025-06-15T08:50:00Z",
+    created_at: "2025-06-15T08:50:00Z",
     category: ["experts", "analysis"],
     source: "NASA",
   },

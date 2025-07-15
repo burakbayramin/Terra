@@ -14,8 +14,10 @@
     "@react-native-community/netinfo": "11.4.1",
     "@shopify/flash-list": "1.7.6",
     "@supabase/supabase-js": "^2.50.0",
+    "@tanstack/react-query": "^5.82.0",
     "date-fns": "^4.1.0",
     "expo": "~53.0.12",
+    "expo-av": "~15.1.7",
     "expo-blur": "~14.1.5",
     "expo-constants": "~17.1.6",
     "expo-haptics": "~14.1.4",
@@ -34,8 +36,7 @@
     "react-native-reanimated-carousel": "^4.0.2",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
-    "zod": "^3.25.67",
-    "expo-av": "~15.1.7"
+    "zod": "^3.25.67"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

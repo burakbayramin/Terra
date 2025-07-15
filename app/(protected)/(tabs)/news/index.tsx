@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-// import { news } from "data";
 import { FlashList } from "@shopify/flash-list";
 import NewsListItem from "@/components/NewsListItem";
 import {
@@ -8,39 +7,17 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  RefreshControl,
 } from "react-native";
 import { colors } from "@/constants/colors";
-import { supabase } from "@/lib/supabase";
-import { News } from "@/types/types";
+import { useNews } from "@/hooks/useNews";
 
 export default function NewsScreen() {
-  const [news, setNews] = React.useState<News[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const fetchNews = async () => {
-      setLoading(true);
-      setError(null);
-      const { data, error } = await supabase
-        .from("news")
-        .select(
-          "id, title, snippet, content, image, created_at, category, source, earthquake_id"
-        );
-      if (error) {
-        setError("Depremler alınamadı.");
-        setNews([]);
-      } else {
-        setNews(data || []);
-      }
-      setLoading(false);
-    };
-    fetchNews();
-  }, []);
-
   const [activeSegment, setActiveSegment] = useState<
     "latest" | "experts" | "analysis"
   >("latest");
+
+  const { data: news = [], isLoading, error, refetch, isFetching } = useNews();
 
   const filteredNews = news.filter((item) => {
     const categories = Array.isArray(item.category) 
@@ -54,6 +31,42 @@ export default function NewsScreen() {
     if (activeSegment === "analysis") return categories.includes("analysis");
     return true;
   });
+
+  // Loading durumu için UI
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.mainHeader}>
+          <Text style={styles.inboxText}>Haberler</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Haberler yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error durumu için UI
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.mainHeader}>
+          <Text style={styles.inboxText}>Haberler</Text>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>
+            {error instanceof Error ? error.message : "Bir hata oluştu"}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => refetch()}
+          >
+            <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -114,6 +127,15 @@ export default function NewsScreen() {
         data={filteredNews}
         renderItem={({ item }) => <NewsListItem news={item} />}
         estimatedItemSize={365}
+        // YENİ: Pull to refresh
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching}
+            onRefresh={() => refetch()}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
       />
     </SafeAreaView>
   );
@@ -171,20 +193,39 @@ const styles = StyleSheet.create({
     fontFamily: "NotoSans-Medium",
     fontWeight: "600",
   },
-  // notificationBadge: {
-  //   position: "absolute",
-  //   top: -5,
-  //   right: 35,
-  //   backgroundColor: "red",
-  //   borderRadius: 10,
-  //   width: 20,
-  //   height: 20,
-  //   justifyContent: "center",
-  //   alignItems: "center",
-  // },
-  // notificationBadgeText: {
-  //   color: "white",
-  //   fontSize: 12,
-  //   fontWeight: "bold",
-  // },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Medium",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#ff0000",
+    fontFamily: "NotoSans-Medium",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontFamily: "NotoSans-Medium",
+    fontWeight: "600",
+  },
 });

@@ -1,12 +1,11 @@
 import React from "react";
-import { View, Text, ScrollView, StyleSheet, Dimensions, StatusBar } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Dimensions, StatusBar, RefreshControl, ActivityIndicator, TouchableOpacity } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useLocalSearchParams, Stack } from "expo-router";
 import { Earthquake } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
-
-const { earthquakes }: { earthquakes: Earthquake[] } = require("@/data");
+import { useEarthquakeById } from "@/hooks/useEarthquakes";
 
 const getMagnitudeColor = (magnitude: number) => {
   if (magnitude >= 5.0) return "#FF4444";
@@ -45,8 +44,44 @@ function getFaultLineName(longitude: number, latitude: number) {
 
 export default function EarthquakeDetailScreen() {
   const { id } = useLocalSearchParams();
-  const earthquake = earthquakes.find((eq) => eq.id == id);
+  
+  const { data: earthquake, isLoading, error, refetch, isFetching } = useEarthquakeById(id as string);
 
+  // Loading durumu
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Deprem verisi yükleniyor...</Text>
+      </View>
+    );
+  }
+
+  // Error durumu
+  if (error) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={[styles.loadingText, { color: "red", marginBottom: 20 }]}>
+          {error instanceof Error ? error.message : "Bir hata oluştu"}
+        </Text>
+        <TouchableOpacity
+          style={{
+            backgroundColor: colors.primary,
+            paddingHorizontal: 20,
+            paddingVertical: 10,
+            borderRadius: 8,
+          }}
+          onPress={() => refetch()}
+        >
+          <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "600" }}>
+            Tekrar Dene
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Deprem bulunamadı durumu
   if (!earthquake) {
     return (
       <View style={styles.loadingContainer}>
@@ -59,7 +94,20 @@ export default function EarthquakeDetailScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#1a365d" />
       
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.container} 
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        // YENİ: Pull to refresh
+        // refreshControl={
+        //   <RefreshControl
+        //     refreshing={isFetching}
+        //     onRefresh={() => refetch()}
+        //     colors={[colors.primary]}
+        //     tintColor={colors.primary}
+        //   />
+        // }
+      >
         {/* Hero Header */}
         <View style={[styles.heroHeader, { backgroundColor: getMagnitudeColor(earthquake.mag) }]}>
           <View style={styles.heroContent}>
@@ -71,7 +119,6 @@ export default function EarthquakeDetailScreen() {
             </View>
             <View style={styles.heroInfo}>
               <Text style={styles.heroTitle}>{earthquake.title}</Text>
-              <Text style={styles.heroDate}>{formatDate(earthquake.date)}</Text>
               <View style={styles.timeAgo}>
                 <Ionicons name="time-outline" size={16} color="rgba(255,255,255,0.8)" />
                 <Text style={styles.timeAgoText}>{formatDate(earthquake.date)}</Text>
@@ -240,6 +287,7 @@ export default function EarthquakeDetailScreen() {
   );
 }
 
+// Styles aynı kalıyor - hiçbir şey değiştirmeyin
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -258,6 +306,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#6b7280",
     fontWeight: "500",
+    marginTop: 10,
   },
   heroHeader: {
     paddingTop: 60,

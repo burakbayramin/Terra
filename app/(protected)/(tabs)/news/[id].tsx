@@ -1,3 +1,4 @@
+// NewsDetailScreen.tsx - Mevcut dosyanızı bu şekilde güncelleyin
 import {
   View,
   Text,
@@ -6,6 +7,8 @@ import {
   StyleSheet,
   Pressable,
   SafeAreaView,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Entypo } from "@expo/vector-icons";
@@ -13,53 +16,85 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { formatDistanceToNowStrict } from "date-fns";
 import { tr } from "date-fns/locale";
 import { colors } from "@/constants/colors";
-import { supabase } from "@/lib/supabase";
-import { News } from "@/types/types";
+import { useNewsById } from "@/hooks/useNews"; // YENİ IMPORT
 import React from "react";
 
 export default function NewsDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [news, setNews] = React.useState<News[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    const fetchNews = async () => {
-      setLoading(true);
-      setError(null);
-      const { data, error } = await supabase
-        .from("news")
-        .select(
-          "id, title, snippet, content, image, created_at, category, source, earthquake_id"
-        );
-      if (error) {
-        setError("Depremler alınamadı.");
-        setNews([]);
-      } else {
-        setNews(data || []);
-      }
-      setLoading(false);
-    };
-    fetchNews();
-  }, []);
+  // ESKİ useState'leri silin, yerine bu hook'u kullanın
+  const { data: news, isLoading, error, refetch, isFetching } = useNewsById(id!);
 
-  const item = news.find((n) => n.id.toString() === id);
+  // Loading durumu
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Haber yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  if (!item) {
-    return <Text style={{ padding: 24 }}>Haber Bulunamadı</Text>;
+  // Error durumu
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>
+            {error instanceof Error ? error.message : "Bir hata oluştu"}
+          </Text>
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => refetch()}
+          >
+            <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Haber bulunamadı durumu
+  if (!news) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Haber bulunamadı</Text>
+          <Pressable
+            style={styles.retryButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.retryButtonText}>Geri Dön</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
+    <SafeAreaView style={styles.container}>
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        // YENİ: Pull to refresh
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching}
+            onRefresh={() => refetch()}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
         <View style={styles.headerRow}>
           <View style={styles.categoryRow}>
-            {(Array.isArray(item.category)
-              ? item.category
-              : typeof item.category === "string"
-              ? (item.category as string)
+            {(Array.isArray(news.category)
+              ? news.category
+              : typeof news.category === "string"
+              ? (news.category as string)
                   .replace(/[{}]/g, "")
                   .split(",")
                   .map((cat: string) => cat.trim().replace(/"/g, ""))
@@ -71,7 +106,7 @@ export default function NewsDetailScreen() {
             ))}
           </View>
           <Text style={styles.timeText}>
-            {formatDistanceToNowStrict(new Date(item.created_at), {
+            {formatDistanceToNowStrict(new Date(news.created_at), {
               locale: tr,
               addSuffix: true,
             })}
@@ -79,25 +114,20 @@ export default function NewsDetailScreen() {
         </View>
 
         {/* Başlık */}
-        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.title}>{news.title}</Text>
 
         {/* Kapak Görseli */}
-        {!!item.image && (
+        {!!news.image && (
           <Image
-            source={{ uri: item.image }}
+            source={{ uri: news.image }}
             style={styles.image}
             resizeMode="cover"
           />
         )}
 
-        {/* Snippet */}
-        {/* <Text style={styles.snippet}>{item.snippet}</Text> */}
-
-        {/* ...existing code... */}
-
         {/* Tam İçerik */}
         <View style={styles.contentBox}>
-          <Text style={styles.contentText}>{item.content}</Text>
+          <Text style={styles.contentText}>{news.content}</Text>
         </View>
 
         {/* Kaynak ve Deprem Bilgisi */}
@@ -115,9 +145,9 @@ export default function NewsDetailScreen() {
               { marginBottom: 8, textAlign: "left", paddingLeft: 10 },
             ]}
           >
-            Kaynak: {item.source}
+            Kaynak: {news.source}
           </Text>
-          {item.earthquake_id && (
+          {news.earthquake_id && (
             <Pressable
               style={{
                 flexDirection: "row",
@@ -158,7 +188,48 @@ export default function NewsDetailScreen() {
   );
 }
 
+// Styles aynı kalıyor - hiçbir şey değiştirmeyin
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Medium",
+    marginTop: 10,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#ff0000",
+    fontFamily: "NotoSans-Medium",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontFamily: "NotoSans-Medium",
+    fontWeight: "600",
+  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -51,13 +51,31 @@ const predefinedQuestions: PredefinedQuestion[] = [
     answer:
       "En yakın havalimanları:\n• Şehir Havalimanı (25km) - İç hat ve dış hat seferleri\n• Askeri Hava Üssü (18km) - Acil durumlarda sivil kullanım\n\nAcil tahliye durumlarında havalimanına ulaşım için otobüs seferleri düzenlenir.",
   },
-  {
-    id: "5",
-    question: "Acil durum çantamda neler bulunmalı?",
-    answer:
-      "Acil durum çantanızda bulunması gerekenler:\n• Su (kişi başı 3 litre)\n• Konserve yiyecekler\n• El feneri ve piller\n• İlk yardım malzemeleri\n• Radyo\n• Önemli belgelerin kopyaları\n• Nakit para\n• İlaçlar\n• Battaniye\n• Islık",
-  },
 ];
+
+// 1. "Binam hangi büyüklükteki depreme kadar dayanıklı?"
+
+// Yapım yılı, kat sayısı, yapı sistemi, zemin türü analizi
+// Betonarme/çelik/yığma karşılaştırmalı dayanıklılık
+// "6.4'e kadar güvenli, 7.0'da %60 hasar olasılığı" gibi spesifik tahminler
+
+// 2. "Konumuma göre en güvenli kaçış rotası ve toplanma alanları"
+
+// Anlık konum + bina yoğunluğu + sokak genişliği analizi
+// 3 alternatif güvenli rota ve süreler
+// En yakın hastane, AFAD koordinasyon merkezi lokasyonları
+
+// 3. "Risk seviyeme göre deprem öncesi hazırlık planım"
+
+// Bölgesel risk + bina durumu + aile yapısı kombine analizi
+// Kişiselleştirilmiş acil durum çantası içeriği
+// Su depolama, gıda stoklama, alternatif enerji önerileri
+
+// 4. "Bulunduğum kata ve bina riskine göre deprem esnasında stratejim"
+
+// Kat yüksekliği + bina yaşı + yapı türü risk matrisi
+// "5. katta iseniz asansöre değil merdivene yönelin, 15 saniye içinde..."
+// Oda içi güvenli nokta haritası ve hareket planı
 
 export default function AnalyzerScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([

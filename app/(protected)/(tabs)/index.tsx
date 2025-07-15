@@ -235,7 +235,7 @@ export default function HomeScreen() {
           </View>
 
           <Divider style={styles.divider} />
-          <EarthquakeStats stats={stats} />
+          {/* <EarthquakeStats stats={stats} /> */}
           <Divider style={styles.divider} />
           {/* Quick Access Buttons */}
           <Text style={styles.sectionTitle}>Hızlı Erişim</Text>

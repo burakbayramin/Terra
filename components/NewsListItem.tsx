@@ -70,18 +70,6 @@ export default function NewsListItem({ news, isDetailed }: NewsCardProps) {
                 color={saved ? "#fff" : colors.primary}
               />
             </Pressable>
-            <Pressable
-              style={styles.actionButton}
-              onPress={() => {
-                /* TODO: implement share */
-              }}
-            >
-              <Ionicons
-                name="share-social-outline"
-                size={18}
-                color={colors.primary}
-              />
-            </Pressable>
           </View>
         </View>
       </Pressable>

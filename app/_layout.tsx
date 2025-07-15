@@ -4,6 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { QueryProvider } from "@/providers/QueryProvider";
 
 //TODO color theme dark-light theme secime eklenecek ThemeProvider
 SplashScreen.preventAutoHideAsync();
@@ -33,9 +34,11 @@ export default function RootLayout() {
   // TODO theme provider eklenebilir
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <Slot />
-      </AuthProvider>
+      <QueryProvider>
+        <AuthProvider>
+          <Slot />
+        </AuthProvider>
+      </QueryProvider>
     </GestureHandlerRootView>
   );
 }

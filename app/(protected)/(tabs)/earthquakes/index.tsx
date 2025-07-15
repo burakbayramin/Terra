@@ -2,11 +2,11 @@ import { View, Text, TouchableOpacity } from "react-native";
 import React from "react";
 import { Earthquake } from "@/types/types";
 import MapView, { Marker } from "react-native-maps";
-import { ScrollView, StyleSheet, Dimensions, SafeAreaView } from "react-native";
+import { ScrollView, StyleSheet, Dimensions, SafeAreaView, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { Divider } from "react-native-paper";
-import { supabase } from "@/lib/supabase";
+import { useEarthquakes } from "@/hooks/useEarthquakes";
 
 export default function EarthquakesScreen() {
   const { width } = Dimensions.get("window");
@@ -20,27 +20,7 @@ export default function EarthquakesScreen() {
     longitudeDelta: 17.5,
   };
 
-  const [earthquakes, setEarthquakes] = React.useState<Earthquake[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const fetchEarthquakes = async () => {
-      setLoading(true);
-      setError(null);
-      const { data, error } = await supabase
-        .from("earthquakes")
-        .select("id, provider, title, date, mag, depth, longitude, latitude");
-      if (error) {
-        setError("Depremler alınamadı.");
-        setEarthquakes([]);
-      } else {
-        setEarthquakes(data || []);
-      }
-      setLoading(false);
-    };
-    fetchEarthquakes();
-  }, []);
+  const { data: earthquakes = [], isLoading, error, refetch, isFetching } = useEarthquakes();
 
   const getMagnitudeColor = (magnitude: number) => {
     if (magnitude >= 5.0) return "#FF4444";
@@ -74,116 +54,160 @@ export default function EarthquakesScreen() {
     });
   };
 
+  // Loading durumu
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.mainHeader}>
+          <Text style={styles.inboxText}>Depremler</Text>
+        </View>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Text>Depremler yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error durumu
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.mainHeader}>
+          <Text style={styles.inboxText}>Depremler</Text>
+        </View>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <Text style={{ color: "red", marginBottom: 20 }}>
+            {error instanceof Error ? error.message : "Bir hata oluştu"}
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: colors.primary,
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+              borderRadius: 8,
+            }}
+            onPress={() => refetch()}
+          >
+            <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "600" }}>
+              Tekrar Dene
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.mainHeader}>
+      {/* <View style={styles.mainHeader}>
         <Text style={styles.inboxText}>Depremler</Text>
-      </View>
-      {loading ? (
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <Text>Yükleniyor...</Text>
-        </View>
-      ) : error ? (
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <Text style={{ color: "red" }}>{error}</Text>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Map Container */}
-          <View style={styles.mapContainer}>
-            <MapView
-              style={[styles.map, { width: width - 32, height: mapHeight }]}
-              initialRegion={region}
-              showsUserLocation={false}
-              showsMyLocationButton={false}
-              toolbarEnabled={false}
-            >
-              {earthquakes.map((eq: Earthquake) => (
-                <Marker
-                  key={eq.id}
-                  coordinate={{
-                    latitude: eq.latitude,
-                    longitude: eq.longitude,
-                  }}
-                  title={eq.title}
-                  description={`Büyüklük: ${eq.mag} - Derinlik: ${eq.depth} km`}
-                  pinColor={getMagnitudeColor(eq.mag)}
-                />
-              ))}
-            </MapView>
-          </View>
-          <Divider style={styles.divider} />
-
-          {/* Earthquake List */}
-          <View style={styles.listContainer}>
-            <View style={styles.listHeader}>
-              <Text style={styles.listTitle}>Deprem Listesi</Text>
-            </View>
-
-            {earthquakes.map((eq: Earthquake, index: number) => (
-              <TouchableOpacity
+      </View> */}
+      
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        // YENİ: Pull to refresh
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching}
+            onRefresh={() => refetch()}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {/* Map Container */}
+        <View style={styles.mapContainer}>
+          <MapView
+            style={[styles.map, { width: width - 32, height: mapHeight }]}
+            initialRegion={region}
+            showsUserLocation={false}
+            showsMyLocationButton={false}
+            toolbarEnabled={false}
+          >
+            {earthquakes.map((eq: Earthquake) => (
+              <Marker
                 key={eq.id}
-                style={[styles.earthquakeCard, index === 0 && styles.firstCard]}
-                activeOpacity={0.7}
-                onPress={() => router.push(`/earthquakes/${eq.id}`)}
-              >
-                {/* Magnitude Chip */}
-                <View
-                  style={[
-                    styles.magnitudeChip,
-                    { backgroundColor: getMagnitudeColor(eq.mag) },
-                  ]}
-                >
-                  <Text style={styles.magnitudeText}>{eq.mag}</Text>
-                  <Text style={styles.magnitudeLabel}>
-                    {getMagnitudeLabel(eq.mag)}
-                  </Text>
-                </View>
-
-                {/* Main Content */}
-                <View style={styles.cardContent}>
-                  <Text style={styles.earthquakeTitle} numberOfLines={2}>
-                    {eq.title}
-                  </Text>
-
-                  <View style={styles.detailsRow}>
-                    <View style={styles.detailItem}>
-                      <Text style={styles.detailLabel}>Zaman</Text>
-                      <Text style={styles.detailValue}>
-                        {formatDate(eq.date)}
-                      </Text>
-                    </View>
-
-                    <View style={styles.detailItem}>
-                      <Text style={styles.detailLabel}>Derinlik</Text>
-                      <Text style={styles.detailValue}>{eq.depth} km</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Time Badge for recent earthquakes */}
-                {new Date().getTime() - new Date(eq.date).getTime() <
-                  3600000 && (
-                  <View style={styles.recentBadge}>
-                    <Text style={styles.recentText}>YENİ</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+                coordinate={{
+                  latitude: eq.latitude,
+                  longitude: eq.longitude,
+                }}
+                title={eq.title}
+                description={`Büyüklük: ${eq.mag} - Derinlik: ${eq.depth} km`}
+                pinColor={getMagnitudeColor(eq.mag)}
+                onCalloutPress={() => {
+                  // Pin'e tıklayınca detail sayfasına git
+                  router.push(`/earthquakes/${eq.id}`);
+                }}
+              />
             ))}
+          </MapView>
+        </View>
+        {/* <Divider style={styles.divider} /> */}
+
+        {/* Earthquake List */}
+        <View style={styles.listContainer}>
+          <View style={styles.listHeader}>
+            <Text style={styles.listTitle}>Deprem Listesi</Text>
           </View>
-        </ScrollView>
-      )}
+
+          {earthquakes.map((eq: Earthquake, index: number) => (
+            <TouchableOpacity
+              key={eq.id}
+              style={[styles.earthquakeCard, index === 0 && styles.firstCard]}
+              activeOpacity={0.7}
+              onPress={() => router.push(`/earthquakes/${eq.id}`)}
+            >
+              {/* Magnitude Chip */}
+              <View
+                style={[
+                  styles.magnitudeChip,
+                  { backgroundColor: getMagnitudeColor(eq.mag) },
+                ]}
+              >
+                <Text style={styles.magnitudeText}>{eq.mag}</Text>
+                <Text style={styles.magnitudeLabel}>
+                  {getMagnitudeLabel(eq.mag)}
+                </Text>
+              </View>
+
+              {/* Main Content */}
+              <View style={styles.cardContent}>
+                <Text style={styles.earthquakeTitle} numberOfLines={2}>
+                  {eq.title}
+                </Text>
+
+                <View style={styles.detailsRow}>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Zaman</Text>
+                    <Text style={styles.detailValue}>
+                      {formatDate(eq.date)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Derinlik</Text>
+                    <Text style={styles.detailValue}>{eq.depth} km</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Time Badge for recent earthquakes */}
+              {new Date().getTime() - new Date(eq.date).getTime() <
+                3600000 && (
+                <View style={styles.recentBadge}>
+                  <Text style={styles.recentText}>YENİ</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
+// Styles aynı kalıyor - hiçbir şey değiştirmeyin
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -196,30 +220,6 @@ const styles = StyleSheet.create({
     marginVertical: 15,
     borderRadius: 10,
   },
-  // header: {
-  //   backgroundColor: "#1a365d",
-  //   paddingTop: 60,
-  //   paddingBottom: 20,
-  //   paddingHorizontal: 20,
-  //   borderBottomLeftRadius: 20,
-  //   borderBottomRightRadius: 20,
-  //   shadowColor: "#000",
-  //   shadowOffset: { width: 0, height: 4 },
-  //   shadowOpacity: 0.1,
-  //   shadowRadius: 8,
-  //   elevation: 8,
-  // },
-  // headerTitle: {
-  //   fontSize: 24,
-  //   fontWeight: "bold",
-  //   color: "#ffffff",
-  //   marginBottom: 4,
-  // },
-  // headerSubtitle: {
-  //   fontSize: 14,
-  //   color: "#cbd5e0",
-  //   opacity: 0.8,
-  // },
   scrollView: {
     flex: 1,
   },
@@ -267,9 +267,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 12,
-    marginBottom: 16, // kartlar arası boşluk biraz artırıldı
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#e2e8f0", // açık gri, modern görünüm
+    borderColor: "#e2e8f0",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: "50%",
     right: 12,
-    transform: [{ translateY: -20 }], // Yüksekliğe göre ayarlanabilir
+    transform: [{ translateY: -20 }],
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -354,12 +354,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 15,
     marginBottom: 10,
-    marginTop: 10, // İkonların altındaki boşluk için
+    marginTop: 10,
   },
   inboxText: {
     fontSize: 25,
     fontWeight: "bold",
-    flex: 1, // Inbox metninin ortalanması için
-    textAlign: "center", // Inbox metnini ortalamak için
+    flex: 1,
+    textAlign: "center",
   },
 });

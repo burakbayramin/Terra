@@ -21,11 +21,14 @@ export default function ProfileScreen() {
   const router = useRouter();
   const profileCompletionPercentage = 75;
   const missionCompletionPercentage = 15;
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         {/* Profile Section with Gradient */}
         <LinearGradient
           colors={[colors.gradientOne, colors.gradientTwo]}
@@ -33,7 +36,7 @@ export default function ProfileScreen() {
         >
           <View style={styles.profileImageContainer}>
             <Image
-              source={{ uri: "https://picsum.photos/300/200" }}
+              source={require("@/assets/images/temp-profile.png")}
               style={styles.profileImage}
             />
           </View>
@@ -89,18 +92,18 @@ export default function ProfileScreen() {
                   right: 0,
                   bottom: 0,
                 }}
-                onPress={() => router.push("/profile/complete-profile")}
+                onPress={() => router.push("/profile/profile-settings")}
               ></TouchableOpacity>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem}>
+            {/* <TouchableOpacity style={styles.menuItem}>
               <View style={styles.menuItemLeft}>
                 <View style={styles.iconContainer}>
                   <FontAwesome5 name="tasks" size={20} color="#666" />
                 </View>
                 <Text style={styles.menuItemText}>Görevler</Text>
               </View>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             <TouchableOpacity style={styles.menuItem}>
               <View style={styles.menuItemLeft}>
@@ -419,7 +422,7 @@ const styles = StyleSheet.create({
     height: 3,
     backgroundColor: colors.light.surface,
     marginHorizontal: 12,
-    marginVertical: 20,
+    marginVertical:10,
     borderRadius: 10,
   },
   supportContainer: {

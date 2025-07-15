@@ -1,29 +1,22 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { colors } from "@/constants/colors";
+import { EarthquakeStats } from "@/types/types";
 
-interface EarthquakeStatsProps {
-  stats: {
-    last24Hours: number;
-    last7Days: number;
-    last30Days: number;
-  };
-}
-
-const EarthquakeStats: React.FC<EarthquakeStatsProps> = ({ stats }) => (
+const EarthquakeStat: React.FC<EarthquakeStats> = ({ total }) => (
   <View style={styles.statsContainer}>
     <Text style={styles.statsTitle}>Deprem İstatistikleri</Text>
     <View style={styles.statsBoxContainer}>
       <View style={styles.statsBox}>
-        <Text style={styles.statsNumber}>{stats.last30Days}</Text>
+        <Text style={styles.statsNumber}>{total.lastMonth}</Text>
         <Text style={styles.statsLabel}>Son 30 Gün</Text>
       </View>
       <View style={styles.statsBox}>
-        <Text style={styles.statsNumber}>{stats.last7Days}</Text>
+        <Text style={styles.statsNumber}>{total.lastWeek}</Text>
         <Text style={styles.statsLabel}>Son 7 Gün</Text>
       </View>
       <View style={styles.statsBox}>
-        <Text style={styles.statsNumber}>{stats.last24Hours}</Text>
+        <Text style={styles.statsNumber}>{total.lastDay}</Text>
         <Text style={styles.statsLabel}>Son 24 Saat</Text>
       </View>
     </View>

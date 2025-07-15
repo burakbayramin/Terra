@@ -20,3 +20,26 @@ export interface Earthquake {
   longitude: number;
   latitude: number;
 }
+
+export interface EarthquakeStats {
+  total: {
+    lastDay: number;
+    lastWeek: number;
+    lastMonth: number;
+  };
+  mag3Plus: {
+    lastDay: number;
+    lastWeek: number;
+    lastMonth: number;
+  };
+  mag4Plus: {
+    lastDay: number;
+    lastWeek: number;
+    lastMonth: number;
+  };
+  mag5Plus: {
+    lastDay: number;
+    lastWeek: number;
+    lastMonth: number;
+  };
+}
