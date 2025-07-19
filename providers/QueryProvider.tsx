@@ -16,8 +16,13 @@ const queryClient = new QueryClient({
         if (error instanceof Error && error.message.includes("network")) {
           return failureCount < 3;
         }
+        // Profile hatalarında 2 kez deneme yap
+        if (error instanceof Error && error.message.includes("Profil")) {
+          return failureCount < 2;
+        }
         return false;
       },
+
 
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,

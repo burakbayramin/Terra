@@ -18,7 +18,7 @@ import { colors } from "@/constants/colors";
 import EarthquakeCarousel from "@/components/EarthquakeCarousel";
 import { Earthquake } from "@/types/types";
 import { news } from "data";
-import EarthquakeStats from "@/components/EarthquakeStats";
+import EarthquakeStat from "@/components/EarthquakeStats";
 import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -114,9 +114,21 @@ export default function HomeScreen() {
 
   // Dummy stats for earthquake statistics
   const stats = {
-    last24Hours: 12,
-    last7Days: 37,
-    last30Days: 142,
+    total: {
+      lastDay: 12,
+      lastWeek: 37,
+      lastMonth: 142,
+    },
+    mag3Plus: {
+      lastDay: 8,
+      lastWeek: 24,
+      lastMonth: 89,
+    },
+    mag4Plus: {
+      lastDay: 3,
+      lastWeek: 12,
+      lastMonth: 45,
+    },
   };
 
   // AI sorulari için örnek veriler
@@ -235,7 +247,7 @@ export default function HomeScreen() {
           </View>
 
           <Divider style={styles.divider} />
-          {/* <EarthquakeStats stats={stats} /> */}
+          <EarthquakeStat {...stats} />
           <Divider style={styles.divider} />
           {/* Quick Access Buttons */}
           <Text style={styles.sectionTitle}>Hızlı Erişim</Text>

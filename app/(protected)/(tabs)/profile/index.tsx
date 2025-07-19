@@ -36,7 +36,7 @@ export default function ProfileScreen() {
         >
           <View style={styles.profileImageContainer}>
             <Image
-              source={require("@/assets/images/temp-profile.png")}
+              source={require("@/assets/images/profile.png")}
               style={styles.profileImage}
             />
           </View>
