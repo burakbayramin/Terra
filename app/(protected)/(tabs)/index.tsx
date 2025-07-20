@@ -7,6 +7,7 @@ import {
   Dimensions,
   ScrollView,
   Image,
+  Linking,
 } from "react-native";
 import { Divider } from "react-native-paper";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -84,7 +85,7 @@ const taskData = [
 ];
 
 const { width } = Dimensions.get("window");
-const CARD_HEIGHT = width * 0.5; // Adjust height based on width for better responsiveness
+const CARD_HEIGHT = width * 0.6; // Adjust height based on width for better responsiveness
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -425,6 +426,98 @@ export default function HomeScreen() {
 
           <Divider style={styles.divider} />
 
+          {/* Yakında Çıkacak Özellikler */}
+          <View style={styles.comingSoonSection}>
+            <Text style={styles.sectionTitle}>Yakında Çıkacak Özellikler</Text>
+            <View style={styles.comingSoonGrid}>
+              <View style={styles.comingSoonCard}>
+                <LinearGradient
+                  colors={["#667eea", "#764ba2"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.comingSoonGradient}
+                >
+                  <View style={styles.comingSoonIconContainer}>
+                    <Ionicons name="warning" size={24} color="#fff" />
+                  </View>
+                  <Text style={styles.comingSoonTitle}>Erken Uyarı</Text>
+                  <Text style={styles.comingSoonDescription}>
+                    Deprem erken uyarı sistemi
+                  </Text>
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonBadgeText}>Yakında</Text>
+                  </View>
+                </LinearGradient>
+              </View>
+
+              <View style={styles.comingSoonCard}>
+                <LinearGradient
+                  colors={["#f093fb", "#f5576c"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.comingSoonGradient}
+                >
+                  <View style={styles.comingSoonIconContainer}>
+                    <Ionicons name="people" size={24} color="#fff" />
+                  </View>
+                  <Text style={styles.comingSoonTitle}>Topluluk</Text>
+                  <Text style={styles.comingSoonDescription}>
+                    Kullanıcılar arası deneyim paylaşımı
+                  </Text>
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonBadgeText}>
+                      Geliştiriliyor
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </View>
+
+              <View style={styles.comingSoonCard}>
+                <LinearGradient
+                  colors={["#4facfe", "#00f2fe"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.comingSoonGradient}
+                >
+                  <View style={styles.comingSoonIconContainer}>
+                    <Ionicons name="document-text" size={24} color="#fff" />
+                  </View>
+                  <Text style={styles.comingSoonTitle}>Rapor</Text>
+                  <Text style={styles.comingSoonDescription}>
+                    Bölgesel deprem sıklığı raporlaması
+                  </Text>
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonBadgeText}>
+                      Geliştiriliyor
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </View>
+
+              <View style={styles.comingSoonCard}>
+                <LinearGradient
+                  colors={["#fa709a", "#fee140"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.comingSoonGradient}
+                >
+                  <View style={styles.comingSoonIconContainer}>
+                    <Ionicons name="alert-circle" size={24} color="#fff" />
+                  </View>
+                  <Text style={styles.comingSoonTitle}>Sarsıntı Alarm</Text>
+                  <Text style={styles.comingSoonDescription}>
+                    Yüksek hassasiyetli sarsıntı alarmı
+                  </Text>
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonBadgeText}>Yakında</Text>
+                  </View>
+                </LinearGradient>
+              </View>
+            </View>
+          </View>
+
+          <Divider style={styles.divider} />
+
           {/* haberler */}
           <View style={styles.newsSection}>
             <Text style={styles.sectionTitle}>Haberler</Text>
@@ -455,125 +548,182 @@ export default function HomeScreen() {
           <Divider style={styles.divider} />
           {/* Depremzedelere Destek Ol */}
           <View style={styles.supportContainer}>
-            <Text style={styles.statsTitle}>Depremzedelere Destek Ol</Text>
-            <View style={styles.supportContentImproved}>
-              <Text style={styles.supportTextImproved}>
-                Depremden etkilenenlere yardım etmek için çeşitli kuruluşlara
-                bağışta bulunabilir veya gönüllü olabilirsiniz. Küçük bir destek
-                bile büyük bir fark yaratabilir.
-              </Text>
-              <View style={styles.supportButtonsRowImproved}>
-                <TouchableOpacity
-                  style={styles.supportButtonImproved}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    // Bağış sayfasına yönlendirme
-                  }}
-                >
-                  <View style={styles.supportButtonInner}>
-                    <Ionicons
-                      name="hand-left"
-                      size={18}
-                      color="#fff"
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={styles.supportButtonTextImproved}>
-                      Bağış Yap
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.supportButtonImproved,
-                    styles.secondarySupportButtonImproved,
-                  ]}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    // Gönüllü olma sayfasına yönlendirme
-                  }}
-                >
-                  <View style={styles.supportButtonInner}>
-                    <Ionicons
-                      name="people"
-                      size={18}
-                      color={colors.gradientTwo}
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={styles.secondarySupportButtonTextImproved}>
-                      Gönüllü Ol
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+            <LinearGradient
+              colors={["#ff6b6b", "#ff8e8e", "#ffb3b3"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.supportGradientContainer}
+            >
+              <View style={styles.supportHeader}>
+                <Ionicons
+                  name="heart"
+                  size={32}
+                  color="#fff"
+                  style={styles.supportIcon}
+                />
+                <Text style={styles.supportTitle}>
+                  Depremzedelere Destek Ol
+                </Text>
+                <Text style={styles.supportSubtitle}>
+                  Birlikte daha güçlüyüz
+                </Text>
               </View>
-            </View>
+
+              <View style={styles.supportContentNew}>
+                <Text style={styles.supportTextNew}>
+                  Depremden etkilenenlere yardım etmek için çeşitli kuruluşlara
+                  bağışta bulunabilir veya gönüllü olabilirsiniz. Küçük bir
+                  destek bile büyük bir fark yaratabilir.
+                </Text>
+
+                <View style={styles.supportButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.fullWidthSupportButton}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      Linking.openURL(
+                        "https://www.afad.gov.tr/depremkampanyasi2"
+                      );
+                    }}
+                  >
+                    <LinearGradient
+                      colors={["#fff", "#f8f9fa"]}
+                      style={styles.supportButtonGradient}
+                    >
+                      <Ionicons
+                        name="heart"
+                        size={20}
+                        color="#ff6b6b"
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text style={styles.primarySupportButtonText}>
+                        Bağış Yap
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </LinearGradient>
           </View>
 
           <View style={styles.supportContainer}>
-            <Text style={styles.statsTitle}>Geliştiricilere Destek Ol</Text>
-            <View style={styles.supportContentImproved}>
-              <Text style={styles.supportTextImproved}>
-                Terra uygulaması topluluk katkılarıyla geliştirilmektedir.
-                Deprem bilinci ve güvenliği için daha iyi özellikler
-                geliştirmemize yardımcı olabilirsiniz.
-              </Text>
-              <View style={styles.supportButtonsRowImproved}>
-                <TouchableOpacity
-                  style={styles.supportButtonImproved}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.supportButtonInner}>
-                    <Ionicons
-                      name="heart"
-                      size={18}
-                      color="#fff"
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={styles.supportButtonTextImproved}>
-                      Bağış Yap
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.supportButtonImproved,
-                    styles.secondarySupportButtonImproved,
-                  ]}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.supportButtonInner}>
-                    <Ionicons
-                      name="code-slash"
-                      size={18}
-                      color={colors.gradientTwo}
-                      style={{ marginRight: 6 }}
-                    />
-                    <Text style={styles.secondarySupportButtonTextImproved}>
-                      Katkıda Bulun
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+            <LinearGradient
+              colors={["#4a90e2", "#5ba3f5", "#7bb8ff"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.supportGradientContainer}
+            >
+              <View style={styles.supportHeader}>
+                <Ionicons
+                  name="code-slash"
+                  size={32}
+                  color="#fff"
+                  style={styles.supportIcon}
+                />
+                <Text style={styles.supportTitle}>
+                  Geliştiricilere Destek Ol
+                </Text>
+                <Text style={styles.supportSubtitle}>
+                  Açık kaynak projeye katkı
+                </Text>
               </View>
-            </View>
+
+              <View style={styles.supportContentNew}>
+                <Text style={styles.supportTextNew}>
+                  Terra uygulaması topluluk katkılarıyla geliştirilmektedir.
+                  Deprem bilinci ve güvenliği için daha iyi özellikler
+                  geliştirmemize yardımcı olabilirsiniz.
+                </Text>
+
+                <View style={styles.supportButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.fullWidthSupportButton}
+                    activeOpacity={0.7}
+                  >
+                    <LinearGradient
+                      colors={["#fff", "#f8f9fa"]}
+                      style={styles.supportButtonGradient}
+                    >
+                      <Ionicons
+                        name="cafe"
+                        size={20}
+                        color="#4a90e2"
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text
+                        style={[
+                          styles.primarySupportButtonText,
+                          { color: "#4a90e2" },
+                        ]}
+                      >
+                        Destek Ol
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </LinearGradient>
           </View>
 
-          {/* Katkıda Bulun viewinin altına iletişim bölümü eklendi */}
-          <View style={styles.contactContainer}>
-            <Text style={styles.statsTitle}>İletişime Geç</Text>
-            <View style={styles.contactContent}>
-              <Text style={styles.contactText}>
-                Sorularınız, önerileriniz veya geri bildirimleriniz için bizimle
-                iletişime geçebilirsiniz.
-              </Text>
-              <TouchableOpacity
-                style={styles.contactMainButton}
-                activeOpacity={0.7}
-                onPress={() => {
-                  // İletişim formuna yönlendirme veya mail açma işlemi
-                }}
-              >
-                <Text style={styles.contactButtonText}>İletişime Geç</Text>
-              </TouchableOpacity>
-            </View>
+          {/* İletişime Geç */}
+          <View style={styles.supportContainer}>
+            <LinearGradient
+              colors={["#10b981", "#34d399", "#6ee7b7"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.supportGradientContainer}
+            >
+              <View style={styles.supportHeader}>
+                <Ionicons
+                  name="mail"
+                  size={32}
+                  color="#fff"
+                  style={styles.supportIcon}
+                />
+                <Text style={styles.supportTitle}>İletişime Geç</Text>
+                <Text style={styles.supportSubtitle}>
+                  Bizimle iletişime geçin
+                </Text>
+              </View>
+
+              <View style={styles.supportContentNew}>
+                <Text style={styles.supportTextNew}>
+                  Sorularınız, önerileriniz veya geri bildirimleriniz için
+                  bizimle iletişime geçebilirsiniz. Size yardımcı olmaktan
+                  mutluluk duyarız.
+                </Text>
+
+                <View style={styles.supportButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.fullWidthSupportButton}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      // İletişim formuna yönlendirme veya mail açma işlemi
+                    }}
+                  >
+                    <LinearGradient
+                      colors={["#fff", "#f8f9fa"]}
+                      style={styles.supportButtonGradient}
+                    >
+                      <Ionicons
+                        name="send"
+                        size={20}
+                        color="#10b981"
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text
+                        style={[
+                          styles.primarySupportButtonText,
+                          { color: "#10b981" },
+                        ]}
+                      >
+                        İletişime Geç
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </LinearGradient>
           </View>
         </View>
       </ScrollView>
@@ -871,6 +1021,157 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 20,
   },
+  supportGradientContainer: {
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#ff6b6b",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  supportHeader: {
+    alignItems: "center",
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  supportIcon: {
+    marginBottom: 12,
+    textShadowColor: "rgba(255, 255, 255, 0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  supportTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#fff",
+    fontFamily: "NotoSans-Bold",
+    textAlign: "center",
+    marginBottom: 4,
+    textShadowColor: "rgba(0, 0, 0, 0.1)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  supportSubtitle: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.9)",
+    fontFamily: "NotoSans-Medium",
+    textAlign: "center",
+  },
+  supportContentNew: {
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  supportTextNew: {
+    fontSize: 15,
+    color: "#444",
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 32,
+    fontFamily: "NotoSans-Regular",
+  },
+  supportStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+    paddingVertical: 16,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+  },
+  supportStat: {
+    alignItems: "center",
+    flex: 1,
+  },
+  supportStatNumber: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#ff6b6b",
+    fontFamily: "NotoSans-Bold",
+    marginBottom: 2,
+  },
+  supportStatLabel: {
+    fontSize: 12,
+    color: "#666",
+    fontFamily: "NotoSans-Medium",
+    textAlign: "center",
+  },
+  supportStatDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: "#e0e0e0",
+    marginHorizontal: 20,
+  },
+  supportButtonsContainer: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  primarySupportButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#ff6b6b",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  fullWidthSupportButton: {
+    width: "100%",
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#ff6b6b",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  supportButtonGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primarySupportButtonText: {
+    color: "#ff6b6b",
+    fontWeight: "700",
+    fontSize: 16,
+    fontFamily: "NotoSans-Bold",
+  },
+  secondarySupportButton: {
+    flex: 1,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  secondarySupportButtonInner: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  secondarySupportButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+    fontFamily: "NotoSans-Bold",
+  },
   supportContent: {
     backgroundColor: colors.light.surface,
     borderRadius: 12,
@@ -953,22 +1254,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "NotoSans-Bold",
   },
-  secondarySupportButton: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: "green",
-  },
-  secondarySupportButtonImproved: {
-    backgroundColor: "#fff",
-    borderWidth: 1.5,
-    borderColor: colors.gradientTwo,
-  },
-  secondarySupportButtonTextImproved: {
-    color: colors.gradientTwo,
-    fontWeight: "700",
-    fontSize: 15,
-    fontFamily: "NotoSans-Bold",
-  },
   statsTitle: {
     fontSize: 18,
     fontFamily: "NotoSans-Bold",
@@ -1002,48 +1287,75 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontFamily: "NotoSans-Medium",
   },
-  contactContainer: {
+
+  // Yakında Çıkacak Özellikler Stilleri
+  comingSoonSection: {
     paddingHorizontal: 12,
-    paddingBottom: 30,
+    paddingBottom: 10,
+    backgroundColor: colors.light.background,
   },
-  contactContent: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 20,
-    shadowColor: colors.gradientTwo,
+  comingSoonGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  comingSoonCard: {
+    width: "48%",
+    height: 180,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
-    marginTop: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  contactText: {
-    fontSize: 15,
-    color: "#444",
-    lineHeight: 22,
-    textAlign: "center",
-    marginBottom: 18,
-    fontFamily: "NotoSans-Regular",
+  comingSoonGradient: {
+    flex: 1,
+    padding: 16,
+    justifyContent: "flex-start",
+    position: "relative",
   },
-  contactMainButton: {
-    backgroundColor: colors.gradientTwo,
-    paddingVertical: 13,
-    borderRadius: 10,
+  comingSoonIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
     alignItems: "center",
-    marginHorizontal: 2,
-    shadowColor: colors.gradientTwo,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 2,
+    marginBottom: 8,
   },
-  contactButtonText: {
-    color: "#fff",
+  comingSoonTitle: {
+    fontSize: 16,
     fontWeight: "700",
-    fontSize: 15,
+    color: "#fff",
     fontFamily: "NotoSans-Bold",
+    marginBottom: 4,
+  },
+  comingSoonDescription: {
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.9)",
+    fontFamily: "NotoSans-Regular",
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  comingSoonBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  comingSoonBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#fff",
+    fontFamily: "NotoSans-Medium",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 });
 
@@ -1073,6 +1385,36 @@ const carouselStyles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 14,
+  },
+  bottomRightBadges: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  regionBadge: {
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  regionBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  faultlineBadge: {
+    backgroundColor: "rgba(74, 144, 226, 0.9)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  faultlineBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
   },
   info: {
     paddingHorizontal: 12,

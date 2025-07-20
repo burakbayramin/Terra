@@ -43,6 +43,7 @@ const EarthquakeCarousel: React.FC<EarthquakeCarouselProps> = ({
         key={filter}
         loop
         autoPlay
+        autoPlayInterval={6000}
         width={width}
         height={CARD_HEIGHT + 140}
         data={carouselData}
@@ -84,6 +85,18 @@ const EarthquakeCarousel: React.FC<EarthquakeCarouselProps> = ({
                 ]}
               >
                 <Text style={styles.badgeText}>{item.mag}</Text>
+              </View>
+
+              {/* Region and Faultline badges in bottom right */}
+              <View style={styles.bottomRightBadges}>
+                <View style={styles.regionBadge}>
+                  <Text style={styles.regionBadgeText}>{item.region}</Text>
+                </View>
+                <View style={styles.faultlineBadge}>
+                  <Text style={styles.faultlineBadgeText}>
+                    {item.faultline}
+                  </Text>
+                </View>
               </View>
             </View>
 

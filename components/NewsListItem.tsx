@@ -1,6 +1,6 @@
 import { News } from "@/types/types";
 import { Link } from "expo-router";
-import { formatDistanceToNowStrict } from "date-fns";
+import { formatDistanceToNowStrict, isToday } from "date-fns";
 import { tr } from "date-fns/locale";
 import { View, Text, Image, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +15,8 @@ import React, { useState } from "react";
 
 export default function NewsListItem({ news, isDetailed }: NewsCardProps) {
   const [saved, setSaved] = useState(false);
+  const isNewsToday = isToday(new Date(news.created_at));
+
   return (
     <Link href={`/news/${news.id}`} asChild>
       <Pressable style={styles.card}>
@@ -26,6 +28,11 @@ export default function NewsListItem({ news, isDetailed }: NewsCardProps) {
                 <Text style={styles.chipText}>{cat}</Text>
               </View>
             ))}
+            {isNewsToday && (
+              <View style={styles.hotChip}>
+                <Text style={styles.hotChipText}>🔥 Yeni</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.timeText}>
             {formatDistanceToNowStrict(new Date(news.created_at), {
@@ -151,7 +158,29 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     elevation: 0,
   },
+  hotChip: {
+    backgroundColor: colors.light.background,
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    marginRight: 4,
+    marginBottom: 2,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    shadowColor: "transparent",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
   chipText: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: "600",
+    fontFamily: "NotoSans-Medium",
+    letterSpacing: 0.2,
+  },
+  hotChipText: {
     fontSize: 13,
     color: colors.primary,
     fontWeight: "600",

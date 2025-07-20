@@ -19,6 +19,8 @@ export interface Earthquake {
   depth: number;
   longitude: number;
   latitude: number;
+  region: string;
+  faultline: string;
 }
 
 export interface EarthquakeStats {

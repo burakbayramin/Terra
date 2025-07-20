@@ -19,6 +19,7 @@ export default function RootLayout() {
     "NotoSans-Bold": require("@/assets/fonts/NotoSans-Bold.ttf"),
     "NotoSans-Regular": require("@/assets/fonts/NotoSans-Regular.ttf"),
     "NotoSans-Medium": require("@/assets/fonts/NotoSans-Medium.ttf"),
+    "tt-fors-trial.demibold.ttf": require("@/assets/fonts/tt-fors-trial.demibold.ttf"),
   });
 
   useEffect(() => {

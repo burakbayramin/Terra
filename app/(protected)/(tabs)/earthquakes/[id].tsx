@@ -1,5 +1,18 @@
 import React from "react";
-import { View, Text, ScrollView, StyleSheet, Dimensions, StatusBar, RefreshControl, ActivityIndicator, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Dimensions,
+  StatusBar,
+  RefreshControl,
+  ActivityIndicator,
+  TouchableOpacity,
+  Linking,
+  Platform,
+  Alert,
+} from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useLocalSearchParams, Stack } from "expo-router";
 import { Earthquake } from "@/types/types";
@@ -42,10 +55,66 @@ function getFaultLineName(longitude: number, latitude: number) {
   return "Kuzey Anadolu Fayı";
 }
 
+// Harici harita uygulamasını açma fonksiyonu
+const openInExternalMap = async (
+  latitude: number,
+  longitude: number,
+  title: string
+) => {
+  // URL'leri öncelik sırasına göre tanımla
+  const urls = [
+    // Google Maps uygulaması (en yaygın)
+    `comgooglemaps://?q=${latitude},${longitude}&center=${latitude},${longitude}&zoom=14`,
+    // iOS Apple Maps
+    `http://maps.apple.com/?q=${latitude},${longitude}&ll=${latitude},${longitude}`,
+    // Android geo intent
+    `geo:${latitude},${longitude}?q=${latitude},${longitude}`,
+    // Google Maps web (son çare)
+    `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`,
+  ];
+
+  // Her URL'yi sırayla dene
+  for (const url of urls) {
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+        return; // Başarılı olursa çık
+      }
+    } catch (error) {
+      console.log(`URL açılamadı: ${url}`, error);
+      continue; // Bir sonraki URL'yi dene
+    }
+  }
+
+  // Hiçbir URL çalışmazsa kullanıcıyı bilgilendir
+  Alert.alert(
+    "Harita Uygulaması",
+    "Harita uygulaması açılamadı. Koordinatları manuel olarak kopyalayabilirsiniz:\n\n" +
+      `${latitude}, ${longitude}`,
+    [
+      {
+        text: "Koordinatları Kopyala",
+        onPress: () => {
+          // Expo'da Clipboard varsa kullan, yoksa sadece konsola yazdır
+          console.log(`Koordinatlar: ${latitude}, ${longitude}`);
+        },
+      },
+      { text: "Tamam", style: "cancel" },
+    ]
+  );
+};
+
 export default function EarthquakeDetailScreen() {
   const { id } = useLocalSearchParams();
-  
-  const { data: earthquake, isLoading, error, refetch, isFetching } = useEarthquakeById(id as string);
+
+  const {
+    data: earthquake,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useEarthquakeById(id as string);
 
   // Loading durumu
   if (isLoading) {
@@ -93,9 +162,9 @@ export default function EarthquakeDetailScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#1a365d" />
-      
-      <ScrollView 
-        style={styles.container} 
+
+      <ScrollView
+        style={styles.container}
         showsVerticalScrollIndicator={false}
         bounces={false}
         // YENİ: Pull to refresh
@@ -109,19 +178,34 @@ export default function EarthquakeDetailScreen() {
         // }
       >
         {/* Hero Header */}
-        <View style={[styles.heroHeader, { backgroundColor: getMagnitudeColor(earthquake.mag) }]}>
+        <View
+          style={[
+            styles.heroHeader,
+            { backgroundColor: getMagnitudeColor(earthquake.mag) },
+          ]}
+        >
           <View style={styles.heroContent}>
             <View style={styles.magnitudeDisplay}>
-              <Text style={styles.magnitudeNumber}>{earthquake.mag.toFixed(1)}</Text>
+              <Text style={styles.magnitudeNumber}>
+                {earthquake.mag.toFixed(1)}
+              </Text>
               <View style={styles.magnitudeBadge}>
-                <Text style={styles.magnitudeBadgeText}>{getMagnitudeLabel(earthquake.mag)}</Text>
+                <Text style={styles.magnitudeBadgeText}>
+                  {getMagnitudeLabel(earthquake.mag)}
+                </Text>
               </View>
             </View>
             <View style={styles.heroInfo}>
               <Text style={styles.heroTitle}>{earthquake.title}</Text>
               <View style={styles.timeAgo}>
-                <Ionicons name="time-outline" size={16} color="rgba(255,255,255,0.8)" />
-                <Text style={styles.timeAgoText}>{formatDate(earthquake.date)}</Text>
+                <Ionicons
+                  name="time-outline"
+                  size={16}
+                  color="rgba(255,255,255,0.8)"
+                />
+                <Text style={styles.timeAgoText}>
+                  {formatDate(earthquake.date)}
+                </Text>
               </View>
             </View>
           </View>
@@ -131,19 +215,33 @@ export default function EarthquakeDetailScreen() {
           {/* Quick Stats */}
           <View style={styles.quickStats}>
             <View style={styles.statItem}>
-              <Ionicons name="layers-outline" size={20} color={getMagnitudeColor(earthquake.mag)} />
+              <Ionicons
+                name="layers-outline"
+                size={20}
+                color={getMagnitudeColor(earthquake.mag)}
+              />
               <Text style={styles.statValue}>{earthquake.depth} km</Text>
               <Text style={styles.statLabel}>Derinlik</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Ionicons name="people-outline" size={20} color={getMagnitudeColor(earthquake.mag)} />
-              <Text style={styles.statValue}>{Math.floor(Math.random() * 1000) + 100}</Text>
+              <Ionicons
+                name="people-outline"
+                size={20}
+                color={getMagnitudeColor(earthquake.mag)}
+              />
+              <Text style={styles.statValue}>
+                {Math.floor(Math.random() * 1000) + 100}
+              </Text>
               <Text style={styles.statLabel}>Hisseden</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Ionicons name="information-circle-outline" size={20} color={getMagnitudeColor(earthquake.mag)} />
+              <Ionicons
+                name="information-circle-outline"
+                size={20}
+                color={getMagnitudeColor(earthquake.mag)}
+              />
               <Text style={styles.statValue}>{earthquake.provider}</Text>
               <Text style={styles.statLabel}>Kaynak</Text>
             </View>
@@ -155,38 +253,90 @@ export default function EarthquakeDetailScreen() {
               <Ionicons name="location-outline" size={22} color="#2d3748" />
               <Text style={styles.sectionTitle}>Deprem Konumu</Text>
             </View>
-            
+
             {earthquake.longitude !== 0 && earthquake.latitude !== 0 ? (
               <View style={styles.mapContainer}>
-                <MapView
-                  style={styles.map}
-                  initialRegion={{
-                    latitude: earthquake.latitude,
-                    longitude: earthquake.longitude,
-                    latitudeDelta: 0.5,
-                    longitudeDelta: 0.5,
-                  }}
-                  scrollEnabled={false}
-                  zoomEnabled={false}
-                  pitchEnabled={false}
-                  rotateEnabled={false}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    openInExternalMap(
+                      earthquake.latitude,
+                      earthquake.longitude,
+                      earthquake.title
+                    )
+                  }
                 >
-                  <Marker
-                    coordinate={{ latitude: earthquake.latitude, longitude: earthquake.longitude }}
-                    pinColor={getMagnitudeColor(earthquake.mag)}
-                  />
-                </MapView>
+                  <MapView
+                    style={styles.map}
+                    initialRegion={{
+                      latitude: earthquake.latitude,
+                      longitude: earthquake.longitude,
+                      latitudeDelta: 0.5,
+                      longitudeDelta: 0.5,
+                    }}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    pitchEnabled={false}
+                    rotateEnabled={false}
+                    onPress={() =>
+                      openInExternalMap(
+                        earthquake.latitude,
+                        earthquake.longitude,
+                        earthquake.title
+                      )
+                    }
+                  >
+                    <Marker
+                      coordinate={{
+                        latitude: earthquake.latitude,
+                        longitude: earthquake.longitude,
+                      }}
+                      pinColor={getMagnitudeColor(earthquake.mag)}
+                      onPress={() =>
+                        openInExternalMap(
+                          earthquake.latitude,
+                          earthquake.longitude,
+                          earthquake.title
+                        )
+                      }
+                    />
+                  </MapView>
+                </TouchableOpacity>
+
+                {/* Harita tıklama ipucu */}
+                <TouchableOpacity
+                  style={styles.mapOverlay}
+                  onPress={() =>
+                    openInExternalMap(
+                      earthquake.latitude,
+                      earthquake.longitude,
+                      earthquake.title
+                    )
+                  }
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.mapOverlayContent}>
+                    <Ionicons name="open-outline" size={16} color="#6b7280" />
+                    <Text style={styles.mapOverlayText}>
+                      Harita uygulamasında aç
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
                 <View style={styles.coordinatesContainer}>
                   <Ionicons name="navigate-outline" size={16} color="#6b7280" />
                   <Text style={styles.coordinates}>
-                    {earthquake.latitude.toFixed(4)}, {earthquake.longitude.toFixed(4)}
+                    {earthquake.latitude.toFixed(4)},{" "}
+                    {earthquake.longitude.toFixed(4)}
                   </Text>
                 </View>
               </View>
             ) : (
               <View style={styles.noLocationContainer}>
                 <Ionicons name="location-outline" size={48} color="#cbd5e0" />
-                <Text style={styles.noLocationText}>Konum bilgisi bulunamadı</Text>
+                <Text style={styles.noLocationText}>
+                  Konum bilgisi bulunamadı
+                </Text>
               </View>
             )}
           </View>
@@ -194,23 +344,31 @@ export default function EarthquakeDetailScreen() {
           {/* Detailed Information */}
           <View style={styles.detailsSection}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="information-circle-outline" size={22} color="#2d3748" />
+              <Ionicons
+                name="information-circle-outline"
+                size={22}
+                color="#2d3748"
+              />
               <Text style={styles.sectionTitle}>Detaylı Bilgiler</Text>
             </View>
 
             <View style={styles.detailGrid}>
               <View style={styles.detailItem}>
                 <View style={styles.detailIcon}>
-                  <Ionicons name="calendar-outline" size={20} color={getMagnitudeColor(earthquake.mag)} />
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={getMagnitudeColor(earthquake.mag)}
+                  />
                 </View>
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Tarih</Text>
                   <Text style={styles.detailValue}>
                     {new Date(earthquake.date).toLocaleDateString("tr-TR", {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
                     })}
                   </Text>
                 </View>
@@ -218,31 +376,58 @@ export default function EarthquakeDetailScreen() {
 
               <View style={styles.detailItem}>
                 <View style={styles.detailIcon}>
-                  <Ionicons name="time-outline" size={20} color={getMagnitudeColor(earthquake.mag)} />
+                  <Ionicons
+                    name="time-outline"
+                    size={20}
+                    color={getMagnitudeColor(earthquake.mag)}
+                  />
                 </View>
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Saat</Text>
                   <Text style={styles.detailValue}>
-                    {new Date(earthquake.date).toLocaleTimeString("tr-TR", { 
-                      hour: "2-digit", 
-                      minute: "2-digit", 
-                      second: "2-digit" 
+                    {new Date(earthquake.date).toLocaleTimeString("tr-TR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
                     })}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.detailItem}>
-                <View style={styles.detailIcon}>
-                  <Ionicons name="git-branch-outline" size={20} color={getMagnitudeColor(earthquake.mag)} />
+              {earthquake.faultline && (
+                <View style={styles.detailItem}>
+                  <View style={styles.detailIcon}>
+                    <Ionicons
+                      name="git-branch-outline"
+                      size={20}
+                      color={getMagnitudeColor(earthquake.mag)}
+                    />
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>Fay Hattı</Text>
+                    <Text style={styles.detailValue}>
+                      {earthquake.faultline}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Fay Hattı</Text>
-                  <Text style={styles.detailValue}>
-                    {getFaultLineName(earthquake.longitude, earthquake.latitude)}
-                  </Text>
+              )}
+              {earthquake.region && (
+                <View style={styles.detailItem}>
+                  <View style={styles.detailIcon}>
+                    <Ionicons
+                      name="location-outline"
+                      size={20}
+                      color={getMagnitudeColor(earthquake.mag)}
+                    />
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>Bölge</Text>
+                    <Text style={styles.detailValue}>
+                      {earthquake.region}
+                    </Text>
+                  </View>
                 </View>
-              </View>
+              )}
             </View>
           </View>
 
@@ -252,29 +437,46 @@ export default function EarthquakeDetailScreen() {
               <Ionicons name="analytics-outline" size={22} color="#2d3748" />
               <Text style={styles.sectionTitle}>Etki Değerlendirmesi</Text>
             </View>
-            
+
             <View style={styles.impactCard}>
-              <View style={[styles.impactHeader, { backgroundColor: `${getMagnitudeColor(earthquake.mag)}15` }]}>
-                <Text style={[styles.impactTitle, { color: getMagnitudeColor(earthquake.mag) }]}>
+              <View
+                style={[
+                  styles.impactHeader,
+                  { backgroundColor: `${getMagnitudeColor(earthquake.mag)}15` },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.impactTitle,
+                    { color: getMagnitudeColor(earthquake.mag) },
+                  ]}
+                >
                   {getMagnitudeLabel(earthquake.mag)} Şiddette Deprem
                 </Text>
               </View>
-              
+
               <View style={styles.impactContent}>
                 <Text style={styles.impactDescription}>
-                  Bu deprem {earthquake.mag.toFixed(1)} büyüklüğünde kaydedilmiş olup, {earthquake.depth} km derinliğinde gerçekleşmiştir. 
-                  {earthquake.mag >= 4.0 ? " Bu şiddetteki depremler genellikle geniş bir alanda hissedilir ve hafif hasarlara neden olabilir." : 
-                   earthquake.mag >= 3.0 ? " Bu şiddetteki depremler genellikle sadece yakın çevrede hissedilir." : 
-                   " Bu şiddetteki depremler genellikle sadece hassas cihazlarla tespit edilir."}
+                  Bu deprem {earthquake.mag.toFixed(1)} büyüklüğünde kaydedilmiş
+                  olup, {earthquake.depth} km derinliğinde gerçekleşmiştir.
+                  {earthquake.mag >= 4.0
+                    ? " Bu şiddetteki depremler genellikle geniş bir alanda hissedilir ve hafif hasarlara neden olabilir."
+                    : earthquake.mag >= 3.0
+                    ? " Bu şiddetteki depremler genellikle sadece yakın çevrede hissedilir."
+                    : " Bu şiddetteki depremler genellikle sadece hassas cihazlarla tespit edilir."}
                 </Text>
-                
+
                 <View style={styles.impactMetrics}>
                   <View style={styles.metricItem}>
-                    <Text style={styles.metricValue}>{Math.floor(Math.random() * 50) + 10} km</Text>
+                    <Text style={styles.metricValue}>
+                      {Math.floor(Math.random() * 50) + 10} km
+                    </Text>
                     <Text style={styles.metricLabel}>Hissedilme Yarıçapı</Text>
                   </View>
                   <View style={styles.metricItem}>
-                    <Text style={styles.metricValue}>{Math.floor(Math.random() * 10) + 1}</Text>
+                    <Text style={styles.metricValue}>
+                      {Math.floor(Math.random() * 10) + 1}
+                    </Text>
                     <Text style={styles.metricLabel}>Mercalli Şiddeti</Text>
                   </View>
                 </View>
@@ -287,7 +489,6 @@ export default function EarthquakeDetailScreen() {
   );
 }
 
-// Styles aynı kalıyor - hiçbir şey değiştirmeyin
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -425,10 +626,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
+    position: "relative",
   },
   map: {
     width: "100%",
     height: 220,
+  },
+  mapOverlay: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  mapOverlayContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  mapOverlayText: {
+    fontSize: 12,
+    color: "#6b7280",
+    fontWeight: "500",
+    marginLeft: 4,
   },
   coordinatesContainer: {
     flexDirection: "row",

@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Entypo } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { formatDistanceToNowStrict } from "date-fns";
+import { formatDistanceToNowStrict, isToday } from "date-fns";
 import { tr } from "date-fns/locale";
 import { colors } from "@/constants/colors";
 import { useNewsById } from "@/hooks/useNews"; // YENİ IMPORT
@@ -25,7 +25,13 @@ export default function NewsDetailScreen() {
   const insets = useSafeAreaInsets();
 
   // ESKİ useState'leri silin, yerine bu hook'u kullanın
-  const { data: news, isLoading, error, refetch, isFetching } = useNewsById(id!);
+  const {
+    data: news,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useNewsById(id!);
 
   // Loading durumu
   if (isLoading) {
@@ -47,10 +53,7 @@ export default function NewsDetailScreen() {
           <Text style={styles.errorText}>
             {error instanceof Error ? error.message : "Bir hata oluştu"}
           </Text>
-          <Pressable
-            style={styles.retryButton}
-            onPress={() => refetch()}
-          >
+          <Pressable style={styles.retryButton} onPress={() => refetch()}>
             <Text style={styles.retryButtonText}>Tekrar Dene</Text>
           </Pressable>
         </View>
@@ -64,10 +67,7 @@ export default function NewsDetailScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Haber bulunamadı</Text>
-          <Pressable
-            style={styles.retryButton}
-            onPress={() => router.back()}
-          >
+          <Pressable style={styles.retryButton} onPress={() => router.back()}>
             <Text style={styles.retryButtonText}>Geri Dön</Text>
           </Pressable>
         </View>
@@ -75,9 +75,11 @@ export default function NewsDetailScreen() {
     );
   }
 
+  const isNewsToday = isToday(new Date(news.created_at));
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         // YENİ: Pull to refresh
         refreshControl={
@@ -104,6 +106,11 @@ export default function NewsDetailScreen() {
                 <Text style={styles.chipText}>{cat}</Text>
               </View>
             ))}
+            {isNewsToday && (
+              <View style={styles.hotChip}>
+                <Text style={styles.hotChipText}>🔥 Yeni</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.timeText}>
             {formatDistanceToNowStrict(new Date(news.created_at), {
@@ -252,7 +259,23 @@ const styles = StyleSheet.create({
     marginRight: 3,
     marginBottom: 2,
   },
+  hotChip: {
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+    backgroundColor: colors.light.background,
+    borderRadius: 16,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    marginRight: 3,
+    marginBottom: 2,
+  },
   chipText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: "500",
+    fontFamily: "NotoSans-Medium",
+  },
+  hotChipText: {
     fontSize: 12,
     color: colors.primary,
     fontWeight: "500",
