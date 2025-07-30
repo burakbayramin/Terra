@@ -24,26 +24,18 @@ export interface Earthquake {
 }
 
 export interface EarthquakeStats {
-  total: {
-    lastDay: number;
-    lastWeek: number;
-    lastMonth: number;
-  };
-  // mag3Plus: {
-  //   lastDay: number;
-  //   lastWeek: number;
-  //   lastMonth: number;
-  // };
-  // mag4Plus: {
-  //   lastDay: number;
-  //   lastWeek: number;
-  //   lastMonth: number;
-  // };
-  // mag5Plus: {
-  //   lastDay: number;
-  //   lastWeek: number;
-  //   lastMonth: number;
-  // };
+  total_last_day: number;
+  total_last_week: number;
+  total_last_month: number;
+  mag3_plus_last_day: number;
+  mag3_plus_last_week: number;
+  mag3_plus_last_month: number;
+  mag4_plus_last_day: number;
+  mag4_plus_last_week: number;
+  mag4_plus_last_month: number;
+  mag5_plus_last_day: number;
+  mag5_plus_last_week: number;
+  mag5_plus_last_month: number;
 }
 
 export interface City {
@@ -58,11 +50,23 @@ export interface District {
 
 export interface Profile {
   id: string;
-  name: string;
-  surname: string;
-  building_age: number | null;
-  building_type: number | null;
+  updated_at: string | null;
+  name: string | null;
+  surname: string | null;
   city: string | null;
   district: string | null;
-  updated_at: string;
+  created_at: string | null;
+  emergency_phone: string | null;
+}
+
+export interface EarthquakeFeltReport {
+  id: string;
+  profile_id: string;
+  earthquake_id: string;
+  created_at: string;
+}
+
+export interface FeltReportStats {
+  total_reports: number;
+  user_has_reported: boolean;
 }

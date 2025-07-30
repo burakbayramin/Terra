@@ -5,6 +5,7 @@ import {
   MaterialCommunityIcons,
   FontAwesome,
   FontAwesome6,
+  Ionicons,
 } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 
@@ -15,8 +16,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="news"
         options={{
-          title: "News",
-          headerTitle: "News",
+          title: "Haberler",
+          headerTitle: "Haberler",
           headerShown: false,
           headerTitleAlign: "center",
           headerTitleStyle: {
@@ -33,8 +34,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="analyzer"
         options={{
-          title: "Analyzer",
-          headerTitle: "Analyzer",
+          title: "AI",
+          headerTitle: "AI",
           headerShown: false,
           headerTitleAlign: "center",
           headerTitleStyle: {
@@ -51,7 +52,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Ana Sayfa",
           headerTitle: "Terra",
           headerShown: false,
           headerTitleAlign: "center",
@@ -87,6 +88,24 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="earthquake-stats"
+        options={{
+          title: "İstatistikler",
+          headerTitle: "Deprem İstatistikleri",
+          headerShown: false,
+          headerTitleAlign: "center",
+          headerTitleStyle: {
+            fontFamily: "NotoSans-Bold",
+          },
+          headerTintColor: colors.light.textPrimary,
+          tabBarActiveTintColor: colors.light.textPrimary,
+          tabBarInactiveTintColor: colors.light.textSecondary,
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="stats-chart" size={24} color={color} />
+          ),
+        }}
+      />
+      {/* <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
@@ -103,7 +122,7 @@ export default function TabLayout() {
             <FontAwesome name="user" size={24} color={color} />
           ),
         }}
-      />
+      /> */}
     </Tabs>
   );
 }

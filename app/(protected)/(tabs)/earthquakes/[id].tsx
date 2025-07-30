@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { Earthquake } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 import { useEarthquakeById } from "@/hooks/useEarthquakes";
+import { useEarthquakeFeltReports } from "@/hooks/useEarthquakeFeltReports";
 
 const getMagnitudeColor = (magnitude: number) => {
   if (magnitude >= 5.0) return "#FF4444";
@@ -49,10 +50,6 @@ function formatDate(dateString: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function getFaultLineName(longitude: number, latitude: number) {
-  return "Kuzey Anadolu Fayı";
 }
 
 // Harici harita uygulamasını açma fonksiyonu
@@ -115,6 +112,15 @@ export default function EarthquakeDetailScreen() {
     refetch,
     isFetching,
   } = useEarthquakeById(id as string);
+
+  // Felt reports hook'unu kullan
+  const {
+    stats,
+    isLoading: isLoadingFeltReports,
+    toggleFeltReport,
+    isUpdating,
+    error: feltReportsError,
+  } = useEarthquakeFeltReports(id as string);
 
   // Loading durumu
   if (isLoading) {
@@ -231,7 +237,7 @@ export default function EarthquakeDetailScreen() {
                 color={getMagnitudeColor(earthquake.mag)}
               />
               <Text style={styles.statValue}>
-                {Math.floor(Math.random() * 1000) + 100}
+                {isLoadingFeltReports ? "..." : stats?.total_reports || 0}
               </Text>
               <Text style={styles.statLabel}>Hisseden</Text>
             </View>
@@ -246,6 +252,41 @@ export default function EarthquakeDetailScreen() {
               <Text style={styles.statLabel}>Kaynak</Text>
             </View>
           </View>
+
+          <TouchableOpacity
+            style={[
+              styles.feelButton,
+              stats?.user_has_reported && styles.feelButtonPressed,
+              isUpdating && styles.feelButtonDisabled,
+            ]}
+            onPress={async () => {
+              try {
+                await toggleFeltReport();
+              } catch (error) {
+                Alert.alert(
+                  "Hata",
+                  error instanceof Error ? error.message : "Bir hata oluştu",
+                  [{ text: "Tamam" }]
+                );
+              }
+            }}
+            disabled={isUpdating}
+          >
+            {isUpdating ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text
+                style={[
+                  styles.feelButtonText,
+                  stats?.user_has_reported && styles.feelButtonTextPressed,
+                ]}
+              >
+                {stats?.user_has_reported
+                  ? "Depremi Hissettim ✓"
+                  : "Depremi Hissetin Mi?"}
+              </Text>
+            )}
+          </TouchableOpacity>
 
           {/* Map Section */}
           <View style={styles.mapSection}>
@@ -422,9 +463,7 @@ export default function EarthquakeDetailScreen() {
                   </View>
                   <View style={styles.detailContent}>
                     <Text style={styles.detailLabel}>Bölge</Text>
-                    <Text style={styles.detailValue}>
-                      {earthquake.region}
-                    </Text>
+                    <Text style={styles.detailValue}>{earthquake.region}</Text>
                   </View>
                 </View>
               )}
@@ -775,5 +814,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#6b7280",
     fontWeight: "500",
+  },
+  feelButton: {
+    backgroundColor: "transparent",
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  feelButtonPressed: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  feelButtonDisabled: {
+    opacity: 0.6,
+  },
+  feelButtonText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: "NotoSans-Bold",
+  },
+  feelButtonTextPressed: {
+    color: "#ffffff",
   },
 });

@@ -8,10 +8,17 @@ import {
   ScrollView,
   Image,
   Linking,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Divider } from "react-native-paper";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useState, useRef } from "react";
+import {
+  AntDesign,
+  Feather,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useSharedValue } from "react-native-reanimated";
 import { ICarouselInstance } from "react-native-reanimated-carousel";
@@ -19,9 +26,15 @@ import { colors } from "@/constants/colors";
 import EarthquakeCarousel from "@/components/EarthquakeCarousel";
 import { Earthquake } from "@/types/types";
 import { news } from "data";
-import EarthquakeStat from "@/components/EarthquakeStats";
+import EarthquakeStats from "@/components/EarthquakeStats";
 import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
+import EmergencyButton from "@/components/EmergencyButton";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { useEarthquakes } from "@/hooks/useEarthquakes";
+import { useLocation } from "@/hooks/useLocation";
 
 // Yeni düzenlenmiş görev verisi (sabit)
 const taskData = [
@@ -89,11 +102,72 @@ const CARD_HEIGHT = width * 0.6; // Adjust height based on width for better resp
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const {
+    getAndSaveLocation,
+    hasPermission,
+    requestLocationPermission,
+    authLoading,
+  } = useLocation();
   const [activeSegment, setActiveSegment] = useState<
     "afad" | "kandilli" | "usgs"
   >("kandilli");
   const carouselRef = useRef<ICarouselInstance | null>(null);
   const progress = useSharedValue(0);
+
+  //Temp eklendi
+  const [securityScore] = useState(78);
+
+  // Deprem verileri
+  const { data: earthquakeData = [] } = useEarthquakes();
+
+  // Kullanıcının hissettiği depremler
+  const { data: userFeltEarthquakes, isLoading: isLoadingFeltEarthquakes } =
+    useQuery({
+      queryKey: ["user-felt-earthquakes", user?.id],
+      queryFn: async () => {
+        if (!user?.id) return [];
+
+        const { data, error } = await supabase
+          .from("earthquake_felt_reports")
+          .select("earthquake_id, created_at")
+          .eq("profile_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        if (error) {
+          console.error("Error fetching user felt earthquakes:", error);
+          return [];
+        }
+
+        // Earthquake ID'leri ile gerçek deprem verilerini eşleştir
+        const earthquakeIds = data?.map((report) => report.earthquake_id) || [];
+        const filteredEarthquakes = earthquakeData
+          .filter((eq) => earthquakeIds.includes(eq.id))
+          .map((eq) => {
+            const report = data?.find((r) => r.earthquake_id === eq.id);
+            return {
+              ...eq,
+              felt_at: report?.created_at,
+            };
+          });
+
+        return filteredEarthquakes;
+      },
+      enabled: !!user?.id && earthquakeData.length > 0,
+      staleTime: 5 * 60 * 1000, // 5 dakika fresh
+    });
+
+  // Güvenlik skoru renk fonksiyonu
+  const getScoreColor = (score: number): string => {
+    if (score >= 85) return "#27ae60"; // Koyu Yeşil
+    if (score >= 70) return "#2ecc71"; // Açık Yeşil
+    if (score >= 55) return "#f1c40f"; // Sarı
+    if (score >= 40) return "#f39c12"; // Koyu Sarı/Altın
+    if (score >= 25) return "#e67e22"; // Turuncu
+    if (score >= 10) return "#e74c3c"; // Kırmızı
+    return "#c0392b"; // Koyu Kırmızı
+  };
 
   // Görevler için state: visibleTasks ve nextTaskIndex
   const [visibleTasks, setVisibleTasks] = useState(() => taskData.slice(0, 4));
@@ -113,24 +187,7 @@ export default function HomeScreen() {
 
   const { earthquakes }: { earthquakes: Earthquake[] } = require("@/data");
 
-  // Dummy stats for earthquake statistics
-  const stats = {
-    total: {
-      lastDay: 12,
-      lastWeek: 37,
-      lastMonth: 142,
-    },
-    mag3Plus: {
-      lastDay: 8,
-      lastWeek: 24,
-      lastMonth: 89,
-    },
-    mag4Plus: {
-      lastDay: 3,
-      lastWeek: 12,
-      lastMonth: 45,
-    },
-  };
+  const { sendEmergencySMS, loading } = EmergencyButton();
 
   // AI sorulari için örnek veriler
   const aiQuestions = [
@@ -170,6 +227,67 @@ export default function HomeScreen() {
     return (categoryNames as Record<string, string>)[category] || "Genel";
   };
 
+  // Bildirim ayarları için state'ler (diğer state'lerin yanına ekleyin)
+  const [magnitudeNotification, setMagnitudeNotification] = useState(true);
+  const [selectedMagnitude, setSelectedMagnitude] = useState("4.0");
+  const [locationNotification, setLocationNotification] = useState(true);
+  const [selectedDistance, setSelectedDistance] = useState("50");
+  const [criticalNotification, setCriticalNotification] = useState(true);
+
+  // Sayfa yüklendiğinde kullanıcının konumunu al ve kaydet
+  useEffect(() => {
+    const handleLocationOnLoad = async () => {
+      // Auth loading durumunu bekle
+      if (authLoading) {
+        console.log("Auth still loading, waiting...");
+        return;
+      }
+
+      if (user) {
+        try {
+          // Konum iznini kontrol et veya iste
+          if (!hasPermission) {
+            // Kullanıcıya konum izni hakkında bilgi ver
+            Alert.alert(
+              "Konum İzni",
+              "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar.",
+              [
+                {
+                  text: "İptal",
+                  style: "cancel",
+                },
+                {
+                  text: "İzin Ver",
+                  onPress: async () => {
+                    const permissionGranted = await requestLocationPermission();
+                    if (permissionGranted) {
+                      const success = await getAndSaveLocation();
+                      if (success) {
+                        console.log("Konum başarıyla kaydedildi");
+                      }
+                    }
+                  },
+                },
+              ]
+            );
+          } else {
+            // İzin zaten varsa konumu al ve kaydet
+            const success = await getAndSaveLocation();
+            if (success) {
+              console.log("Konum başarıyla kaydedildi");
+            } else {
+              console.log("Konum kaydedilemedi");
+            }
+          }
+        } catch (error) {
+          console.error("Konum alma hatası:", error);
+        }
+      }
+    };
+
+    handleLocationOnLoad();
+  }, [user, authLoading]); // authLoading'i de dependency'e ekle
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -177,7 +295,43 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.mainHeader}>
-          <Text style={styles.inboxText}>Terra</Text>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity
+              style={styles.headerIconContainer}
+              onPress={() => router.push("/(protected)/profile")}
+            >
+              <Feather name="user" size={24} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.inboxText}>TERRA</Text>
+
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={[
+                styles.securityScoreChip,
+                { borderColor: getScoreColor(securityScore) },
+              ]}
+              activeOpacity={0.7}
+              onPress={() => {
+                // router.push("/(protected)/security-score");
+              }}
+            >
+              <MaterialCommunityIcons
+                name="shield-check"
+                size={16}
+                color={getScoreColor(securityScore)}
+              />
+              <Text
+                style={[
+                  styles.securityScoreText,
+                  { color: getScoreColor(securityScore) },
+                ]}
+              >
+                % {securityScore}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.segmentedControl}>
@@ -248,7 +402,7 @@ export default function HomeScreen() {
           </View>
 
           <Divider style={styles.divider} />
-          <EarthquakeStat {...stats} />
+          <EarthquakeStats />
           <Divider style={styles.divider} />
           {/* Quick Access Buttons */}
           <Text style={styles.sectionTitle}>Hızlı Erişim</Text>
@@ -256,19 +410,22 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={[styles.quickAccessButton, { backgroundColor: "#e74c3c" }]}
               activeOpacity={0.8}
-              onPress={() => {
-                router.push("/(protected)/what-to-do-earthquake");
-              }}
+              onPress={sendEmergencySMS}
+              disabled={loading}
             >
-              <MaterialCommunityIcons
-                name="home-alert"
-                size={28}
-                color="#fff"
-                style={{ marginBottom: 4 }}
-              />
-              <Text style={styles.quickAccessText}>
-                Deprem Esnası ve Sonrası
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons
+                    name="home-alert"
+                    size={28}
+                    color="#fff"
+                    style={{ marginBottom: 4 }}
+                  />
+                  <Text style={styles.quickAccessText}>Tehlikedeyim</Text>
+                </>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.quickAccessButton, { backgroundColor: "#f39c12" }]}
@@ -334,6 +491,350 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               )}
             />
+          </View>
+
+          <Divider style={styles.divider} />
+
+          {/* Kullanıcının hissettiği deprem listesi */}
+          {user && (
+            <View style={styles.feltEarthquakesSection}>
+              <Text style={styles.sectionTitle}>Hissettiğim Depremler</Text>
+
+              {isLoadingFeltEarthquakes ? (
+                <View style={styles.feltEarthquakesLoading}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={styles.feltEarthquakesLoadingText}>
+                    Yükleniyor...
+                  </Text>
+                </View>
+              ) : userFeltEarthquakes && userFeltEarthquakes.length > 0 ? (
+                <View style={styles.feltEarthquakesContainer}>
+                  <FlashList
+                    data={userFeltEarthquakes}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    estimatedItemSize={280}
+                    keyExtractor={(item) => `${item.id}-${item.felt_at}`}
+                    contentContainerStyle={{}}
+                    renderItem={({ item }) => {
+                      const getMagnitudeColor = (magnitude: number) => {
+                        if (magnitude >= 5.0) return "#FF4444";
+                        if (magnitude >= 4.0) return "#FF8800";
+                        if (magnitude >= 3.0) return "#FFB800";
+                        return "#4CAF50";
+                      };
+
+                      const formatDate = (dateString: string) => {
+                        const date = new Date(dateString);
+                        return date.toLocaleDateString("tr-TR", {
+                          day: "numeric",
+                          month: "short",
+                        });
+                      };
+
+                      const formatTime = (dateString: string) => {
+                        const date = new Date(dateString);
+                        return date.toLocaleTimeString("tr-TR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                      };
+
+                      return (
+                        <TouchableOpacity
+                          style={styles.feltEarthquakeCard}
+                          activeOpacity={0.8}
+                          onPress={() =>
+                            router.push(
+                              `/(protected)/(tabs)/earthquakes/${item.id}`
+                            )
+                          }
+                        >
+                          <View style={styles.feltEarthquakeHeader}>
+                            <View
+                              style={[
+                                styles.feltEarthquakeMagnitude,
+                                {
+                                  backgroundColor: getMagnitudeColor(item.mag),
+                                },
+                              ]}
+                            >
+                              <Text style={styles.feltEarthquakeMagnitudeText}>
+                                {item.mag.toFixed(1)}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <Text
+                            style={styles.feltEarthquakeTitle}
+                            numberOfLines={2}
+                          >
+                            {item.title}
+                          </Text>
+
+                          <View style={styles.feltEarthquakeDetails}>
+                            <View style={styles.feltEarthquakeDetailItem}>
+                              <Ionicons
+                                name="calendar-outline"
+                                size={12}
+                                color="#6b7280"
+                              />
+                              <Text style={styles.feltEarthquakeDetailText}>
+                                {formatDate(item.date)}
+                              </Text>
+                            </View>
+                            <View style={styles.feltEarthquakeDetailItem}>
+                              <Ionicons
+                                name="time-outline"
+                                size={12}
+                                color="#6b7280"
+                              />
+                              <Text style={styles.feltEarthquakeDetailText}>
+                                {formatTime(item.date)}
+                              </Text>
+                            </View>
+                            <View style={styles.feltEarthquakeDetailItem}>
+                              <Ionicons
+                                name="layers-outline"
+                                size={12}
+                                color="#6b7280"
+                              />
+                              <Text style={styles.feltEarthquakeDetailText}>
+                                {item.depth} km
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.feltEarthquakeFooter}>
+                            <Text style={styles.feltEarthquakeFeltDate}>
+                              {new Date(item.felt_at).toLocaleDateString(
+                                "tr-TR",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                }
+                              )}{" "}
+                              tarihinde hissettim
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    }}
+                  />
+                </View>
+              ) : (
+                <View style={styles.feltEarthquakesEmpty}>
+                  <Ionicons name="heart-outline" size={48} color="#cbd5e0" />
+                  <Text style={styles.feltEarthquakesEmptyTitle}>
+                    Henüz deprem hissetmediniz
+                  </Text>
+                  <Text style={styles.feltEarthquakesEmptyDescription}>
+                    Deprem detaylarına giderek hissettiğiniz depremleri
+                    işaretleyebilirsiniz
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          <Divider style={styles.divider} />
+
+          {/* Bildirim Ayarları */}
+          <View style={styles.notificationSection}>
+            <Text style={styles.sectionTitle}>Bildirim Ayarları</Text>
+
+            {/* 1. Anlık Deprem Bildirimi */}
+            <View style={styles.notificationCard}>
+              <View style={styles.notificationHeader}>
+                <View style={styles.notificationIconContainer}>
+                  <MaterialCommunityIcons
+                    name="earth"
+                    size={24}
+                    color={magnitudeNotification ? colors.primary : "#ccc"}
+                  />
+                </View>
+                <View style={styles.notificationContent}>
+                  <Text style={styles.notificationTitle}>
+                    Anlık Deprem Bildirimi
+                  </Text>
+                  <Text style={styles.notificationDescription}>
+                    Belirlediğiniz büyüklükteki tüm depremler için bildirim
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.toggle,
+                    magnitudeNotification
+                      ? styles.toggleActive
+                      : styles.toggleInactive,
+                  ]}
+                  onPress={() =>
+                    setMagnitudeNotification(!magnitudeNotification)
+                  }
+                >
+                  <View
+                    style={[
+                      styles.toggleCircle,
+                      magnitudeNotification
+                        ? styles.toggleCircleActive
+                        : styles.toggleCircleInactive,
+                    ]}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {magnitudeNotification && (
+                <View style={styles.notificationOptions}>
+                  <Text style={styles.optionsLabel}>Büyüklük Eşiği:</Text>
+                  <View style={styles.optionsRow}>
+                    {["3.0", "4.0", "5.0", "6.0"].map((magnitude) => (
+                      <TouchableOpacity
+                        key={magnitude}
+                        style={[
+                          styles.optionButton,
+                          selectedMagnitude === magnitude &&
+                            styles.optionButtonActive,
+                        ]}
+                        onPress={() => setSelectedMagnitude(magnitude)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionText,
+                            selectedMagnitude === magnitude &&
+                              styles.optionTextActive,
+                          ]}
+                        >
+                          +{magnitude}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* 2. Konuma Göre Deprem Bildirimi */}
+            <View style={styles.notificationCard}>
+              <View style={styles.notificationHeader}>
+                <View style={styles.notificationIconContainer}>
+                  <Ionicons
+                    name="location"
+                    size={24}
+                    color={locationNotification ? colors.primary : "#ccc"}
+                  />
+                </View>
+                <View style={styles.notificationContent}>
+                  <Text style={styles.notificationTitle}>
+                    Konuma Göre Deprem Bildirimi
+                  </Text>
+                  <Text style={styles.notificationDescription}>
+                    Konumunuza yakın tüm depremler için bildirim
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.toggle,
+                    locationNotification
+                      ? styles.toggleActive
+                      : styles.toggleInactive,
+                  ]}
+                  onPress={() => setLocationNotification(!locationNotification)}
+                >
+                  <View
+                    style={[
+                      styles.toggleCircle,
+                      locationNotification
+                        ? styles.toggleCircleActive
+                        : styles.toggleCircleInactive,
+                    ]}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {locationNotification && (
+                <View style={styles.notificationOptions}>
+                  <Text style={styles.optionsLabel}>Mesafe:</Text>
+                  <View style={styles.optionsRow}>
+                    {["25", "50", "100"].map((distance) => (
+                      <TouchableOpacity
+                        key={distance}
+                        style={[
+                          styles.optionButton,
+                          selectedDistance === distance &&
+                            styles.optionButtonActive,
+                        ]}
+                        onPress={() => setSelectedDistance(distance)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionText,
+                            selectedDistance === distance &&
+                              styles.optionTextActive,
+                          ]}
+                        >
+                          {distance === "İl" ? "İl Sınırları" : `${distance}km`}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* 3. Kritik Büyüklükteki Depremler */}
+            <View style={styles.notificationCard}>
+              <View style={styles.notificationHeader}>
+                <View style={styles.notificationIconContainer}>
+                  <MaterialCommunityIcons
+                    name="alert-circle"
+                    size={24}
+                    color={criticalNotification ? "#e74c3c" : "#ccc"}
+                  />
+                </View>
+                <View style={styles.notificationContent}>
+                  <Text style={styles.notificationTitle}>
+                    Kritik Büyüklükteki Depremler
+                  </Text>
+                  <Text style={styles.notificationDescription}>
+                    Büyük depremler için her zaman bildirim (5.5+)
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.toggle,
+                    criticalNotification
+                      ? styles.toggleActive
+                      : styles.toggleInactive,
+                  ]}
+                  onPress={() => setCriticalNotification(!criticalNotification)}
+                >
+                  <View
+                    style={[
+                      styles.toggleCircle,
+                      criticalNotification
+                        ? styles.toggleCircleActive
+                        : styles.toggleCircleInactive,
+                    ]}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.detailedSettingsButton}
+              onPress={() => {
+                // router.push("/(protected)/notification-settings");
+              }}
+            >
+              <Text style={styles.detailedSettingsText}>
+                Detaylı Bildirim Ayarları
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.primary}
+              />
+            </TouchableOpacity>
           </View>
 
           <Divider style={styles.divider} />
@@ -732,6 +1233,160 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Mevcut styles objesinin sonuna ekleyin (son } parantezinden önce)
+  notificationSection: {
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    backgroundColor: colors.light.background,
+  },
+  notificationCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+  },
+  notificationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  notificationIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "#f8f9fa",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  notificationContent: {
+    flex: 1,
+  },
+  notificationTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.light.textPrimary,
+    marginBottom: 4,
+    fontFamily: "NotoSans-Bold",
+  },
+  notificationDescription: {
+    fontSize: 13,
+    color: colors.light.textSecondary,
+    lineHeight: 18,
+    fontFamily: "NotoSans-Regular",
+  },
+  toggle: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    padding: 2,
+  },
+  toggleActive: {
+    backgroundColor: colors.primary,
+  },
+  toggleInactive: {
+    backgroundColor: "#e0e0e0",
+  },
+  toggleCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleCircleActive: {
+    alignSelf: "flex-end",
+  },
+  toggleCircleInactive: {
+    alignSelf: "flex-start",
+  },
+  notificationOptions: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  optionsLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.light.textPrimary,
+    marginBottom: 8,
+    fontFamily: "NotoSans-Medium",
+  },
+  optionsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  optionButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#f8f9fa",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    alignItems: "center",
+  },
+  optionButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  optionText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Medium",
+  },
+  optionTextActive: {
+    color: "#fff",
+  },
+  detailedSettingsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#f8f9fa",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  detailedSettingsText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.primary,
+    fontFamily: "NotoSans-Medium",
+  },
+  securityScoreChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.light.background,
+    borderWidth: 2,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  securityScoreText: {
+    fontSize: 14,
+    fontWeight: "700",
+    fontFamily: "NotoSans-Bold",
+  },
   quickAccessContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -783,8 +1438,20 @@ const styles = StyleSheet.create({
   inboxText: {
     fontSize: 25,
     fontFamily: "NotoSans-Bold",
-    flex: 1,
     textAlign: "center",
+  },
+  headerLeft: {
+    flex: 1,
+    alignItems: "flex-start",
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+  headerIconContainer: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: colors.light.background,
   },
   segmentedControl: {
     flexDirection: "row",
@@ -1356,6 +2023,110 @@ const styles = StyleSheet.create({
     fontFamily: "NotoSans-Medium",
     textTransform: "uppercase",
     letterSpacing: 0.5,
+  },
+  // Hissedilen depremler bölümü
+  feltEarthquakesSection: {
+    marginBottom: 20,
+  },
+  feltEarthquakesLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 20,
+  },
+  feltEarthquakesLoadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  feltEarthquakesContainer: {
+    height: 160,
+  },
+  feltEarthquakeCard: {
+    width: 280,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 12,
+    marginHorizontal: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  feltEarthquakeHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  feltEarthquakeMagnitude: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  feltEarthquakeMagnitudeText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#ffffff",
+  },
+  feltEarthquakeBadge: {
+    backgroundColor: "#ff6b6b",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  feltEarthquakeTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#2d3748",
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  feltEarthquakeDetails: {
+    marginBottom: 12,
+  },
+  feltEarthquakeDetailItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  feltEarthquakeDetailText: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginLeft: 6,
+  },
+  feltEarthquakeFooter: {
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+    paddingTop: 8,
+  },
+  feltEarthquakeFeltDate: {
+    fontSize: 11,
+    color: "#9ca3af",
+    fontStyle: "italic",
+  },
+  feltEarthquakesEmpty: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  feltEarthquakesEmptyTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6b7280",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  feltEarthquakesEmptyDescription: {
+    fontSize: 14,
+    color: "#9ca3af",
+    textAlign: "center",
+    lineHeight: 20,
   },
 });
 

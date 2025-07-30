@@ -14,21 +14,31 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
     },
     "web": {
       "favicon": "./assets/images/favicon.ico"
     },
     "plugins": [
       "expo-router",
-      "expo-av"
+      "expo-av",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar."
+        }
+      ]
     ]
   }
 }
