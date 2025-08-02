@@ -57,6 +57,8 @@ export interface Profile {
   district: string | null;
   created_at: string | null;
   emergency_phone: string | null;
+  safety_score?: number | null;
+  has_completed_safety_form: boolean;
 }
 
 export interface EarthquakeFeltReport {

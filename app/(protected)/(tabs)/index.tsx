@@ -35,65 +35,55 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useEarthquakes } from "@/hooks/useEarthquakes";
 import { useLocation } from "@/hooks/useLocation";
+import { useSafetyScore, useProfile } from "@/hooks/useProfile";
 
 // Yeni düzenlenmiş görev verisi (sabit)
 const taskData = [
   {
     id: "1",
-    title: "Profili Tamamla",
-    percentage: 75,
+    title: "Profil Bilgilerini Tamamla",
+    snippet: "Ad, soyad ve iletişim bilgilerini eksiksiz şekilde doldur.",
+    description:
+      "Daha güvenli ve kişiselleştirilmiş bir deneyim sunabilmemiz için bu bilgiler bize yardımcı olur.",
     icon: "person-circle",
     category: "profile",
-    description: "Kişisel bilgilerini güncelle",
   },
   {
     id: "2",
-    title: "İlk Yardım Çantanı Hazırla",
-    icon: "medical",
-    category: "preparation",
-    description: "Acil durum malzemelerini hazırla",
+    title: "Deprem Risk Eğitimini Tamamla",
+    snippet: "Profil sayfandaki eğitim modülünü baştan sona tamamla.",
+    description:
+      "Deprem öncesi, sırasında ve sonrasında ne yapman gerektiğini öğrenerek kendini ve sevdiklerini koruyabilirsin.",
+    icon: "school",
+    category: "education",
   },
   {
     id: "3",
-    title: "Depremde Ne Yapılmalı?",
-    icon: "shield-checkmark",
-    category: "education",
-    description: "Temel deprem bilgilerini öğren",
+    title: "Deprem Risk Değerlendirmesini Doldur",
+    snippet: "Yaşadığın konum ve evin özelliklerine göre risk analizini yap.",
+    description:
+      "Böylece sana özel öneriler sunabilir, daha doğru önlemler almanı sağlayabiliriz.",
+    icon: "analytics",
+    category: "safety",
   },
   {
     id: "4",
-    title: "Acil Durum Numaraları",
-    icon: "call",
-    category: "emergency",
-    description: "Önemli telefon numaralarını kaydet",
+    title: "Aileni ve Arkadaşlarını Davet Et",
+    snippet: "Sevdiklerini uygulamaya davet et ve onları da bilgilendir.",
+    description:
+      "Afetlere karşı hazırlıklı olmak sadece bireysel değil, toplumsal bir sorumluluk. Hep birlikte daha güçlü oluruz.",
+    icon: "people",
+    category: "community",
   },
   {
     id: "5",
-    title: "Acil Toplanma Alanları",
-    icon: "location",
-    category: "location",
-    description: "Yakın toplanma noktalarını belirle",
-  },
-  {
-    id: "6",
-    title: "Ev Güvenliği Kontrolü",
-    icon: "home",
-    category: "safety",
-    description: "Evin deprem güvenliğini kontrol et",
-  },
-  {
-    id: "7",
-    title: "Acil Durum Çıkışları",
-    icon: "exit",
-    category: "safety",
-    description: "Güvenli çıkış yollarını planla",
-  },
-  {
-    id: "8",
-    title: "Acil Durum Kiti Önerileri",
-    icon: "bag",
-    category: "preparation",
-    description: "Hayatta kalma kiti hazırla",
+    title: "Uygulamayı Değerlendir",
+    snippet:
+      "Uygulama hakkında düşüncelerini paylaş: Neler işe yaradı, neleri iyileştirebiliriz?",
+    description:
+      "Senin geri bildiriminle daha iyi bir deneyim sunabilir, ihtiyaca yönelik geliştirmeler yapabiliriz.",
+    icon: "star",
+    category: "feedback",
   },
 ];
 
@@ -115,8 +105,12 @@ export default function HomeScreen() {
   const carouselRef = useRef<ICarouselInstance | null>(null);
   const progress = useSharedValue(0);
 
-  //Temp eklendi
-  const [securityScore] = useState(78);
+  // Güvenlik skorunu hook'tan al
+  const { data: securityScore = 0, isLoading: isLoadingSafetyScore } =
+    useSafetyScore(user?.id || "");
+
+  // Profil bilgilerini hook'tan al
+  const { data: profileData } = useProfile(user?.id || "");
 
   // Deprem verileri
   const { data: earthquakeData = [] } = useEarthquakes();
@@ -257,6 +251,8 @@ export default function HomeScreen() {
       emergency: "#e67e22",
       location: "#9b59b6",
       safety: "#27ae60",
+      community: "#8e44ad",
+      feedback: "#16a085",
     };
     return (
       (categoryColors as Record<string, string>)[category] || colors.primary
@@ -271,6 +267,8 @@ export default function HomeScreen() {
       emergency: "Acil Durum",
       location: "Konum",
       safety: "Güvenlik",
+      community: "Topluluk",
+      feedback: "Geri Bildirim",
     };
     return (categoryNames as Record<string, string>)[category] || "Genel";
   };
@@ -358,26 +356,49 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={[
                 styles.securityScoreChip,
-                { borderColor: getScoreColor(securityScore) },
+                {
+                  borderColor: profileData?.has_completed_safety_form
+                    ? getScoreColor(securityScore)
+                    : "#e74c3c",
+                  backgroundColor: profileData?.has_completed_safety_form
+                    ? "transparent"
+                    : "#e74c3c",
+                },
               ]}
               activeOpacity={0.7}
               onPress={() => {
-                // router.push("/(protected)/security-score");
+                if (profileData?.has_completed_safety_form) {
+                  // Show results of the completed form
+                  router.push("/(protected)/risk-form?showResults=true");
+                } else {
+                  // Take the form for the first time
+                  router.push("/(protected)/risk-form");
+                }
               }}
             >
-              <MaterialCommunityIcons
-                name="shield-check"
-                size={16}
-                color={getScoreColor(securityScore)}
-              />
-              <Text
-                style={[
-                  styles.securityScoreText,
-                  { color: getScoreColor(securityScore) },
-                ]}
-              >
-                % {securityScore}
-              </Text>
+              {isLoadingSafetyScore ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : profileData?.has_completed_safety_form ? (
+                <>
+                  <MaterialCommunityIcons
+                    name="shield-check"
+                    size={16}
+                    color={getScoreColor(securityScore)}
+                  />
+                  <Text
+                    style={[
+                      styles.securityScoreText,
+                      { color: getScoreColor(securityScore) },
+                    ]}
+                  >
+                    % {securityScore}
+                  </Text>
+                </>
+              ) : (
+                <Text style={[styles.securityScoreText, { color: "#fff" }]}>
+                  Formu Çöz
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -1114,45 +1135,11 @@ export default function HomeScreen() {
                           color="#fff"
                         />
                       </View>
-                      {task.percentage && (
-                        <View style={styles.progressContainer}>
-                          <Text style={styles.progressText}>
-                            {task.percentage}%
-                          </Text>
-                        </View>
-                      )}
                     </View>
                     <Text style={styles.taskTitleNew}>{task.title}</Text>
                     <Text style={styles.taskDescription}>
                       {task.description}
                     </Text>
-                    {task.percentage && (
-                      <View style={styles.progressBarContainer}>
-                        <View style={styles.progressBarBackground}>
-                          <View
-                            style={[
-                              styles.progressBarFill,
-                              {
-                                width: `${task.percentage}%`,
-                                backgroundColor: getCategoryColor(
-                                  task.category
-                                ),
-                              },
-                            ]}
-                          />
-                        </View>
-                      </View>
-                    )}
-                    <View style={styles.taskFooter}>
-                      <Text style={styles.categoryTag}>
-                        {getCategoryName(task.category)}
-                      </Text>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={16}
-                        color={colors.light.textSecondary}
-                      />
-                    </View>
                   </View>
                 </TouchableOpacity>
               ))}

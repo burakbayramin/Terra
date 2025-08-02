@@ -323,7 +323,15 @@ export default function ProfileScreen() {
         <View style={styles.signOutContainer}>
           <TouchableOpacity
             style={styles.signOutButton}
-            onPress={() => supabase.auth.signOut()}
+            onPress={async () => {
+              const { error } = await supabase.auth.signOut();
+              if (error) {
+                console.log("Sign out error:", error.message);
+              } else {
+                // Başarılı çıkış sonrası yönlendirme veya başka bir işlem
+                console.log("Sign out successful");
+              }
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.signOutButtonText}>Çıkış Yap</Text>

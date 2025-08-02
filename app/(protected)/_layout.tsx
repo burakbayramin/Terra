@@ -19,6 +19,12 @@ export default function AppLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="risk-form"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

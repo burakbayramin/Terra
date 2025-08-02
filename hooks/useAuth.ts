@@ -163,33 +163,33 @@ export const useAuth = () => {
   };
 
   // Çıkış yapma
-  const signOut = async (): Promise<{ error?: string }> => {
-    try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }));
+  // const signOut = async (): Promise<{ error?: string }> => {
+  //   try {
+  //     setAuthState(prev => ({ ...prev, loading: true, error: null }));
 
-      const { error } = await supabase.auth.signOut();
+  //     const { error } = await supabase.auth.signOut();
 
-      if (error) {
-        const errorMessage = getAuthErrorMessage(error);
-        setAuthState(prev => ({ 
-          ...prev, 
-          loading: false, 
-          error: errorMessage 
-        }));
-        return { error: errorMessage };
-      }
+  //     if (error) {
+  //       const errorMessage = getAuthErrorMessage(error);
+  //       setAuthState(prev => ({ 
+  //         ...prev, 
+  //         loading: false, 
+  //         error: errorMessage 
+  //       }));
+  //       return { error: errorMessage };
+  //     }
 
-      return {};
-    } catch (error) {
-      const errorMessage = 'Çıkış yapılırken hata oluştu';
-      setAuthState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: errorMessage 
-      }));
-      return { error: errorMessage };
-    }
-  };
+  //     return {};
+  //   } catch (error) {
+  //     const errorMessage = 'Çıkış yapılırken hata oluştu';
+  //     setAuthState(prev => ({ 
+  //       ...prev, 
+  //       loading: false, 
+  //       error: errorMessage 
+  //     }));
+  //     return { error: errorMessage };
+  //   }
+  // };
 
   // Şifre sıfırlama
   const resetPassword = async (email: string): Promise<{ error?: string }> => {
@@ -242,7 +242,7 @@ export const useAuth = () => {
     // Actions
     signIn,
     signUp,
-    signOut,
+    // signOut,
     resetPassword,
     updateProfile,
     
