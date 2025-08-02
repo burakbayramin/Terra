@@ -796,12 +796,12 @@ const EarthquakeStats = () => {
                     <View style={styles.faultInfo}>
                       <View style={styles.faultHeader}>
                         <Text style={styles.faultName} numberOfLines={2}>{fault.faultLine}</Text>
-                        <View style={[styles.riskBadgeSmall, { backgroundColor: riskColor + "20", marginLeft: 8 }]}>
-                          <Text style={[styles.riskTextSmall, { color: riskColor }]}>{riskLevelShort}</Text>
-                        </View>
                       </View>
                       <View style={styles.faultStats}>
                         <Text style={styles.faultCount}>{fault.count} deprem</Text>
+                        <View style={[styles.riskBadgeSmall, { backgroundColor: riskColor + "20", marginLeft: 1 }]}>
+                          <Text style={[styles.riskTextSmall, { color: riskColor }]}>{riskLevelShort}</Text>
+                        </View>
                         <Text style={styles.faultPercentage}>%{percentage}</Text>
                       </View>
                       <Text style={styles.faultRegion}>{fault.region} Bölgesi</Text>
@@ -1555,6 +1555,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     marginBottom: 6,
+    justifyContent: "space-between",
   },
   faultNameContainer: {
     flex: 1,
@@ -1570,6 +1571,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
+    flexWrap: "wrap",
   },
   faultCount: {
     fontSize: 14,
