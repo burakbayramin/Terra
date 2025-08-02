@@ -3,12 +3,12 @@ import {
   Text,
   StyleSheet,
   Button,
-  SafeAreaView,
   Image,
   TouchableOpacity,
   Switch,
   ScrollView,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "expo-router";
@@ -26,6 +26,7 @@ export default function ProfileScreen() {
   const profileCompletionPercentage = 75;
   const missionCompletionPercentage = 15;
   const [securityScore] = useState(78);
+  const insets = useSafeAreaInsets();
 
   // Güvenlik skoru renk fonksiyonu
   const getScoreColor = (score: number): string => {
@@ -39,11 +40,12 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
         bounces={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
       >
         {/* Profile Section with Gradient */}
         <LinearGradient

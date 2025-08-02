@@ -6,8 +6,8 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState } from "react";
 import { colors } from "../../../constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
@@ -87,6 +87,7 @@ export default function AnalyzerScreen() {
     },
   ]);
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
+  const insets = useSafeAreaInsets();
 
   const handlePredefinedQuestion = (question: PredefinedQuestion) => {
     // Kullanıcının sorusunu ekle
@@ -111,7 +112,7 @@ export default function AnalyzerScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.mainHeader}>
         <Text style={styles.inboxText}>Terra AI</Text>
       </View>
@@ -120,7 +121,7 @@ export default function AnalyzerScreen() {
       <ScrollView
         style={styles.chatContainer}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
       >
         {messages.map((message) => (
           <View key={message.id}>
@@ -176,7 +177,7 @@ export default function AnalyzerScreen() {
             ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

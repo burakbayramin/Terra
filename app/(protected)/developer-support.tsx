@@ -5,9 +5,9 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,12 +20,13 @@ interface DrinkOption {
   currency: string;
   description: string;
   icon: string;
-  gradient: string[];
+  gradient: [string, string];
 }
 
 export default function DeveloperSupportScreen() {
   const router = useRouter();
   const [selectedDrink, setSelectedDrink] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   const drinkOptions: DrinkOption[] = [
     {
@@ -167,7 +168,7 @@ export default function DeveloperSupportScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.light.textPrimary} />
@@ -176,7 +177,11 @@ export default function DeveloperSupportScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
+      >
         <View style={styles.introSection}>
           <View style={styles.introIconContainer}>
             <Ionicons name="heart" size={48} color={colors.primary} />
@@ -212,7 +217,7 @@ export default function DeveloperSupportScreen() {
       </ScrollView>
 
       {selectedDrink && (
-        <View style={styles.bottomContainer}>
+        <View style={[styles.bottomContainer, { paddingBottom: insets.bottom }]}>
           <TouchableOpacity style={styles.supportButton} onPress={handleSupport}>
             <LinearGradient
               colors={[colors.primary, colors.gradientTwo]}
@@ -226,7 +231,7 @@ export default function DeveloperSupportScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

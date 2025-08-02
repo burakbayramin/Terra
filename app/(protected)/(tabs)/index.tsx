@@ -1,7 +1,6 @@
 import {
   View,
   Text,
-  SafeAreaView,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
@@ -11,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Divider } from "react-native-paper";
 import {
   AntDesign,
@@ -93,6 +93,7 @@ const CARD_HEIGHT = width * 0.6; // Adjust height based on width for better resp
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const {
     getAndSaveLocation,
     hasPermission,
@@ -335,10 +336,11 @@ export default function HomeScreen() {
   }, [user, authLoading]); // authLoading'i de dependency'e ekle
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
       >
         <View style={styles.mainHeader}>
           <View style={styles.headerLeft}>
@@ -1526,7 +1528,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

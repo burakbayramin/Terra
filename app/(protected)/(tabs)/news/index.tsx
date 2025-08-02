@@ -5,10 +5,10 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   RefreshControl,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/constants/colors";
 import { useNews } from "@/hooks/useNews";
 
@@ -18,6 +18,7 @@ export default function NewsScreen() {
   >("latest");
 
   const { data: news = [], isLoading, error, refetch, isFetching } = useNews();
+  const insets = useSafeAreaInsets();
 
   const filteredNews = news.filter((item) => {
     const categories = Array.isArray(item.category) 
@@ -35,21 +36,21 @@ export default function NewsScreen() {
   // Loading durumu için UI
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.mainHeader}>
           <Text style={styles.inboxText}>Haberler</Text>
         </View>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Haberler yükleniyor...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // Error durumu için UI
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.mainHeader}>
           <Text style={styles.inboxText}>Haberler</Text>
         </View>
@@ -64,12 +65,12 @@ export default function NewsScreen() {
             <Text style={styles.retryButtonText}>Tekrar Dene</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.mainHeader}>
         <Text style={styles.inboxText}>Haberler</Text>
       </View>
@@ -127,6 +128,7 @@ export default function NewsScreen() {
         data={filteredNews}
         renderItem={({ item }) => <NewsListItem news={item} />}
         estimatedItemSize={365}
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
         // YENİ: Pull to refresh
         refreshControl={
           <RefreshControl
@@ -137,7 +139,7 @@ export default function NewsScreen() {
           />
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

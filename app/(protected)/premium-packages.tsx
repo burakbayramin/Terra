@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  SafeAreaView,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { colors } from '@/constants/colors';
 import { PremiumPackage } from '@/types/types';
@@ -20,6 +20,7 @@ const { width } = Dimensions.get('window');
 export default function PremiumPackagesScreen() {
   const router = useRouter();
   const { currentPackage, subscribeToPackage, isLoading } = usePremium();
+  const insets = useSafeAreaInsets();
   const [selectedPeriod, setSelectedPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
 
@@ -195,7 +196,7 @@ export default function PremiumPackagesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.light.textPrimary} />
@@ -204,7 +205,11 @@ export default function PremiumPackagesScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
+      >
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>Paketler yükleniyor...</Text>
@@ -275,13 +280,13 @@ export default function PremiumPackagesScreen() {
       </ScrollView>
 
       {selectedPackage && !premiumPackages.find(pkg => pkg.id === selectedPackage)?.isCurrent && (
-        <View style={styles.bottomContainer}>
+        <View style={[styles.bottomContainer, { paddingBottom: insets.bottom }]}>
           <TouchableOpacity style={styles.subscribeButton} onPress={handleSubscribe}>
             <Text style={styles.subscribeButtonText}>Abone Ol</Text>
           </TouchableOpacity>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

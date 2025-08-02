@@ -5,9 +5,9 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   Dimensions, 
-  ScrollView, 
-  SafeAreaView 
+  ScrollView
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   getTransformComponents,
   Pie,
@@ -137,6 +137,7 @@ const EarthquakeStats = () => {
   const [data] = useState(EARTHQUAKE_DATA);
   const [selectedSegment, setSelectedSegment] = useState("percentage");
   const { state } = useChartTransformState();
+  const insets = useSafeAreaInsets();
 
   // Bar chart için press state'ler
   const { state: cityChartState } = useChartPressState({ x: "", y: { count: 0 } });
@@ -253,12 +254,12 @@ const EarthquakeStats = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
+              <ScrollView 
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
+        >
         <View style={styles.container}>
           {/* Ana başlık */}
           <Text style={styles.sectionTitle}>Bölgelere Göre Deprem Dağılımı</Text>
@@ -690,9 +691,9 @@ const EarthquakeStats = () => {
             </Text>
           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+              </ScrollView>
+      </View>
+    );
 };
 
 const styles = StyleSheet.create({

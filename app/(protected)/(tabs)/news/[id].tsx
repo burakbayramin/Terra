@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
@@ -36,19 +35,19 @@ export default function NewsDetailScreen() {
   // Loading durumu
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Haber yükleniyor...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // Error durumu
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>
             {error instanceof Error ? error.message : "Bir hata oluştu"}
@@ -57,28 +56,28 @@ export default function NewsDetailScreen() {
             <Text style={styles.retryButtonText}>Tekrar Dene</Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // Haber bulunamadı durumu
   if (!news) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Haber bulunamadı</Text>
           <Pressable style={styles.retryButton} onPress={() => router.back()}>
             <Text style={styles.retryButtonText}>Geri Dön</Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const isNewsToday = isToday(new Date(news.created_at));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         // YENİ: Pull to refresh
@@ -191,7 +190,7 @@ export default function NewsDetailScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

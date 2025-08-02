@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
-  SafeAreaView,
   Modal,
   FlatList,
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 import cityDistrictData from "@/assets/data/turkey-cities-districts.json";
@@ -145,7 +145,7 @@ const CityDistrictSelector = React.memo(
         presentationStyle="pageSheet"
         onRequestClose={handleClose}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity
               onPress={step === "district" ? handleBack : handleClose}
@@ -179,7 +179,7 @@ const CityDistrictSelector = React.memo(
               index,
             })}
           />
-        </SafeAreaView>
+        </View>
       </Modal>
     );
   }
@@ -188,6 +188,7 @@ const CityDistrictSelector = React.memo(
 // ---------------------- ANA SAYFA
 const ProfileSettingsPage = () => {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -361,33 +362,33 @@ const ProfileSettingsPage = () => {
   // ---------- LOADING ----------
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+      <View style={[styles.container, styles.loadingContainer, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={colors.gradientTwo} />
         <Text style={styles.loadingText}>Bilgileriniz yükleniyor...</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // ---------- ERROR ----------
   if (error) {
     return (
-      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+      <View style={[styles.container, styles.loadingContainer, { paddingTop: insets.top }]}>
         <Text style={styles.errorText}>
           {error instanceof Error ? error.message : "Bir hata oluştu"}
         </Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
           <Text style={styles.retryButtonText}>Tekrar Dene</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const isSaving = updateProfileMutation.isPending;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
@@ -522,7 +523,7 @@ const ProfileSettingsPage = () => {
         animationType="slide"
         onRequestClose={() => setContactsModalVisible(false)}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+        <View style={[{ flex: 1, backgroundColor: "#fff" }, { paddingTop: insets.top }]}>
           <View style={[styles.modalHeader, { borderBottomWidth: 0 }]}>
             <Text style={styles.modalTitle}>Rehberden Kişi Seç</Text>
             <TouchableOpacity onPress={() => setContactsModalVisible(false)}>
@@ -569,9 +570,9 @@ const ProfileSettingsPage = () => {
               <View style={{ height: 1, backgroundColor: "#eee" }} />
             )}
           />
-        </SafeAreaView>
+        </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

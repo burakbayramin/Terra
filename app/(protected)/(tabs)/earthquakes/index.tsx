@@ -6,9 +6,9 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
-  SafeAreaView,
   RefreshControl,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { useEarthquakes } from "@/hooks/useEarthquakes";
@@ -25,6 +25,7 @@ export default function EarthquakesScreen() {
   const { width } = Dimensions.get("window");
   const mapHeight = 280;
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // Filter states
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -214,7 +215,7 @@ export default function EarthquakesScreen() {
   // Loading durumu
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.mainHeader}>
           <Text style={styles.inboxText}>Depremler</Text>
         </View>
@@ -223,14 +224,14 @@ export default function EarthquakesScreen() {
         >
           <Text>Depremler yükleniyor...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // Error durumu
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.mainHeader}>
           <Text style={styles.inboxText}>Depremler</Text>
         </View>
@@ -254,15 +255,16 @@ export default function EarthquakesScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
         refreshControl={
           <RefreshControl
             refreshing={isFetching}
@@ -426,7 +428,7 @@ export default function EarthquakesScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
