@@ -528,6 +528,45 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <Divider style={styles.divider} />
+          
+          {/* Premium CTA Button */}
+          <View style={styles.premiumCTAContainer}>
+            <TouchableOpacity
+              style={styles.premiumCTAButton}
+              activeOpacity={0.8}
+              onPress={() => router.push('/premium-packages')}
+            >
+              <View style={styles.premiumCTAContent}>
+                <View style={styles.premiumCTAHeader}>
+                  <Ionicons name="star" size={24} color="#FFD700" />
+                  <Text style={styles.premiumCTATitle}>Premium'a Geç</Text>
+                  <View style={styles.premiumCTABadge}>
+                    <Text style={styles.premiumCTABadgeText}>%17 İndirim</Text>
+                  </View>
+                </View>
+                <Text style={styles.premiumCTASubtitle}>
+                  Gelişmiş güvenlik özellikleri ve reklamsız deneyim
+                </Text>
+                <View style={styles.premiumCTAFeatures}>
+                  <View style={styles.premiumCTAFeature}>
+                    <Ionicons name="shield-checkmark" size={16} color="#4CAF50" />
+                    <Text style={styles.premiumCTAFeatureText}>Gelişmiş Bildirimler</Text>
+                  </View>
+                  <View style={styles.premiumCTAFeature}>
+                    <Ionicons name="map" size={16} color="#4CAF50" />
+                    <Text style={styles.premiumCTAFeatureText}>Tam Harita Erişimi</Text>
+                  </View>
+                  <View style={styles.premiumCTAFeature}>
+                    <Ionicons name="close-circle" size={16} color="#4CAF50" />
+                    <Text style={styles.premiumCTAFeatureText}>Reklamsız Deneyim</Text>
+                  </View>
+                </View>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+
+          <Divider style={styles.divider} />
           <View style={styles.aiQuestionsSection}>
             <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>
               AI'a Sor
@@ -2496,6 +2535,78 @@ const styles = StyleSheet.create({
     color: "#9ca3af",
     textAlign: "center",
     lineHeight: 20,
+  },
+  // Premium CTA Button Styles
+  premiumCTAContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  premiumCTAButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 20,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  premiumCTAContent: {
+    flex: 1,
+    marginRight: 10,
+  },
+  premiumCTAHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  premiumCTATitle: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
+  premiumCTABadge: {
+    backgroundColor: "#FFD700",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 8,
+  },
+  premiumCTABadgeText: {
+    color: "#2d3748",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  premiumCTASubtitle: {
+    color: "#666666",
+    fontSize: 14,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  premiumCTAFeatures: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
+  },
+  premiumCTAFeature: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 15,
+    marginBottom: 8,
+  },
+  premiumCTAFeatureText: {
+    color: "#666666",
+    fontSize: 13,
+    marginLeft: 8,
+    fontWeight: "500",
   },
 });
 

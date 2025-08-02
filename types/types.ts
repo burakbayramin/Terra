@@ -72,3 +72,22 @@ export interface FeltReportStats {
   total_reports: number;
   user_has_reported: boolean;
 }
+
+export interface PremiumPackage {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  period: 'monthly' | 'yearly';
+  features: string[];
+  isPopular?: boolean;
+  isCurrent?: boolean;
+}
+
+export interface UserSubscription {
+  packageId: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  autoRenew: boolean;
+}

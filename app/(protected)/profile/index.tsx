@@ -162,6 +162,29 @@ export default function ProfileScreen() {
                 <Text style={styles.menuItemText}>Bildirimler</Text>
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem}>
+              <View style={styles.menuItemLeft}>
+                <View style={styles.iconContainer}>
+                  <Ionicons
+                    name="diamond-outline"
+                    size={20}
+                    color="#666"
+                  />
+                </View>
+                <Text style={styles.menuItemText}>Premium Paketler</Text>
+              </View>
+              <TouchableOpacity
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                onPress={() => router.push("/(protected)/premium-packages")}
+              ></TouchableOpacity>
+            </TouchableOpacity>
           </View>
 
           {/* <View style={styles.sectionContainer}>

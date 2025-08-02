@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { useEarthquakes } from "@/hooks/useEarthquakes";
 import EarthquakeFilter from "@/components/EarthquakeFilter"; // Import the new component
+import { Ionicons } from '@expo/vector-icons';
 
 interface MagnitudeRange {
   min: number;
@@ -103,8 +104,8 @@ export default function EarthquakesScreen() {
     return "Zayıf";
   }, []);
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "Bilinmiyor";
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString || typeof dateString !== 'string') return "Bilinmiyor";
 
     try {
       const date = new Date(dateString);
@@ -303,6 +304,8 @@ export default function EarthquakesScreen() {
           </MapView>
         </View>
 
+
+
         {/* Earthquake List */}
         <View style={styles.listContainer}>
           {/* List Header with Filter Button */}
@@ -352,7 +355,7 @@ export default function EarthquakesScreen() {
               {/* Main Content */}
               <View style={styles.cardContent}>
                 <Text style={styles.earthquakeTitle} numberOfLines={2}>
-                  {eq.title || "Başlık bulunamadı"}
+                  {eq.title && eq.title.trim() !== "" ? eq.title : "Başlık bulunamadı"}
                 </Text>
 
                 <View style={styles.detailsRow}>
@@ -365,7 +368,7 @@ export default function EarthquakesScreen() {
                     </View>
                   )}
 
-                  {eq.depth && (
+                  {eq.depth !== undefined && eq.depth !== null && (
                     <View style={styles.detailItem}>
                       <Text style={styles.detailLabel}>Derinlik</Text>
                       <Text style={styles.detailValue}>
@@ -378,7 +381,7 @@ export default function EarthquakesScreen() {
                 </View>
 
                 <View style={styles.detailsRow}>
-                  {eq.region && (
+                  {eq.region && eq.region.trim() !== "" && (
                     <View style={styles.detailItem}>
                       <Text style={styles.detailLabel}>Bölge</Text>
                       <Text style={styles.detailValue}>
@@ -388,7 +391,7 @@ export default function EarthquakesScreen() {
                   )}
 
                   {/* Fay hattı detayı */}
-                  {eq.faultline && (
+                  {eq.faultline && eq.faultline.trim() !== "" && (
                     <View style={styles.detailItem}>
                       <Text style={styles.detailLabel}>Fay Hattı</Text>
                       <Text style={styles.detailValue}>
@@ -400,7 +403,7 @@ export default function EarthquakesScreen() {
               </View>
 
               {/* Time Badge for recent earthquakes */}
-              {new Date().getTime() - new Date(eq.date).getTime() < 3600000 && (
+              {eq.date && new Date().getTime() - new Date(eq.date).getTime() < 3600000 && (
                 <View style={styles.recentBadge}>
                   <Text style={styles.recentText}>YENİ</Text>
                 </View>
@@ -616,4 +619,5 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
+
 });
