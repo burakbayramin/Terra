@@ -18,6 +18,9 @@ import {
   Bar,
   CartesianChart,
   useChartPressState,
+  Line,
+  Area,
+  Scatter,
 } from "victory-native";
 import {
   DashPathEffect,
@@ -134,6 +137,22 @@ const FAULT_LINE_DATA = [
   { faultLine: "Güneydoğu Anadolu Fay Hattı", count: 45, region: "Güneydoğu", description: "Minimal aktivite" },
 ];
 
+// Aylık deprem sayısı trendi verisi (son 12 ay)
+const MONTHLY_TREND_DATA = [
+  { month: "Ocak", count: 156, monthCode: "OCA" },
+  { month: "Şubat", count: 134, monthCode: "ŞUB" },
+  { month: "Mart", count: 189, monthCode: "MAR" },
+  { month: "Nisan", count: 167, monthCode: "NİS" },
+  { month: "Mayıs", count: 145, monthCode: "MAY" },
+  { month: "Haziran", count: 178, monthCode: "HAZ" },
+  { month: "Temmuz", count: 198, monthCode: "TEM" },
+  { month: "Ağustos", count: 167, monthCode: "AĞU" },
+  { month: "Eylül", count: 145, monthCode: "EYL" },
+  { month: "Ekim", count: 178, monthCode: "EKİ" },
+  { month: "Kasım", count: 156, monthCode: "KAS" },
+  { month: "Aralık", count: 134, monthCode: "ARA" },
+];
+
 // Deprem büyüklük dağılımı verisi
 const MAGNITUDE_DISTRIBUTION_DATA = [
   { magnitude: "3.0-3.9", count: 687, range: "3.0-3.9" },
@@ -153,10 +172,12 @@ const EarthquakeStats = () => {
   const { state: cityChartState } = useChartPressState({ x: "", y: { count: 0 } });
   const { state: magnitudeChartState } = useChartPressState({ x: "", y: { count: 0 } });
   const { state: faultChartState } = useChartPressState({ x: "", y: { count: 0 } });
+  const { state: trendChartState } = useChartPressState({ x: "", y: { count: 0 } });
   
   const [activeCityIndex, setActiveCityIndex] = useState(-1);
   const [activeMagnitudeIndex, setActiveMagnitudeIndex] = useState(-1);
   const [activeFaultIndex, setActiveFaultIndex] = useState(-1);
+  const [activeTrendIndex, setActiveTrendIndex] = useState(-1);
 
   const k = useSharedValue(1);
   const tx = useSharedValue(0);
@@ -211,6 +232,14 @@ const EarthquakeStats = () => {
     () => faultChartState.matchedIndex.value,
     (matchedIndex) => {
       runOnJS(setActiveFaultIndex)(matchedIndex);
+    },
+  );
+
+  // Trend chart press reactions
+  useAnimatedReaction(
+    () => trendChartState.matchedIndex.value,
+    (matchedIndex) => {
+      runOnJS(setActiveTrendIndex)(matchedIndex);
     },
   );
 
@@ -529,6 +558,128 @@ const EarthquakeStats = () => {
                 </Text>
               </View>
             )}
+          </View>
+
+          {/* Aylık Deprem Sayısı Trendi Line Chart */}
+          <View style={styles.chartCardContainer}>
+            <Text style={styles.chartTitle}>Aylık Deprem Sayısı Trendi</Text>
+            <View style={styles.barChartContainer}>
+              <CartesianChart
+                chartPressState={trendChartState}
+                data={MONTHLY_TREND_DATA}
+                xKey="monthCode"
+                yKeys={["count"]}
+                domainPadding={{ left: 60, right: 60, top: 60, bottom: 40 }}
+                domain={{ 
+                  x: [0, MONTHLY_TREND_DATA.length - 1],
+                  y: [0, Math.max(...MONTHLY_TREND_DATA.map(d => d.count)) + 50] 
+                }}
+                xAxis={{
+                  tickCount: MONTHLY_TREND_DATA.length,
+                  labelColor: colors.textSecondary,
+                  lineWidth: 1,
+                  lineColor: colors.border,
+                  formatXLabel: (value) => value,
+                  linePathEffect: <DashPathEffect intervals={[4, 4]} />,
+                  labelOffset: 15,
+                  labelRotate: 0,
+                }}
+                yAxis={[
+                  {
+                    yKeys: ["count"],
+                    labelColor: colors.textSecondary,
+                    lineWidth: 1,
+                    lineColor: colors.border,
+                    linePathEffect: <DashPathEffect intervals={[4, 4]} />,
+                    formatYLabel: (value) => `${value}`,
+                    tickCount: 8,
+                    labelOffset: 10,
+                  },
+                ]}
+                frame={{
+                  lineWidth: 2,
+                  lineColor: colors.border,
+                }}
+              >
+                {({ points }) => {
+                  return (
+                    <>
+                      <Line
+                        points={points.count}
+                        animate={{ type: "spring", damping: 15, stiffness: 150 }}
+                        strokeWidth={3}
+                      >
+                        <SkiaLinearGradient
+                          start={vec(0, 0)}
+                          end={vec(0, 400)}
+                          colors={[colors.danger, colors.danger]}
+                        />
+                      </Line>
+                      <Scatter
+                        points={points.count}
+                        animate={{ type: "spring", damping: 15, stiffness: 150 }}
+                        radius={6}
+                      >
+                        <SkiaLinearGradient
+                          start={vec(0, 0)}
+                          end={vec(0, 400)}
+                          colors={[colors.danger, colors.danger]}
+                        />
+                      </Scatter>
+                    </>
+                  );
+                }}
+              </CartesianChart>
+            </View>
+            {activeTrendIndex >= 0 && (
+              <View style={styles.chartTooltip}>
+                <Text style={styles.tooltipCity}>
+                  {MONTHLY_TREND_DATA[activeTrendIndex]?.month}
+                </Text>
+                <Text style={styles.tooltipCount}>
+                  {MONTHLY_TREND_DATA[activeTrendIndex]?.count} deprem
+                </Text>
+              </View>
+            )}
+
+            {/* Trend Açıklama */}
+            <View style={styles.chartExplanation}>
+              <Text style={styles.explanationTitle}>Son 12 Ay Trend Analizi</Text>
+              <Text style={styles.explanationText}>
+                Y ekseni deprem sayısını, X ekseni ayları göstermektedir. Temmuz ayında en yüksek aktivite görülürken, 
+                Şubat ve Aralık aylarında düşük aktivite kaydedilmiştir. Mevsimsel değişimler ve tektonik aktivite döngüleri 
+                bu trendi etkilemektedir.
+              </Text>
+            </View>
+
+            {/* Trend Detay Listesi */}
+            <View style={styles.chartDetailsList}>
+              <Text style={styles.detailsListTitle}>Aylık Analiz</Text>
+              {MONTHLY_TREND_DATA.map((month, index) => {
+                const trendDirection = index > 0 ? 
+                  (month.count > MONTHLY_TREND_DATA[index - 1].count ? "↑" : month.count < MONTHLY_TREND_DATA[index - 1].count ? "↓" : "→") : "→";
+                const trendColor = trendDirection === "↑" ? colors.danger : trendDirection === "↓" ? colors.success : colors.textSecondary;
+                const trendText = index > 0 ? 
+                  (month.count > MONTHLY_TREND_DATA[index - 1].count ? "Artış" : month.count < MONTHLY_TREND_DATA[index - 1].count ? "Azalış" : "Sabit") : "Başlangıç";
+                
+                return (
+                  <View key={index} style={styles.trendListItem}>
+                    <View style={styles.trendMonthInfo}>
+                      <Text style={styles.trendMonth}>{month.month}</Text>
+                      <View style={[styles.trendBadge, { backgroundColor: trendColor + "20" }]}>
+                        <Text style={[styles.trendText, { color: trendColor }]}>{trendDirection} {trendText}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.trendStats}>
+                      <Text style={styles.trendCount}>{month.count} deprem</Text>
+                      <Text style={styles.trendPercentage}>
+                        {((month.count / MONTHLY_TREND_DATA.reduce((sum, m) => sum + m.count, 0)) * 100).toFixed(1)}%
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           </View>
 
           {/* En Aktif Fay Hatları Bar Chart */}
@@ -1442,6 +1593,57 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     marginTop: 4,
     fontStyle: "italic",
+  },
+  // Trend Listesi Stilleri
+  trendListItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  trendMonthInfo: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  trendMonth: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.textPrimary,
+  },
+  trendBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  trendText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  trendStats: {
+    alignItems: "flex-end",
+  },
+  trendCount: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: "500",
+  },
+  trendPercentage: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: "600",
   },
   // Risk Özeti Stilleri
   riskSummary: {
