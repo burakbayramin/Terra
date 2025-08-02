@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { 
   View, 
   Text, 
@@ -39,6 +39,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import ViewShot from 'react-native-view-shot';
 
 const { width } = Dimensions.get("window");
 
@@ -182,6 +183,13 @@ const EarthquakeStats = () => {
   const [activeMagnitudeIndex, setActiveMagnitudeIndex] = useState(-1);
   const [activeFaultIndex, setActiveFaultIndex] = useState(-1);
   const [activeTrendIndex, setActiveTrendIndex] = useState(-1);
+
+  // Grafik referansları
+  const pieChartRef = useRef<ViewShot | null>(null);
+  const cityChartRef = useRef<ViewShot | null>(null);
+  const faultChartRef = useRef<ViewShot | null>(null);
+  const trendChartRef = useRef<ViewShot | null>(null);
+  const magnitudeChartRef = useRef<ViewShot | null>(null);
 
   const k = useSharedValue(1);
   const tx = useSharedValue(0);
@@ -388,6 +396,42 @@ ${aiSummary}
     try {
       const aiSummary = generateAISummary();
       
+      // Grafikleri base64 formatında al
+      let pieChartImage = '';
+      let cityChartImage = '';
+      let trendChartImage = '';
+      
+      try {
+        console.log('Grafik yakalama başlıyor...');
+        
+        // Grafiklerin render olması için kısa bir bekleme
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (pieChartRef.current) {
+          console.log('Pie chart yakalanıyor...');
+          pieChartImage = await pieChartRef.current!.capture!();
+          console.log('Pie chart yakalandı, uzunluk:', pieChartImage.length);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (cityChartRef.current) {
+          console.log('City chart yakalanıyor...');
+          cityChartImage = await cityChartRef.current!.capture!();
+          console.log('City chart yakalandı, uzunluk:', cityChartImage.length);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (trendChartRef.current) {
+          console.log('Trend chart yakalanıyor...');
+          trendChartImage = await trendChartRef.current!.capture!();
+          console.log('Trend chart yakalandı, uzunluk:', trendChartImage.length);
+        }
+      } catch (error) {
+        console.log('Grafik yakalama hatası:', error);
+      }
+      
       // HTML template oluştur
       const htmlContent = `
         <!DOCTYPE html>
@@ -584,6 +628,30 @@ ${aiSummary}
               color: #FF5700;
               margin-bottom: 10px;
             }
+            
+            .chart-image {
+              width: 100%;
+              max-width: 600px;
+              height: auto;
+              border-radius: 15px;
+              box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+              margin: 20px auto;
+              display: block;
+              page-break-inside: avoid;
+            }
+            
+            .chart-container {
+              text-align: center;
+              margin: 30px 0;
+              page-break-inside: avoid;
+            }
+            
+            .chart-title {
+              color: #FF5700;
+              font-size: 20px;
+              font-weight: bold;
+              margin-bottom: 15px;
+            }
           </style>
         </head>
         <body>
@@ -624,6 +692,17 @@ ${aiSummary}
                   <p>${aiSummary.replace(/\n/g, '<br>')}</p>
                 </div>
               </div>
+              
+              ${pieChartImage ? `
+              <div class="section">
+                <h2>📊 Bölgesel Dağılım Grafiği</h2>
+                <div class="chart-container">
+                  <div class="chart-title">Pasta Grafik - Bölgesel Deprem Dağılımı</div>
+                  <img src="data:image/png;base64,${pieChartImage}" class="chart-image" alt="Bölgesel Dağılım Grafiği" />
+                  <p style="text-align: center; color: #666; font-size: 12px; margin-top: 10px;">Grafik başarıyla yakalandı (${pieChartImage.length} karakter)</p>
+                </div>
+              </div>
+              ` : '<div class="section"><p style="color: #999; text-align: center;">Pie chart yakalanamadı</p></div>'}
             </div>
           </div>
 
@@ -657,6 +736,17 @@ ${aiSummary}
                 </table>
               </div>
 
+              ${cityChartImage ? `
+              <div class="section">
+                <h2>🏙️ En Aktif Şehirler Grafiği</h2>
+                <div class="chart-container">
+                  <div class="chart-title">Bar Grafik - Şehir Bazlı Deprem Sayıları</div>
+                  <img src="data:image/png;base64,${cityChartImage}" class="chart-image" alt="Şehir Grafiği" />
+                  <p style="text-align: center; color: #666; font-size: 12px; margin-top: 10px;">Grafik başarıyla yakalandı (${cityChartImage.length} karakter)</p>
+                </div>
+              </div>
+              ` : '<div class="section"><p style="color: #999; text-align: center;">City chart yakalanamadı</p></div>'}
+              
               <div class="section">
                 <h2>🗺️ En Aktif Fay Hatları</h2>
                 <table class="data-table">
@@ -709,6 +799,17 @@ ${aiSummary}
                 </table>
               </div>
 
+              ${trendChartImage ? `
+              <div class="section">
+                <h2>📈 Aylık Trend Grafiği</h2>
+                <div class="chart-container">
+                  <div class="chart-title">Çizgi Grafik - Son 12 Ay Deprem Trendi</div>
+                  <img src="data:image/png;base64,${trendChartImage}" class="chart-image" alt="Aylık Trend Grafiği" />
+                  <p style="text-align: center; color: #666; font-size: 12px; margin-top: 10px;">Grafik başarıyla yakalandı (${trendChartImage.length} karakter)</p>
+                </div>
+              </div>
+              ` : '<div class="section"><p style="color: #999; text-align: center;">Trend chart yakalanamadı</p></div>'}
+              
               <div class="section">
                 <h2>📊 Aylık Trend Özeti</h2>
                 <div class="chart-placeholder">
@@ -833,7 +934,7 @@ ${aiSummary}
 
           {/* Pie Chart Container */}
           <View style={styles.chartSection}>
-            <View style={styles.chartContainer}>
+            <ViewShot ref={pieChartRef} style={styles.chartContainer} options={{ format: 'png', quality: 1.0, result: 'base64' }}>
               <PolarChart
                 transformState={state}
                 data={data}
@@ -857,8 +958,8 @@ ${aiSummary}
                   }}
                 </Pie.Chart>
               </PolarChart>
-            </View>
-
+            </ViewShot>
+            
             {/* Merkez bilgi */}
             <View style={styles.centerInfo}>
               <Text style={styles.centerTitle}>Toplam</Text>
@@ -959,7 +1060,7 @@ ${aiSummary}
           {/* En Aktif Şehirler Bar Chart */}
           <View style={styles.chartCardContainer}>
             <Text style={styles.chartTitle}>En Sık Deprem Görülen Şehirler</Text>
-            <View style={styles.barChartContainer}>
+            <ViewShot ref={cityChartRef} style={styles.barChartContainer} options={{ format: 'png', quality: 1.0, result: 'base64' }}>
               <CartesianChart
                 chartPressState={cityChartState}
                 data={CITY_EARTHQUAKE_DATA}
@@ -1013,7 +1114,7 @@ ${aiSummary}
                   );
                 }}
               </CartesianChart>
-            </View>
+            </ViewShot>
             {activeCityIndex >= 0 && (
               <View style={styles.chartTooltip}>
                 <Text style={styles.tooltipCity}>
@@ -1078,7 +1179,7 @@ ${aiSummary}
           {/* Aylık Deprem Sayısı Trendi Line Chart */}
           <View style={styles.chartCardContainer}>
             <Text style={styles.chartTitle}>Aylık Deprem Sayısı Trendi</Text>
-            <View style={styles.barChartContainer}>
+            <ViewShot ref={trendChartRef} style={styles.barChartContainer} options={{ format: 'png', quality: 1.0, result: 'base64' }}>
               <CartesianChart
                 chartPressState={trendChartState}
                 data={MONTHLY_TREND_DATA}
@@ -1145,7 +1246,7 @@ ${aiSummary}
                   );
                 }}
               </CartesianChart>
-            </View>
+            </ViewShot>
             {activeTrendIndex >= 0 && (
               <View style={styles.chartTooltip}>
                 <Text style={styles.tooltipCity}>
