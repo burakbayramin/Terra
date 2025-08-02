@@ -5,7 +5,9 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   Dimensions, 
-  ScrollView
+  ScrollView,
+  Share,
+  Alert
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -35,6 +37,8 @@ import {
 } from "react-native-reanimated";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 const { width } = Dimensions.get("window");
 
@@ -244,6 +248,517 @@ const EarthquakeStats = () => {
   );
 
   const totalEarthquakes = data.reduce((sum, item) => sum + item.value, 0);
+
+  // AI Özet fonksiyonu
+  const generateAISummary = () => {
+    const highRiskCount = data.filter(item => item.riskLevel === "Yüksek").length;
+    const mediumRiskCount = data.filter(item => item.riskLevel === "Orta").length;
+    const lowRiskCount = data.filter(item => item.riskLevel === "Düşük").length;
+    
+    const maxMonthlyActivity = Math.max(...MONTHLY_TREND_DATA.map(m => m.count));
+    const minMonthlyActivity = Math.min(...MONTHLY_TREND_DATA.map(m => m.count));
+    const maxMonth = MONTHLY_TREND_DATA.find(m => m.count === maxMonthlyActivity)?.month;
+    const minMonth = MONTHLY_TREND_DATA.find(m => m.count === minMonthlyActivity)?.month;
+    
+    const highMagnitudeCount = MAGNITUDE_DISTRIBUTION_DATA.slice(3).reduce((sum, m) => sum + m.count, 0);
+    const highMagnitudePercentage = ((highMagnitudeCount / MAGNITUDE_DISTRIBUTION_DATA.reduce((sum, m) => sum + m.count, 0)) * 100).toFixed(1);
+    
+    let riskAssessment = "";
+    if (highRiskCount >= 2) {
+      riskAssessment = "Türkiye'de yüksek deprem riski bulunan bölgeler mevcuttur ve özellikle Marmara ile Ege bölgelerinde dikkatli olunmalıdır.";
+    } else if (mediumRiskCount >= 3) {
+      riskAssessment = "Orta düzey deprem riski bulunan bölgeler ağırlıktadır ve genel olarak dikkatli olunması gereken bir dönemdir.";
+    } else {
+      riskAssessment = "Genel olarak düşük risk seviyesi görülmektedir ancak her zaman hazırlıklı olunmalıdır.";
+    }
+    
+    let trendAnalysis = "";
+    if (maxMonthlyActivity > minMonthlyActivity * 1.5) {
+      trendAnalysis = "Aylık deprem aktivitesinde belirgin dalgalanmalar gözlemlenmekte ve mevsimsel faktörler etkili olabilmektedir.";
+    } else {
+      trendAnalysis = "Aylık deprem aktivitesi nispeten dengeli seyretmekte ve istikrarlı bir trend göstermektedir.";
+    }
+    
+    let magnitudeWarning = "";
+    if (parseFloat(highMagnitudePercentage) > 10) {
+      magnitudeWarning = "Yüksek büyüklükteki depremlerin oranı dikkat çekici seviyede olup yapısal güvenlik önlemleri gözden geçirilmelidir.";
+    } else {
+      magnitudeWarning = "Yüksek büyüklükteki depremlerin oranı normal seviyede olup mevcut güvenlik önlemleri yeterli görünmektedir.";
+    }
+    
+    let recommendations = "";
+    if (highRiskCount >= 2) {
+      recommendations = "Bu durumda düzenli deprem tatbikatları yapılmalı, acil durum planları güncel tutulmalı ve yapısal güvenlik kontrolleri sıklaştırılmalıdır.";
+    } else {
+      recommendations = "Genel olarak düzenli deprem tatbikatları yapılmalı, acil durum planları güncel tutulmalı ve deprem çantası hazır bulundurulmalıdır.";
+    }
+    
+    return `🤖 Terra AI İstatistik Özeti:
+
+${riskAssessment} ${trendAnalysis} ${magnitudeWarning} ${recommendations}`;
+  };
+
+  // Paylaşım fonksiyonu
+  const handleShare = async () => {
+    try {
+      const aiSummary = generateAISummary();
+      
+      const shareContent = `🌍 Türkiye Deprem İstatistikleri Raporu
+
+📊 Genel Durum:
+• Toplam Deprem: ${totalEarthquakes}
+• En Aktif Bölge: ${data[0].region} (${data[0].value} deprem)
+• En Aktif Fay Hattı: ${FAULT_LINE_DATA[0].faultLine} (${FAULT_LINE_DATA[0].count} deprem)
+• En Aktif Şehir: ${CITY_EARTHQUAKE_DATA[0].city} (${CITY_EARTHQUAKE_DATA[0].count} deprem)
+
+📈 Son 12 Ay Trend:
+• En Yüksek Aktivite: ${MONTHLY_TREND_DATA[6].month} (${MONTHLY_TREND_DATA[6].count} deprem)
+• En Düşük Aktivite: ${MONTHLY_TREND_DATA[1].month} (${MONTHLY_TREND_DATA[1].count} deprem)
+
+⚠️ Risk Değerlendirmesi:
+• Yüksek Risk Bölgeleri: ${data.filter(item => item.riskLevel === "Yüksek").length}
+• Orta Risk Bölgeleri: ${data.filter(item => item.riskLevel === "Orta").length}
+• Düşük Risk Bölgeleri: ${data.filter(item => item.riskLevel === "Düşük").length}
+
+${aiSummary}
+
+📱 Terra Uygulaması ile güncel deprem bilgilerini takip edin!`;
+
+      await Share.share({
+        message: shareContent,
+        title: 'Türkiye Deprem İstatistikleri',
+      });
+    } catch (error) {
+      Alert.alert('Hata', 'Paylaşım sırasında bir hata oluştu.');
+    }
+  };
+
+  // AI yorumu oluşturma fonksiyonu
+  const generateAIComment = () => {
+    const totalQuakes = totalEarthquakes;
+    const mostActiveRegion = data[0];
+    const mostActiveFault = FAULT_LINE_DATA[0];
+    const mostActiveCity = CITY_EARTHQUAKE_DATA[0];
+    const highRiskCount = data.filter(item => item.riskLevel === "Yüksek").length;
+    const maxMonth = MONTHLY_TREND_DATA.reduce((max, month) => month.count > max.count ? month : max);
+    const minMonth = MONTHLY_TREND_DATA.reduce((min, month) => month.count < min.count ? month : min);
+
+    let aiComment = "🤖 Terra AI İstatistik Özeti:\n\n";
+
+    // Genel değerlendirme
+    if (totalQuakes > 1000) {
+      aiComment += "📊 Yüksek aktivite dönemi: Son 12 ayda 1000+ deprem kaydedildi. ";
+    } else if (totalQuakes > 500) {
+      aiComment += "📊 Orta aktivite dönemi: Son 12 ayda 500+ deprem kaydedildi. ";
+    } else {
+      aiComment += "📊 Düşük aktivite dönemi: Son 12 ayda 500'den az deprem kaydedildi. ";
+    }
+
+    // En aktif bölge yorumu
+    aiComment += `${mostActiveRegion.region} en aktif bölge olarak öne çıkıyor. `;
+
+    // Fay hattı yorumu
+    if (mostActiveFault.count > 200) {
+      aiComment += `${mostActiveFault.faultLine} kritik seviyede aktivite gösteriyor. `;
+    } else {
+      aiComment += `${mostActiveFault.faultLine} orta seviyede aktivite gösteriyor. `;
+    }
+
+    // Şehir yorumu
+    aiComment += `${mostActiveCity.city} en çok etkilenen şehir. `;
+
+    // Risk değerlendirmesi
+    if (highRiskCount >= 2) {
+      aiComment += "⚠️ Yüksek risk bölgeleri dikkat gerektiriyor. ";
+    }
+
+    // Mevsimsel trend
+    if (maxMonth.count > minMonth.count * 1.5) {
+      aiComment += `📈 ${maxMonth.month} ayında belirgin aktivite artışı gözlemlendi. `;
+    }
+
+    // Genel uyarı
+    aiComment += "🔍 Düzenli takip ve hazırlık önemli.";
+
+    return aiComment;
+  };
+
+  // PDF oluşturma fonksiyonu
+  const handleDownloadPDF = async () => {
+    try {
+      const aiSummary = generateAISummary();
+      
+      // HTML template oluştur
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Türkiye Deprem İstatistikleri Raporu</title>
+          <style>
+            @page {
+              size: A4;
+              margin: 20mm;
+            }
+            
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              margin: 0;
+              padding: 0;
+              background: white;
+              color: #333;
+              line-height: 1.6;
+            }
+            
+            .page {
+              page-break-after: always;
+              min-height: 100vh;
+              display: flex;
+              flex-direction: column;
+            }
+            
+            .page:last-child {
+              page-break-after: avoid;
+            }
+            
+            .header {
+              background: linear-gradient(135deg, #FF5700 0%, #EF1C19 100%);
+              color: white;
+              padding: 40px 30px;
+              text-align: center;
+              border-radius: 0 0 20px 20px;
+              margin-bottom: 30px;
+            }
+            
+            .header h1 {
+              margin: 0;
+              font-size: 32px;
+              font-weight: bold;
+              text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            }
+            
+            .header p {
+              margin: 15px 0 0 0;
+              opacity: 0.95;
+              font-size: 18px;
+              font-weight: 500;
+            }
+            
+            .content {
+              flex: 1;
+              padding: 0 30px 30px 30px;
+            }
+            
+            .section {
+              margin-bottom: 40px;
+              page-break-inside: avoid;
+            }
+            
+            .section h2 {
+              color: #FF5700;
+              font-size: 24px;
+              margin-bottom: 20px;
+              border-bottom: 3px solid #FF5700;
+              padding-bottom: 10px;
+              font-weight: bold;
+            }
+            
+            .stats-grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 25px;
+              margin-bottom: 30px;
+            }
+            
+            .stat-card {
+              background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+              border-radius: 15px;
+              padding: 25px;
+              text-align: center;
+              border: 2px solid #FF5700;
+              box-shadow: 0 4px 15px rgba(255, 87, 0, 0.1);
+            }
+            
+            .stat-number {
+              font-size: 28px;
+              font-weight: bold;
+              color: #FF5700;
+              margin-bottom: 8px;
+            }
+            
+            .stat-label {
+              color: #555;
+              font-size: 16px;
+              font-weight: 600;
+            }
+            
+            .ai-summary {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 30px;
+              border-radius: 20px;
+              margin: 25px 0;
+              box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            }
+            
+            .ai-summary h3 {
+              margin: 0 0 20px 0;
+              font-size: 22px;
+              font-weight: bold;
+            }
+            
+            .ai-summary p {
+              margin: 0;
+              line-height: 1.8;
+              font-size: 16px;
+              text-align: justify;
+            }
+            
+            .data-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 25px 0;
+              box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+              border-radius: 10px;
+              overflow: hidden;
+            }
+            
+            .data-table th,
+            .data-table td {
+              padding: 15px 12px;
+              text-align: left;
+              border-bottom: 1px solid #e0e0e0;
+            }
+            
+            .data-table th {
+              background: linear-gradient(135deg, #FF5700 0%, #EF1C19 100%);
+              color: white;
+              font-weight: bold;
+              font-size: 16px;
+            }
+            
+            .data-table tr:nth-child(even) {
+              background: #f8f9fa;
+            }
+            
+            .data-table tr:hover {
+              background: #e9ecef;
+            }
+            
+            .footer {
+              background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+              padding: 25px;
+              text-align: center;
+              color: #666;
+              font-size: 14px;
+              border-radius: 20px 20px 0 0;
+              margin-top: 40px;
+            }
+            
+            .logo {
+              font-size: 20px;
+              font-weight: bold;
+              color: #FF5700;
+              margin-bottom: 10px;
+            }
+            
+            .page-break {
+              page-break-before: always;
+            }
+            
+            .no-break {
+              page-break-inside: avoid;
+            }
+            
+            .chart-placeholder {
+              background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+              border: 2px dashed #FF5700;
+              border-radius: 15px;
+              padding: 40px;
+              text-align: center;
+              margin: 20px 0;
+              color: #666;
+            }
+            
+            .chart-placeholder h4 {
+              color: #FF5700;
+              margin-bottom: 10px;
+            }
+          </style>
+        </head>
+        <body>
+          <!-- Sayfa 1: Başlık ve Genel İstatistikler -->
+          <div class="page">
+            <div class="header">
+              <h1>🌍 Türkiye Deprem İstatistikleri Raporu</h1>
+              <p>Son 12 Ay Veri Analizi | ${new Date().toLocaleDateString('tr-TR')}</p>
+            </div>
+            
+            <div class="content">
+              <div class="section">
+                <h2>📊 Genel İstatistikler</h2>
+                <div class="stats-grid">
+                  <div class="stat-card">
+                    <div class="stat-number">${totalEarthquakes}</div>
+                    <div class="stat-label">Toplam Deprem</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-number">${data[0].region}</div>
+                    <div class="stat-label">En Aktif Bölge</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-number">${FAULT_LINE_DATA[0].faultLine}</div>
+                    <div class="stat-label">En Aktif Fay Hattı</div>
+                  </div>
+                  <div class="stat-card">
+                    <div class="stat-number">${CITY_EARTHQUAKE_DATA[0].city}</div>
+                    <div class="stat-label">En Aktif Şehir</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section">
+                <h2>🤖 Terra AI İstatistik Özeti</h2>
+                <div class="ai-summary">
+                  <h3>AI Analizi</h3>
+                  <p>${aiSummary.replace(/\n/g, '<br>')}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sayfa 2: Bölgesel Dağılım -->
+          <div class="page page-break">
+            <div class="content">
+              <div class="section">
+                <h2>📈 Bölgesel Dağılım</h2>
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Bölge</th>
+                      <th>Deprem Sayısı</th>
+                      <th>Yüzde</th>
+                      <th>Risk Seviyesi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${data.map(item => {
+                      const percentage = ((item.value / totalEarthquakes) * 100).toFixed(1);
+                      return `
+                        <tr>
+                          <td>${item.region}</td>
+                          <td>${item.value}</td>
+                          <td>%${percentage}</td>
+                          <td>${item.riskLevel}</td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="section">
+                <h2>🗺️ En Aktif Fay Hatları</h2>
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Fay Hattı</th>
+                      <th>Deprem Sayısı</th>
+                      <th>Bölge</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${FAULT_LINE_DATA.map(fault => `
+                      <tr>
+                        <td>${fault.faultLine}</td>
+                        <td>${fault.count}</td>
+                        <td>${fault.region}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sayfa 3: Şehirler ve Footer -->
+          <div class="page page-break">
+            <div class="content">
+              <div class="section">
+                <h2>🏙️ En Aktif Şehirler</h2>
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Şehir</th>
+                      <th>Deprem Sayısı</th>
+                      <th>Risk Seviyesi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${CITY_EARTHQUAKE_DATA.map(city => {
+                      const riskLevel = city.count > 100 ? "Yüksek" : city.count > 60 ? "Orta" : "Düşük";
+                      return `
+                        <tr>
+                          <td>${city.city}</td>
+                          <td>${city.count}</td>
+                          <td>${riskLevel}</td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="section">
+                <h2>📊 Aylık Trend Özeti</h2>
+                <div class="chart-placeholder">
+                  <h4>📈 Aylık Deprem Aktivitesi</h4>
+                  <p>En yüksek aktivite: ${MONTHLY_TREND_DATA[6].month} (${MONTHLY_TREND_DATA[6].count} deprem)</p>
+                  <p>En düşük aktivite: ${MONTHLY_TREND_DATA[1].month} (${MONTHLY_TREND_DATA[1].count} deprem)</p>
+                  <p>Ortalama aylık aktivite: ${Math.round(MONTHLY_TREND_DATA.reduce((sum, m) => sum + m.count, 0) / MONTHLY_TREND_DATA.length)} deprem</p>
+                </div>
+              </div>
+
+              <div class="footer">
+                <div class="logo">Terra</div>
+                <p>Bu rapor Terra uygulaması tarafından otomatik olarak oluşturulmuştur.</p>
+                <p>Veriler AFAD, Kandilli ve USGS kaynaklarından derlenmiştir.</p>
+                <p>Rapor tarihi: ${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR')}</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // PDF oluştur
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false
+      });
+
+      // PDF'i paylaş
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Türkiye Deprem İstatistikleri Raporu'
+        });
+      } else {
+        Alert.alert(
+          'PDF Oluşturuldu',
+          'PDF raporu başarıyla oluşturuldu ancak paylaşım özelliği mevcut değil.',
+          [{ text: 'Tamam', style: 'default' }]
+        );
+      }
+    } catch (error) {
+      console.error('PDF oluşturma hatası:', error);
+      Alert.alert(
+        'Hata',
+        'PDF oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.',
+        [{ text: 'Tamam', style: 'default' }]
+      );
+    }
+  };
 
   // Risk seviyesi renklerini al
   const getRiskColor = (riskLevel: string) => {
@@ -1038,6 +1553,33 @@ const EarthquakeStats = () => {
               depremlerden oluşmaktadır. Veriler AFAD, Kandilli ve USGS kaynaklarından derlenmiştir.
             </Text>
           </View>
+
+          {/* Paylaşım ve İndirme Butonları */}
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+              <LinearGradient
+                colors={[colors.primary, colors.gradientTwo]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.actionButtonGradient}
+              >
+                <Ionicons name="share-social" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Paylaş</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton} onPress={handleDownloadPDF}>
+              <LinearGradient
+                colors={[colors.info, "#0066CC"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.actionButtonGradient}
+              >
+                <MaterialCommunityIcons name="file-pdf-box" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>PDF İndir</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -1747,6 +2289,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     lineHeight: 19,
+  },
+  // Action Buttons Stilleri
+  actionButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  actionButton: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  actionButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+    marginLeft: 8,
   },
 });
 
