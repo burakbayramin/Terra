@@ -124,6 +124,15 @@ const CITY_EARTHQUAKE_DATA = [
   { city: "Erzurum", count: 29, cityCode: "ERZ" },
 ];
 
+// En aktif fay hatları verisi
+const FAULT_LINE_DATA = [
+  { faultLine: "Kuzey Anadolu Fay Hattı", count: 234, region: "Marmara-Ege" },
+  { faultLine: "Doğu Anadolu Fay Hattı", count: 156, region: "Doğu Anadolu" },
+  { faultLine: "Batı Anadolu Fay Sistemi", count: 98, region: "Ege" },
+  { faultLine: "Güney Anadolu Fay Hattı", count: 67, region: "Akdeniz" },
+  { faultLine: "İç Anadolu Fay Sistemi", count: 45, region: "İç Anadolu" },
+];
+
 // Deprem büyüklük dağılımı verisi
 const MAGNITUDE_DISTRIBUTION_DATA = [
   { magnitude: "3.0-3.9", count: 687, range: "3.0-3.9" },
@@ -137,7 +146,7 @@ const EarthquakeStats = () => {
   const [data] = useState(EARTHQUAKE_DATA);
   const [selectedSegment, setSelectedSegment] = useState("percentage");
   const { state } = useChartTransformState();
-  const insets = useSafeAreaInsets();
+    const insets = useSafeAreaInsets();
 
   // Bar chart için press state'ler
   const { state: cityChartState } = useChartPressState({ x: "", y: { count: 0 } });
@@ -168,7 +177,7 @@ const EarthquakeStats = () => {
     },
   );
 
-  useAnimatedReaction(
+    useAnimatedReaction(
     () => {
       return { k: k.value, tx: tx.value, ty: ty.value };
     },
@@ -401,14 +410,18 @@ const EarthquakeStats = () => {
                 data={CITY_EARTHQUAKE_DATA}
                 xKey="cityCode"
                 yKeys={["count"]}
-                domainPadding={{ left: 30, right: 30, top: 40 }}
-                domain={{ y: [0, Math.max(...CITY_EARTHQUAKE_DATA.map(d => d.count)) + 20] }}
+                domainPadding={{ left: 50, right: 50, top: 50, bottom: 20 }}
+                domain={{ 
+                  x: [0, CITY_EARTHQUAKE_DATA.length - 1],
+                  y: [0, Math.max(...CITY_EARTHQUAKE_DATA.map(d => d.count)) + 30] 
+                }}
                 xAxis={{
                   tickCount: CITY_EARTHQUAKE_DATA.length,
                   labelColor: colors.textSecondary,
                   lineWidth: 0,
                   formatXLabel: (value) => value,
                   linePathEffect: <DashPathEffect intervals={[4, 4]} />,
+                  labelOffset: 10,
                 }}
                 yAxis={[
                   {
@@ -416,6 +429,8 @@ const EarthquakeStats = () => {
                     labelColor: colors.textSecondary,
                     linePathEffect: <DashPathEffect intervals={[4, 4]} />,
                     lineColor: colors.border,
+                    formatYLabel: (value) => `${value}`,
+                    tickCount: 6,
                   },
                 ]}
                 frame={{
@@ -427,11 +442,11 @@ const EarthquakeStats = () => {
                     <Bar
                       points={points.count}
                       chartBounds={chartBounds}
-                      animate={{ type: "spring" }}
-                      innerPadding={0.33}
+                      animate={{ type: "spring", damping: 15, stiffness: 150 }}
+                      innerPadding={0.45}
                       roundedCorners={{
-                        topLeft: 6,
-                        topRight: 6,
+                        topLeft: 8,
+                        topRight: 8,
                       }}
                       // labels={{
                       //   color: colors.textPrimary,
@@ -497,6 +512,16 @@ const EarthquakeStats = () => {
                 );
               })}
             </View>
+            {activeMagnitudeIndex >= 0 && (
+              <View style={styles.chartTooltip}>
+                <Text style={styles.tooltipCity}>
+                  Büyüklük {MAGNITUDE_DISTRIBUTION_DATA[activeMagnitudeIndex]?.magnitude}
+                </Text>
+                <Text style={styles.tooltipCount}>
+                  {MAGNITUDE_DISTRIBUTION_DATA[activeMagnitudeIndex]?.count} deprem
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Deprem Büyüklük Dağılımı Bar Chart */}
@@ -508,14 +533,19 @@ const EarthquakeStats = () => {
                 data={MAGNITUDE_DISTRIBUTION_DATA}
                 xKey="range"
                 yKeys={["count"]}
-                domainPadding={{ left: 30, right: 30, top: 40 }}
-                domain={{ y: [0, Math.max(...MAGNITUDE_DISTRIBUTION_DATA.map(d => d.count)) + 50] }}
+                domainPadding={{ left: 60, right: 60, top: 60, bottom: 20 }}
+                domain={{ 
+                  x: [0, MAGNITUDE_DISTRIBUTION_DATA.length - 1],
+                  y: [0, Math.max(...MAGNITUDE_DISTRIBUTION_DATA.map(d => d.count)) + 150] 
+                }}
                 xAxis={{
                   tickCount: MAGNITUDE_DISTRIBUTION_DATA.length,
                   labelColor: colors.textSecondary,
                   lineWidth: 0,
                   formatXLabel: (value) => value,
                   linePathEffect: <DashPathEffect intervals={[4, 4]} />,
+                  labelRotation: 0,
+                  labelOffset: 12,
                 }}
                 yAxis={[
                   {
@@ -523,6 +553,8 @@ const EarthquakeStats = () => {
                     labelColor: colors.textSecondary,
                     linePathEffect: <DashPathEffect intervals={[4, 4]} />,
                     lineColor: colors.border,
+                    formatYLabel: (value) => `${value}`,
+                    tickCount: 6,
                   },
                 ]}
                 frame={{
@@ -534,11 +566,11 @@ const EarthquakeStats = () => {
                     // Büyüklüğe göre renk gradasyonu
                     const getBarColors = (idx: number) => {
                       const colorPairs = [
-                        [colors.success, colors.success + "60"],      // 3.0-3.9 (yeşil)
-                        [colors.info, colors.info + "60"],           // 4.0-4.9 (mavi)
-                        [colors.warning, colors.warning + "60"],     // 5.0-5.9 (turuncu)
-                        [colors.danger, colors.danger + "60"],       // 6.0-6.9 (kırmızı)
-                        ["#8B0000", "#8B000060"],                    // 7.0+ (koyu kırmızı)
+                        [colors.success, colors.success + "80"],      // 3.0-3.9 (yeşil)
+                        [colors.info, colors.info + "80"],           // 4.0-4.9 (mavi)
+                        [colors.warning, colors.warning + "80"],     // 5.0-5.9 (turuncu)
+                        [colors.danger, colors.danger + "80"],       // 6.0-6.9 (kırmızı)
+                        ["#8B0000", "#8B000080"],                    // 7.0+ (koyu kırmızı)
                       ];
                       return colorPairs[idx] || colorPairs[0];
                     };
@@ -550,16 +582,21 @@ const EarthquakeStats = () => {
                         key={index}
                         points={[point]}
                         chartBounds={chartBounds}
-                        animate={{ type: "spring" }}
-                        innerPadding={0.25}
+                        animate={{ type: "spring", damping: 15, stiffness: 150 }}
+                        innerPadding={0.5}
                         roundedCorners={{
-                          topLeft: 6,
-                          topRight: 6,
+                          topLeft: 8,
+                          topRight: 8,
                         }}
-                        // labels={{
-                        //   color: colors.textPrimary,
-                        //   position: "top",
-                        // }}
+                        labels={({ point }) => [
+                          {
+                            text: `${point.count}`,
+                            color: colors.textPrimary,
+                            position: "top",
+                            fontSize: 12,
+                            fontWeight: "600",
+                          },
+                        ]}
                       >
                         <SkiaLinearGradient
                           start={vec(0, 0)}
@@ -572,23 +609,14 @@ const EarthquakeStats = () => {
                 }}
               </CartesianChart>
             </View>
-            {activeMagnitudeIndex >= 0 && (
-              <View style={styles.chartTooltip}>
-                <Text style={styles.tooltipCity}>
-                  Büyüklük {MAGNITUDE_DISTRIBUTION_DATA[activeMagnitudeIndex]?.magnitude}
-                </Text>
-                <Text style={styles.tooltipCount}>
-                  {MAGNITUDE_DISTRIBUTION_DATA[activeMagnitudeIndex]?.count} deprem
-                </Text>
-              </View>
-            )}
+
 
             {/* Büyüklük Açıklama */}
             <View style={styles.chartExplanation}>
               <Text style={styles.explanationTitle}>Richter Ölçeği Dağılımı</Text>
               <Text style={styles.explanationText}>
-                Deprem büyüklükleri logaritmik ölçekte değerlendirilir. 3.0-4.9 arası depremlerin sayısının fazla olması normal bir dağılımdır. 
-                6.0 ve üzeri depremlerin az olması bölgesel risk değerlendirmesi için önemli bir göstergedir.
+                Y ekseni deprem sayısını, X ekseni büyüklük aralıklarını göstermektedir. Deprem büyüklükleri logaritmik ölçekte değerlendirilir. 
+                3.0-4.9 arası depremlerin sayısının fazla olması normal bir dağılımdır. 6.0 ve üzeri depremlerin az olması bölgesel risk değerlendirmesi için önemli bir göstergedir.
               </Text>
             </View>
 
@@ -673,6 +701,46 @@ const EarthquakeStats = () => {
                   <Text style={styles.summaryTitle}>En Aktif Bölge</Text>
                   <Text style={styles.summaryDescription}>
                     {data[0].region} - {data[0].value} deprem (%{((data[0].value / totalEarthquakes) * 100).toFixed(1)})
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* En aktif fay hattı bilgisi */}
+          <View style={styles.summaryCard}>
+            <LinearGradient
+              colors={[colors.danger, "#8B0000"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.summaryGradient}
+            >
+              <View style={styles.summaryContent}>
+                <MaterialCommunityIcons name="map-marker-path" size={24} color="#fff" style={styles.summaryIcon} />
+                <View style={styles.summaryText}>
+                  <Text style={styles.summaryTitle}>En Aktif Fay Hattı</Text>
+                  <Text style={styles.summaryDescription}>
+                    {FAULT_LINE_DATA[0].faultLine} - {FAULT_LINE_DATA[0].count} deprem ({FAULT_LINE_DATA[0].region})
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* En aktif şehir bilgisi */}
+          <View style={styles.summaryCard}>
+            <LinearGradient
+              colors={[colors.info, "#0066CC"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.summaryGradient}
+            >
+              <View style={styles.summaryContent}>
+                <Ionicons name="location" size={24} color="#fff" style={styles.summaryIcon} />
+                <View style={styles.summaryText}>
+                  <Text style={styles.summaryTitle}>En Aktif Şehir</Text>
+                  <Text style={styles.summaryDescription}>
+                    {CITY_EARTHQUAKE_DATA[0].city} - {CITY_EARTHQUAKE_DATA[0].count} deprem
                   </Text>
                 </View>
               </View>
@@ -984,7 +1052,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   barChartContainer: {
-    height: 250,
+    height: 300,
     width: "100%",
     marginBottom: 12,
   },

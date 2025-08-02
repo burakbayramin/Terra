@@ -2670,6 +2670,7 @@ const carouselStyles = StyleSheet.create({
     borderTopRightRadius: 16,
     overflow: "hidden",
   },
+
   badge: {
     position: "absolute",
     top: 12,
