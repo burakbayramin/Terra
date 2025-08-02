@@ -1268,184 +1268,80 @@ export default function HomeScreen() {
           </View>
 
           <Divider style={styles.divider} />
-          {/* Depremzedelere Destek Ol */}
-          <View style={styles.supportContainer}>
-            <LinearGradient
-              colors={["#ff6b6b", "#ff8e8e", "#ffb3b3"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.supportGradientContainer}
+
+          {/* Minimal Destek Bölümü */}
+          <View style={styles.minimalSupportContainer}>
+            <Text style={styles.sectionTitle}>Destek & İletişim</Text>
+
+            {/* Depremzedelere Destek */}
+            <TouchableOpacity
+              style={[styles.minimalSupportCard, styles.supportCardPrimary]}
+              activeOpacity={0.8}
+              onPress={() => {
+                Linking.openURL("https://www.afad.gov.tr/depremkampanyasi2");
+              }}
             >
-              <View style={styles.supportHeader}>
+              <View style={styles.minimalSupportIconContainer}>
                 <Ionicons
-                  name="heart"
-                  size={32}
-                  color="#fff"
-                  style={styles.supportIcon}
+                  name="heart-outline"
+                  size={18}
+                  color={colors.primary}
                 />
-                <Text style={styles.supportTitle}>
-                  Depremzedelere Destek Ol
-                </Text>
-                <Text style={styles.supportSubtitle}>
-                  Birlikte daha güçlüyüz
-                </Text>
               </View>
+              <Text style={styles.minimalSupportText}>
+                Depremzedelere Destek Ol
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.light.textSecondary}
+              />
+            </TouchableOpacity>
 
-              <View style={styles.supportContentNew}>
-                <Text style={styles.supportTextNew}>
-                  Depremden etkilenenlere yardım etmek için çeşitli kuruluşlara
-                  bağışta bulunabilir veya gönüllü olabilirsiniz. Küçük bir
-                  destek bile büyük bir fark yaratabilir.
-                </Text>
-
-                <View style={styles.supportButtonsContainer}>
-                  <TouchableOpacity
-                    style={styles.fullWidthSupportButton}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      Linking.openURL(
-                        "https://www.afad.gov.tr/depremkampanyasi2"
-                      );
-                    }}
-                  >
-                    <LinearGradient
-                      colors={["#fff", "#f8f9fa"]}
-                      style={styles.supportButtonGradient}
-                    >
-                      <Ionicons
-                        name="heart"
-                        size={20}
-                        color="#ff6b6b"
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text style={styles.primarySupportButtonText}>
-                        Bağış Yap
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </LinearGradient>
-          </View>
-
-          <View style={styles.supportContainer}>
-            <LinearGradient
-              colors={["#4a90e2", "#5ba3f5", "#7bb8ff"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.supportGradientContainer}
+            {/* Geliştiricilere Destek */}
+            <TouchableOpacity
+              style={[styles.minimalSupportCard, styles.supportCardSecondary]}
+              activeOpacity={0.8}
             >
-              <View style={styles.supportHeader}>
+              <View style={styles.minimalSupportIconContainer}>
                 <Ionicons
-                  name="code-slash"
-                  size={32}
-                  color="#fff"
-                  style={styles.supportIcon}
+                  name="code-slash-outline"
+                  size={18}
+                  color={colors.light.secondary}
                 />
-                <Text style={styles.supportTitle}>
-                  Geliştiricilere Destek Ol
-                </Text>
-                <Text style={styles.supportSubtitle}>
-                  Açık kaynak projeye katkı
-                </Text>
               </View>
+              <Text style={styles.minimalSupportText}>
+                Geliştiricilere Destek Ol
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.light.textSecondary}
+              />
+            </TouchableOpacity>
 
-              <View style={styles.supportContentNew}>
-                <Text style={styles.supportTextNew}>
-                  Terra uygulaması topluluk katkılarıyla geliştirilmektedir.
-                  Deprem bilinci ve güvenliği için daha iyi özellikler
-                  geliştirmemize yardımcı olabilirsiniz.
-                </Text>
-
-                <View style={styles.supportButtonsContainer}>
-                  <TouchableOpacity
-                    style={styles.fullWidthSupportButton}
-                    activeOpacity={0.7}
-                  >
-                    <LinearGradient
-                      colors={["#fff", "#f8f9fa"]}
-                      style={styles.supportButtonGradient}
-                    >
-                      <Ionicons
-                        name="cafe"
-                        size={20}
-                        color="#4a90e2"
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text
-                        style={[
-                          styles.primarySupportButtonText,
-                          { color: "#4a90e2" },
-                        ]}
-                      >
-                        Destek Ol
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </LinearGradient>
-          </View>
-
-          {/* İletişime Geç */}
-          <View style={styles.supportContainer}>
-            <LinearGradient
-              colors={["#10b981", "#34d399", "#6ee7b7"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.supportGradientContainer}
+            {/* İletişime Geç */}
+            <TouchableOpacity
+              style={[styles.minimalSupportCard, styles.supportCardNeutral]}
+              activeOpacity={0.8}
+              onPress={() => {
+                // İletişim formuna yönlendirme veya mail açma işlemi
+              }}
             >
-              <View style={styles.supportHeader}>
+              <View style={styles.minimalSupportIconContainer}>
                 <Ionicons
-                  name="mail"
-                  size={32}
-                  color="#fff"
-                  style={styles.supportIcon}
+                  name="mail-outline"
+                  size={18}
+                  color={colors.light.textPrimary}
                 />
-                <Text style={styles.supportTitle}>İletişime Geç</Text>
-                <Text style={styles.supportSubtitle}>
-                  Bizimle iletişime geçin
-                </Text>
               </View>
-
-              <View style={styles.supportContentNew}>
-                <Text style={styles.supportTextNew}>
-                  Sorularınız, önerileriniz veya geri bildirimleriniz için
-                  bizimle iletişime geçebilirsiniz. Size yardımcı olmaktan
-                  mutluluk duyarız.
-                </Text>
-
-                <View style={styles.supportButtonsContainer}>
-                  <TouchableOpacity
-                    style={styles.fullWidthSupportButton}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      // İletişim formuna yönlendirme veya mail açma işlemi
-                    }}
-                  >
-                    <LinearGradient
-                      colors={["#fff", "#f8f9fa"]}
-                      style={styles.supportButtonGradient}
-                    >
-                      <Ionicons
-                        name="send"
-                        size={20}
-                        color="#10b981"
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text
-                        style={[
-                          styles.primarySupportButtonText,
-                          { color: "#10b981" },
-                        ]}
-                      >
-                        İletişime Geç
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </LinearGradient>
+              <Text style={styles.minimalSupportText}>İletişime Geç</Text>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.light.textSecondary}
+              />
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -2496,6 +2392,119 @@ const styles = StyleSheet.create({
     color: "#9ca3af",
     textAlign: "center",
     lineHeight: 20,
+  },
+
+  // Kompakt Destek Bölümü Stilleri
+  compactSupportContainer: {
+    paddingHorizontal: 12,
+    paddingBottom: 20,
+    backgroundColor: colors.light.background,
+  },
+  supportGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  compactSupportCard: {
+    flex: 1,
+    height: 80,
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  compactSupportGradient: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 12,
+  },
+  compactSupportTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#fff",
+    textAlign: "center",
+    marginTop: 4,
+    lineHeight: 16,
+    fontFamily: "NotoSans-Medium",
+  },
+
+  // Sadeleştirilmiş Destek Bölümü Stilleri
+  simpleSupportContainer: {
+    paddingHorizontal: 12,
+    paddingBottom: 20,
+    backgroundColor: colors.light.background,
+  },
+  simpleSupportCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  simpleSupportText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#fff",
+    marginLeft: 12,
+    fontFamily: "NotoSans-Medium",
+  },
+
+  // Minimal Destek Bölümü Stilleri
+  minimalSupportContainer: {
+    paddingHorizontal: 12,
+    paddingBottom: 20,
+    backgroundColor: colors.light.background,
+  },
+  minimalSupportCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: colors.light.surface,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  supportCardPrimary: {
+    // Sol kenardaki border kaldırıldı
+  },
+  supportCardSecondary: {
+    // Sol kenardaki border kaldırıldı
+  },
+  supportCardNeutral: {
+    // Sol kenardaki border kaldırıldı
+  },
+  minimalSupportIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: colors.light.surface,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  minimalSupportText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "500",
+    color: colors.light.textPrimary,
+    fontFamily: "NotoSans-Medium",
   },
 });
 

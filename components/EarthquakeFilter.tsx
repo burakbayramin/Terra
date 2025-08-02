@@ -79,7 +79,7 @@ const EarthquakeFilter: React.FC<EarthquakeFilterProps> = ({
         {hasActiveFilters && (
           <View style={styles.filterBadge}>
             <Text style={styles.filterBadgeText}>
-              {selectedRegions.length + selectedMagnitudeRanges.length}
+              {(selectedRegions.length + selectedMagnitudeRanges.length).toString()}
             </Text>
           </View>
         )}

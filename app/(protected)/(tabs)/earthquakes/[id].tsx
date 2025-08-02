@@ -709,7 +709,7 @@ export default function EarthquakeDetailScreen() {
                 />
                 <View style={styles.commentInputFooter}>
                   <Text style={styles.characterCount}>
-                    {newComment.length}/500
+                    {`${newComment.length}/500`}
                   </Text>
                   <TouchableOpacity
                     style={[
@@ -808,7 +808,7 @@ export default function EarthquakeDetailScreen() {
                 textAlignVertical="top"
               />
               <Text style={styles.editCharacterCount}>
-                {editCommentText.length}/500
+                {`${editCommentText.length}/500`}
               </Text>
             </View>
           </View>
