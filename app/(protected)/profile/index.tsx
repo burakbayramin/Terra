@@ -13,7 +13,11 @@ import React, { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import {
+  Ionicons,
+  FontAwesome5,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 import { Divider } from "react-native-paper";
 
@@ -21,6 +25,18 @@ export default function ProfileScreen() {
   const router = useRouter();
   const profileCompletionPercentage = 75;
   const missionCompletionPercentage = 15;
+  const [securityScore] = useState(78);
+
+  // Güvenlik skoru renk fonksiyonu
+  const getScoreColor = (score: number): string => {
+    if (score >= 85) return "#27ae60"; // Koyu Yeşil
+    if (score >= 70) return "#2ecc71"; // Açık Yeşil
+    if (score >= 55) return "#f1c40f"; // Sarı
+    if (score >= 40) return "#f39c12"; // Koyu Sarı/Altın
+    if (score >= 25) return "#e67e22"; // Turuncu
+    if (score >= 10) return "#e74c3c"; // Kırmızı
+    return "#c0392b"; // Koyu Kırmızı
+  };
 
   return (
     <View style={styles.container}>
@@ -41,6 +57,35 @@ export default function ProfileScreen() {
             />
           </View>
           <Text style={styles.userName}>Burak Bayramin</Text>
+
+          {/* Security Score Chip */}
+          <View style={styles.securityScoreContainer}>
+            <TouchableOpacity
+              style={[
+                styles.securityScoreChip,
+                { borderColor: getScoreColor(securityScore) },
+              ]}
+              activeOpacity={0.7}
+              onPress={() => {
+                // router.push("/(protected)/security-score");
+              }}
+            >
+              <MaterialCommunityIcons
+                name="shield-check"
+                size={16}
+                color={getScoreColor(securityScore)}
+              />
+              <Text
+                style={[
+                  styles.securityScoreText,
+                  { color: getScoreColor(securityScore) },
+                ]}
+              >
+                % {securityScore}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.chipContainer}>
             <View style={styles.profileCompletionChip}>
               <View style={styles.miniProgressBar}>
@@ -422,7 +467,7 @@ const styles = StyleSheet.create({
     height: 3,
     backgroundColor: colors.light.surface,
     marginHorizontal: 12,
-    marginVertical:10,
+    marginVertical: 10,
     borderRadius: 10,
   },
   supportContainer: {
@@ -585,6 +630,30 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
     fontSize: 15,
+    fontFamily: "NotoSans-Bold",
+  },
+  securityScoreContainer: {
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  securityScoreChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.light.background,
+    borderWidth: 2,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  securityScoreText: {
+    fontSize: 14,
+    fontWeight: "700",
     fontFamily: "NotoSans-Bold",
   },
 });

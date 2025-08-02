@@ -19,26 +19,12 @@ export default function SignInScreen() {
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.buttonWhite}>
-          <Ionicons
-            name="logo-google"
-            size={20}
-            color="#000"
-            style={styles.icon}
-          />
-          <Text style={styles.buttonTextDark}>Google ile Giriş Yap</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.buttonDark}>
-          <Ionicons
-            name="logo-apple"
-            size={20}
-            color="#fff"
-            style={styles.icon}
-          />
-          <Text style={styles.buttonTextLight}>Apple ile Giriş Yap</Text>
+        <TouchableOpacity style={[styles.buttonBase, styles.buttonDark]}>
+          <Ionicons name="walk" size={20} color="#fff" style={styles.icon} />
+          <Text style={styles.buttonTextLight}>Misafir olarak devam et</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.buttonRed}
+          style={[styles.buttonBase, styles.buttonRed]}
           onPress={() => router.push("/(auth)/sign-in-email")}
         >
           <Ionicons name="mail" size={20} color="#fff" style={styles.icon} />
@@ -83,39 +69,28 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     marginBottom: 40,
   },
-  buttonWhite: {
+  buttonBase: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.9)",
+    minHeight: 52,
+    minWidth: 220,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 30,
     marginBottom: 12,
     elevation: 4,
+  },
+  buttonWhite: {
+    backgroundColor: "rgba(255,255,255,0.9)",
   },
   buttonDark: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: "rgba(17,17,17,0.9)",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 30,
-    marginBottom: 12,
-    elevation: 4,
   },
   buttonRed: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 30,
-    elevation: 4,
+    // borderWidth: 1,
+    // borderColor: "rgba(255,255,255,0.3)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,

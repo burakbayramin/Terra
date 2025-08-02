@@ -158,6 +158,54 @@ export default function HomeScreen() {
       staleTime: 5 * 60 * 1000, // 5 dakika fresh
     });
 
+  // Kullanıcının yorumları
+  const { data: userComments, isLoading: isLoadingComments } = useQuery({
+    queryKey: ["user-comments", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+
+      const { data, error } = await supabase
+        .from("earthquake_comments")
+        .select(
+          `
+          id,
+          comment,
+          created_at,
+          is_edited,
+          edited_at,
+          earthquake_id
+        `
+        )
+        .eq("profile_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error("Error fetching user comments:", error);
+        return [];
+      }
+
+      // Manually fetch earthquake details for each comment
+      const commentsWithEarthquakes = await Promise.all(
+        (data || []).map(async (comment) => {
+          // Find earthquake data from the existing earthquakeData
+          const earthquake = earthquakeData.find(
+            (eq) => eq.id === comment.earthquake_id
+          );
+
+          return {
+            ...comment,
+            earthquake: earthquake || null,
+          };
+        })
+      );
+
+      return commentsWithEarthquakes;
+    },
+    enabled: !!user?.id && earthquakeData.length > 0,
+    staleTime: 5 * 60 * 1000, // 5 dakika fresh
+  });
+
   // Güvenlik skoru renk fonksiyonu
   const getScoreColor = (score: number): string => {
     if (score >= 85) return "#27ae60"; // Koyu Yeşil
@@ -631,6 +679,192 @@ export default function HomeScreen() {
                   <Text style={styles.feltEarthquakesEmptyDescription}>
                     Deprem detaylarına giderek hissettiğiniz depremleri
                     işaretleyebilirsiniz
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          <Divider style={styles.divider} />
+
+          {/* Kullanıcının yorumları */}
+          {user && (
+            <View style={styles.userCommentsSection}>
+              <Text style={styles.sectionTitle}>Yaptığım Yorumlar</Text>
+
+              {isLoadingComments ? (
+                <View style={styles.userCommentsLoading}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={styles.userCommentsLoadingText}>
+                    Yorumlar yükleniyor...
+                  </Text>
+                </View>
+              ) : userComments && userComments.length > 0 ? (
+                <View style={styles.userCommentsContainer}>
+                  <FlashList
+                    data={userComments}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    estimatedItemSize={300}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={{}}
+                    renderItem={({ item }) => {
+                      const getMagnitudeColor = (magnitude: number) => {
+                        if (magnitude >= 5.0) return "#FF4444";
+                        if (magnitude >= 4.0) return "#FF8800";
+                        if (magnitude >= 3.0) return "#FFB800";
+                        return "#4CAF50";
+                      };
+
+                      const formatDate = (dateString: string) => {
+                        const date = new Date(dateString);
+                        return date.toLocaleDateString("tr-TR", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                      };
+
+                      const formatCommentDate = (dateString: string) => {
+                        const date = new Date(dateString);
+                        const now = new Date();
+                        const diffMs = now.getTime() - date.getTime();
+                        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                        const diffDays = Math.floor(diffHours / 24);
+
+                        if (diffHours < 1) return "Az önce yorum yaptım";
+                        if (diffHours < 24)
+                          return `${diffHours} saat önce yorum yaptım`;
+                        if (diffDays < 7)
+                          return `${diffDays} gün önce yorum yaptım`;
+
+                        return (
+                          date.toLocaleDateString("tr-TR", {
+                            day: "numeric",
+                            month: "short",
+                          }) + " tarihinde yorum yaptım"
+                        );
+                      };
+
+                      return (
+                        <TouchableOpacity
+                          style={styles.userCommentCard}
+                          activeOpacity={0.8}
+                          onPress={() =>
+                            router.push(
+                              `/(protected)/(tabs)/earthquakes/${item.earthquake_id}`
+                            )
+                          }
+                        >
+                          {/* Deprem Bilgileri Header */}
+                          <View style={styles.commentEarthquakeHeader}>
+                            <View
+                              style={[
+                                styles.commentEarthquakeMagnitude,
+                                {
+                                  backgroundColor: getMagnitudeColor(
+                                    item.earthquake?.mag || 0
+                                  ),
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={styles.commentEarthquakeMagnitudeText}
+                              >
+                                {item.earthquake?.mag?.toFixed(1) || "0.0"}
+                              </Text>
+                            </View>
+                            <View style={styles.commentEarthquakeInfo}>
+                              <Text style={styles.commentEarthquakeDate}>
+                                {formatDate(
+                                  item.earthquake?.date || item.created_at
+                                )}
+                              </Text>
+                              <Text style={styles.commentEarthquakeDepth}>
+                                {item.earthquake?.depth || 0} km derinlik
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Deprem Başlığı */}
+                          <Text
+                            style={styles.commentEarthquakeTitle}
+                            numberOfLines={2}
+                          >
+                            {item.earthquake?.title || "Bilinmeyen Deprem"}
+                          </Text>
+
+                          {/* Yorum İçeriği */}
+                          <View style={styles.commentContentContainer}>
+                            <View style={styles.commentHeader}>
+                              <Ionicons
+                                name="chatbubble"
+                                size={14}
+                                color={colors.primary}
+                              />
+                              <Text style={styles.commentLabel}>Yorumum:</Text>
+                            </View>
+                            <Text style={styles.commentText} numberOfLines={3}>
+                              {item.comment}
+                            </Text>
+                          </View>
+
+                          {/* Footer */}
+                          <View style={styles.commentFooter}>
+                            <Text style={styles.commentDateText}>
+                              {formatCommentDate(item.created_at)}
+                            </Text>
+                            {item.is_edited && (
+                              <View style={styles.editedBadge}>
+                                <Ionicons
+                                  name="create-outline"
+                                  size={12}
+                                  color="#9ca3af"
+                                />
+                                <Text style={styles.editedText}>
+                                  düzenlendi
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+
+                          {/* View Details Button */}
+                          <TouchableOpacity
+                            style={styles.viewCommentButton}
+                            onPress={() =>
+                              router.push(
+                                `/(protected)/(tabs)/earthquakes/${item.earthquake_id}`
+                              )
+                            }
+                          >
+                            <Text style={styles.viewCommentButtonText}>
+                              Detayları Gör
+                            </Text>
+                            <Ionicons
+                              name="chevron-forward"
+                              size={14}
+                              color={colors.primary}
+                            />
+                          </TouchableOpacity>
+                        </TouchableOpacity>
+                      );
+                    }}
+                  />
+                </View>
+              ) : (
+                <View style={styles.userCommentsEmpty}>
+                  <Ionicons
+                    name="chatbubbles-outline"
+                    size={48}
+                    color="#cbd5e0"
+                  />
+                  <Text style={styles.userCommentsEmptyTitle}>
+                    Henüz yorum yapmadınız
+                  </Text>
+                  <Text style={styles.userCommentsEmptyDescription}>
+                    Deprem detaylarına giderek deneyimlerinizi ve
+                    düşüncelerinizi paylaşabilirsiniz
                   </Text>
                 </View>
               )}
@@ -2123,6 +2357,154 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   feltEarthquakesEmptyDescription: {
+    fontSize: 14,
+    color: "#9ca3af",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  // Kullanıcı yorumları bölümü
+  userCommentsSection: {
+    marginBottom: 20,
+  },
+  userCommentsLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 20,
+  },
+  userCommentsLoadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  userCommentsContainer: {
+    height: 200,
+  },
+  userCommentCard: {
+    width: 300,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 14,
+    marginHorizontal: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  commentEarthquakeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  commentEarthquakeMagnitude: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  commentEarthquakeMagnitudeText: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#ffffff",
+  },
+  commentEarthquakeInfo: {
+    flex: 1,
+  },
+  commentEarthquakeDate: {
+    fontSize: 12,
+    color: "#6b7280",
+    fontWeight: "500",
+  },
+  commentEarthquakeDepth: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 1,
+  },
+  commentEarthquakeTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#2d3748",
+    marginBottom: 10,
+    lineHeight: 16,
+  },
+  commentContentContainer: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+  },
+  commentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  commentLabel: {
+    fontSize: 11,
+    color: colors.primary,
+    fontWeight: "600",
+    marginLeft: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  commentText: {
+    fontSize: 13,
+    color: "#374151",
+    lineHeight: 18,
+    fontStyle: "italic",
+  },
+  commentFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  commentDateText: {
+    fontSize: 11,
+    color: "#9ca3af",
+  },
+  editedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  editedText: {
+    fontSize: 10,
+    color: "#9ca3af",
+    marginLeft: 2,
+    fontStyle: "italic",
+  },
+  viewCommentButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f1f5f9",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  viewCommentButtonText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: "600",
+    marginRight: 4,
+  },
+  userCommentsEmpty: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  userCommentsEmptyTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6b7280",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  userCommentsEmptyDescription: {
     fontSize: 14,
     color: "#9ca3af",
     textAlign: "center",

@@ -12,6 +12,9 @@ import {
   Linking,
   Platform,
   Alert,
+  TextInput,
+  KeyboardAvoidingView,
+  Modal,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useLocalSearchParams, Stack } from "expo-router";
@@ -20,6 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 import { useEarthquakeById } from "@/hooks/useEarthquakes";
 import { useEarthquakeFeltReports } from "@/hooks/useEarthquakeFeltReports";
+import { useEarthquakeComments } from "@/hooks/useEarthquakeComments";
 
 const getMagnitudeColor = (magnitude: number) => {
   if (magnitude >= 5.0) return "#FF4444";
@@ -102,8 +106,77 @@ const openInExternalMap = async (
   );
 };
 
+// Yorum bileşeni
+const CommentItem = ({ comment, onEdit, onDelete, isOwnComment }: any) => {
+  const [showActions, setShowActions] = useState(false);
+
+  return (
+    <View style={styles.commentItem}>
+      <View style={styles.commentHeader}>
+        <View style={styles.commentUserInfo}>
+          <View style={styles.commentAvatar}>
+            <Text style={styles.commentAvatarText}>
+              {comment.profiles?.full_name?.charAt(0)?.toUpperCase() || "U"}
+            </Text>
+          </View>
+          <View>
+            <Text style={styles.commentUserName}>
+              {comment.profiles?.full_name || "Anonim Kullanıcı"}
+            </Text>
+            <Text style={styles.commentDate}>
+              {formatDate(comment.created_at)}
+              {comment.is_edited && (
+                <Text style={styles.editedLabel}> • düzenlendi</Text>
+              )}
+            </Text>
+          </View>
+        </View>
+        {isOwnComment && (
+          <TouchableOpacity
+            onPress={() => setShowActions(!showActions)}
+            style={styles.commentMenuButton}
+          >
+            <Ionicons name="ellipsis-horizontal" size={18} color="#6b7280" />
+          </TouchableOpacity>
+        )}
+      </View>
+      
+      <Text style={styles.commentText}>{comment.comment}</Text>
+      
+      {showActions && isOwnComment && (
+        <View style={styles.commentActions}>
+          <TouchableOpacity
+            onPress={() => {
+              setShowActions(false);
+              onEdit(comment);
+            }}
+            style={styles.commentActionButton}
+          >
+            <Ionicons name="create-outline" size={16} color="#3b82f6" />
+            <Text style={styles.commentActionText}>Düzenle</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setShowActions(false);
+              onDelete(comment.id);
+            }}
+            style={styles.commentActionButton}
+          >
+            <Ionicons name="trash-outline" size={16} color="#ef4444" />
+            <Text style={[styles.commentActionText, { color: "#ef4444" }]}>Sil</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+};
+
 export default function EarthquakeDetailScreen() {
   const { id } = useLocalSearchParams();
+  const [newComment, setNewComment] = useState("");
+  const [editingComment, setEditingComment] = useState<any>(null);
+  const [editCommentText, setEditCommentText] = useState("");
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const {
     data: earthquake,
@@ -121,6 +194,18 @@ export default function EarthquakeDetailScreen() {
     isUpdating,
     error: feltReportsError,
   } = useEarthquakeFeltReports(id as string);
+
+  // Comments hook'unu kullan
+  const {
+    comments,
+    isLoading: isLoadingComments,
+    addComment,
+    updateComment,
+    deleteComment,
+    isAddingComment,
+    isUpdatingComment,
+    error: commentsError,
+  } = useEarthquakeComments(id as string);
 
   // Loading durumu
   if (isLoading) {
@@ -165,160 +250,218 @@ export default function EarthquakeDetailScreen() {
     );
   }
 
+  const handleAddComment = async () => {
+    if (!newComment.trim()) {
+      Alert.alert("Uyarı", "Lütfen bir yorum yazın.");
+      return;
+    }
+
+    try {
+      console.log('Starting to add comment...');
+      await addComment(newComment.trim());
+      setNewComment("");
+      Alert.alert("Başarılı", "Yorumunuz eklendi.");
+    } catch (error) {
+      console.error('handleAddComment error:', error);
+      
+      // Detaylı hata mesajı
+      const errorMessage = error instanceof Error 
+        ? `Hata: ${error.message}` 
+        : "Yorum eklenirken bilinmeyen hata oluştu.";
+        
+      Alert.alert("Hata", errorMessage);
+    }
+  };
+
+  const handleEditComment = (comment: any) => {
+    setEditingComment(comment);
+    setEditCommentText(comment.comment);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateComment = async () => {
+    if (!editCommentText.trim()) {
+      Alert.alert("Uyarı", "Lütfen bir yorum yazın.");
+      return;
+    }
+
+    try {
+      await updateComment(editingComment.id, editCommentText.trim());
+      setShowEditModal(false);
+      setEditingComment(null);
+      setEditCommentText("");
+      Alert.alert("Başarılı", "Yorumunuz güncellendi.");
+    } catch (error) {
+      Alert.alert(
+        "Hata",
+        error instanceof Error ? error.message : "Yorum güncellenirken hata oluştu."
+      );
+    }
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    Alert.alert(
+      "Yorumu Sil",
+      "Bu yorumu silmek istediğinizden emin misiniz?",
+      [
+        { text: "İptal", style: "cancel" },
+        {
+          text: "Sil",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteComment(commentId);
+              Alert.alert("Başarılı", "Yorum silindi.");
+            } catch (error) {
+              Alert.alert(
+                "Hata",
+                error instanceof Error ? error.message : "Yorum silinirken hata oluştu."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#1a365d" />
 
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        // YENİ: Pull to refresh
-        // refreshControl={
-        //   <RefreshControl
-        //     refreshing={isFetching}
-        //     onRefresh={() => refetch()}
-        //     colors={[colors.primary]}
-        //     tintColor={colors.primary}
-        //   />
-        // }
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        {/* Hero Header */}
-        <View
-          style={[
-            styles.heroHeader,
-            { backgroundColor: getMagnitudeColor(earthquake.mag) },
-          ]}
+        <ScrollView
+          style={styles.container}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          // YENİ: Pull to refresh
+          // refreshControl={
+          //   <RefreshControl
+          //     refreshing={isFetching}
+          //     onRefresh={() => refetch()}
+          //     colors={[colors.primary]}
+          //     tintColor={colors.primary}
+          //   />
+          // }
         >
-          <View style={styles.heroContent}>
-            <View style={styles.magnitudeDisplay}>
-              <Text style={styles.magnitudeNumber}>
-                {earthquake.mag.toFixed(1)}
-              </Text>
-              <View style={styles.magnitudeBadge}>
-                <Text style={styles.magnitudeBadgeText}>
-                  {getMagnitudeLabel(earthquake.mag)}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.heroInfo}>
-              <Text style={styles.heroTitle}>{earthquake.title}</Text>
-              <View style={styles.timeAgo}>
-                <Ionicons
-                  name="time-outline"
-                  size={16}
-                  color="rgba(255,255,255,0.8)"
-                />
-                <Text style={styles.timeAgoText}>
-                  {formatDate(earthquake.date)}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.content}>
-          {/* Quick Stats */}
-          <View style={styles.quickStats}>
-            <View style={styles.statItem}>
-              <Ionicons
-                name="layers-outline"
-                size={20}
-                color={getMagnitudeColor(earthquake.mag)}
-              />
-              <Text style={styles.statValue}>{earthquake.depth} km</Text>
-              <Text style={styles.statLabel}>Derinlik</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Ionicons
-                name="people-outline"
-                size={20}
-                color={getMagnitudeColor(earthquake.mag)}
-              />
-              <Text style={styles.statValue}>
-                {isLoadingFeltReports ? "..." : stats?.total_reports || 0}
-              </Text>
-              <Text style={styles.statLabel}>Hisseden</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Ionicons
-                name="information-circle-outline"
-                size={20}
-                color={getMagnitudeColor(earthquake.mag)}
-              />
-              <Text style={styles.statValue}>{earthquake.provider}</Text>
-              <Text style={styles.statLabel}>Kaynak</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
+          {/* Hero Header */}
+          <View
             style={[
-              styles.feelButton,
-              stats?.user_has_reported && styles.feelButtonPressed,
-              isUpdating && styles.feelButtonDisabled,
+              styles.heroHeader,
+              { backgroundColor: getMagnitudeColor(earthquake.mag) },
             ]}
-            onPress={async () => {
-              try {
-                await toggleFeltReport();
-              } catch (error) {
-                Alert.alert(
-                  "Hata",
-                  error instanceof Error ? error.message : "Bir hata oluştu",
-                  [{ text: "Tamam" }]
-                );
-              }
-            }}
-            disabled={isUpdating}
           >
-            {isUpdating ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Text
-                style={[
-                  styles.feelButtonText,
-                  stats?.user_has_reported && styles.feelButtonTextPressed,
-                ]}
-              >
-                {stats?.user_has_reported
-                  ? "Depremi Hissettim ✓"
-                  : "Depremi Hissetin Mi?"}
-              </Text>
-            )}
-          </TouchableOpacity>
+            <View style={styles.heroContent}>
+              <View style={styles.magnitudeDisplay}>
+                <Text style={styles.magnitudeNumber}>
+                  {earthquake.mag.toFixed(1)}
+                </Text>
+                <View style={styles.magnitudeBadge}>
+                  <Text style={styles.magnitudeBadgeText}>
+                    {getMagnitudeLabel(earthquake.mag)}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.heroInfo}>
+                <Text style={styles.heroTitle}>{earthquake.title}</Text>
+                <View style={styles.timeAgo}>
+                  <Ionicons
+                    name="time-outline"
+                    size={16}
+                    color="rgba(255,255,255,0.8)"
+                  />
+                  <Text style={styles.timeAgoText}>
+                    {formatDate(earthquake.date)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
 
-          {/* Map Section */}
-          <View style={styles.mapSection}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="location-outline" size={22} color="#2d3748" />
-              <Text style={styles.sectionTitle}>Deprem Konumu</Text>
+          <View style={styles.content}>
+            {/* Quick Stats */}
+            <View style={styles.quickStats}>
+              <View style={styles.statItem}>
+                <Ionicons
+                  name="layers-outline"
+                  size={20}
+                  color={getMagnitudeColor(earthquake.mag)}
+                />
+                <Text style={styles.statValue}>{earthquake.depth} km</Text>
+                <Text style={styles.statLabel}>Derinlik</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Ionicons
+                  name="people-outline"
+                  size={20}
+                  color={getMagnitudeColor(earthquake.mag)}
+                />
+                <Text style={styles.statValue}>
+                  {isLoadingFeltReports ? "..." : stats?.total_reports || 0}
+                </Text>
+                <Text style={styles.statLabel}>Hisseden</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color={getMagnitudeColor(earthquake.mag)}
+                />
+                <Text style={styles.statValue}>{earthquake.provider}</Text>
+                <Text style={styles.statLabel}>Kaynak</Text>
+              </View>
             </View>
 
-            {earthquake.longitude !== 0 && earthquake.latitude !== 0 ? (
-              <View style={styles.mapContainer}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() =>
-                    openInExternalMap(
-                      earthquake.latitude,
-                      earthquake.longitude,
-                      earthquake.title
-                    )
-                  }
+            <TouchableOpacity
+              style={[
+                styles.feelButton,
+                stats?.user_has_reported && styles.feelButtonPressed,
+                isUpdating && styles.feelButtonDisabled,
+              ]}
+              onPress={async () => {
+                try {
+                  await toggleFeltReport();
+                } catch (error) {
+                  Alert.alert(
+                    "Hata",
+                    error instanceof Error ? error.message : "Bir hata oluştu",
+                    [{ text: "Tamam" }]
+                  );
+                }
+              }}
+              disabled={isUpdating}
+            >
+              {isUpdating ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text
+                  style={[
+                    styles.feelButtonText,
+                    stats?.user_has_reported && styles.feelButtonTextPressed,
+                  ]}
                 >
-                  <MapView
-                    style={styles.map}
-                    initialRegion={{
-                      latitude: earthquake.latitude,
-                      longitude: earthquake.longitude,
-                      latitudeDelta: 0.5,
-                      longitudeDelta: 0.5,
-                    }}
-                    scrollEnabled={false}
-                    zoomEnabled={false}
-                    pitchEnabled={false}
-                    rotateEnabled={false}
+                  {stats?.user_has_reported
+                    ? "Depremi Hissettim ✓"
+                    : "Depremi Hissetin Mi?"}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Map Section */}
+            <View style={styles.mapSection}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="location-outline" size={22} color="#2d3748" />
+                <Text style={styles.sectionTitle}>Deprem Konumu</Text>
+              </View>
+
+              {earthquake.longitude !== 0 && earthquake.latitude !== 0 ? (
+                <View style={styles.mapContainer}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
                     onPress={() =>
                       openInExternalMap(
                         earthquake.latitude,
@@ -327,12 +470,18 @@ export default function EarthquakeDetailScreen() {
                       )
                     }
                   >
-                    <Marker
-                      coordinate={{
+                    <MapView
+                      style={styles.map}
+                      initialRegion={{
                         latitude: earthquake.latitude,
                         longitude: earthquake.longitude,
+                        latitudeDelta: 0.5,
+                        longitudeDelta: 0.5,
                       }}
-                      pinColor={getMagnitudeColor(earthquake.mag)}
+                      scrollEnabled={false}
+                      zoomEnabled={false}
+                      pitchEnabled={false}
+                      rotateEnabled={false}
                       onPress={() =>
                         openInExternalMap(
                           earthquake.latitude,
@@ -340,190 +489,331 @@ export default function EarthquakeDetailScreen() {
                           earthquake.title
                         )
                       }
-                    />
-                  </MapView>
-                </TouchableOpacity>
+                    >
+                      <Marker
+                        coordinate={{
+                          latitude: earthquake.latitude,
+                          longitude: earthquake.longitude,
+                        }}
+                        pinColor={getMagnitudeColor(earthquake.mag)}
+                        onPress={() =>
+                          openInExternalMap(
+                            earthquake.latitude,
+                            earthquake.longitude,
+                            earthquake.title
+                          )
+                        }
+                      />
+                    </MapView>
+                  </TouchableOpacity>
 
-                {/* Harita tıklama ipucu */}
-                <TouchableOpacity
-                  style={styles.mapOverlay}
-                  onPress={() =>
-                    openInExternalMap(
-                      earthquake.latitude,
-                      earthquake.longitude,
-                      earthquake.title
-                    )
-                  }
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.mapOverlayContent}>
-                    <Ionicons name="open-outline" size={16} color="#6b7280" />
-                    <Text style={styles.mapOverlayText}>
-                      Harita uygulamasında aç
+                  {/* Harita tıklama ipucu */}
+                  <TouchableOpacity
+                    style={styles.mapOverlay}
+                    onPress={() =>
+                      openInExternalMap(
+                        earthquake.latitude,
+                        earthquake.longitude,
+                        earthquake.title
+                      )
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.mapOverlayContent}>
+                      <Ionicons name="open-outline" size={16} color="#6b7280" />
+                      <Text style={styles.mapOverlayText}>
+                        Harita uygulamasında aç
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <View style={styles.coordinatesContainer}>
+                    <Ionicons name="navigate-outline" size={16} color="#6b7280" />
+                    <Text style={styles.coordinates}>
+                      {earthquake.latitude.toFixed(4)},{" "}
+                      {earthquake.longitude.toFixed(4)}
                     </Text>
                   </View>
-                </TouchableOpacity>
-
-                <View style={styles.coordinatesContainer}>
-                  <Ionicons name="navigate-outline" size={16} color="#6b7280" />
-                  <Text style={styles.coordinates}>
-                    {earthquake.latitude.toFixed(4)},{" "}
-                    {earthquake.longitude.toFixed(4)}
+                </View>
+              ) : (
+                <View style={styles.noLocationContainer}>
+                  <Ionicons name="location-outline" size={48} color="#cbd5e0" />
+                  <Text style={styles.noLocationText}>
+                    Konum bilgisi bulunamadı
                   </Text>
                 </View>
-              </View>
-            ) : (
-              <View style={styles.noLocationContainer}>
-                <Ionicons name="location-outline" size={48} color="#cbd5e0" />
-                <Text style={styles.noLocationText}>
-                  Konum bilgisi bulunamadı
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Detailed Information */}
-          <View style={styles.detailsSection}>
-            <View style={styles.sectionHeader}>
-              <Ionicons
-                name="information-circle-outline"
-                size={22}
-                color="#2d3748"
-              />
-              <Text style={styles.sectionTitle}>Detaylı Bilgiler</Text>
+              )}
             </View>
 
-            <View style={styles.detailGrid}>
-              <View style={styles.detailItem}>
-                <View style={styles.detailIcon}>
-                  <Ionicons
-                    name="calendar-outline"
-                    size={20}
-                    color={getMagnitudeColor(earthquake.mag)}
-                  />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Tarih</Text>
-                  <Text style={styles.detailValue}>
-                    {new Date(earthquake.date).toLocaleDateString("tr-TR", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </Text>
-                </View>
+            {/* Detailed Information */}
+            <View style={styles.detailsSection}>
+              <View style={styles.sectionHeader}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={22}
+                  color="#2d3748"
+                />
+                <Text style={styles.sectionTitle}>Detaylı Bilgiler</Text>
               </View>
 
-              <View style={styles.detailItem}>
-                <View style={styles.detailIcon}>
-                  <Ionicons
-                    name="time-outline"
-                    size={20}
-                    color={getMagnitudeColor(earthquake.mag)}
-                  />
-                </View>
-                <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Saat</Text>
-                  <Text style={styles.detailValue}>
-                    {new Date(earthquake.date).toLocaleTimeString("tr-TR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })}
-                  </Text>
-                </View>
-              </View>
-
-              {earthquake.faultline && (
+              <View style={styles.detailGrid}>
                 <View style={styles.detailItem}>
                   <View style={styles.detailIcon}>
                     <Ionicons
-                      name="git-branch-outline"
+                      name="calendar-outline"
                       size={20}
                       color={getMagnitudeColor(earthquake.mag)}
                     />
                   </View>
                   <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Fay Hattı</Text>
+                    <Text style={styles.detailLabel}>Tarih</Text>
                     <Text style={styles.detailValue}>
-                      {earthquake.faultline}
+                      {new Date(earthquake.date).toLocaleDateString("tr-TR", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
                     </Text>
                   </View>
                 </View>
-              )}
-              {earthquake.region && (
+
                 <View style={styles.detailItem}>
                   <View style={styles.detailIcon}>
                     <Ionicons
-                      name="location-outline"
+                      name="time-outline"
                       size={20}
                       color={getMagnitudeColor(earthquake.mag)}
                     />
                   </View>
                   <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Bölge</Text>
-                    <Text style={styles.detailValue}>{earthquake.region}</Text>
+                    <Text style={styles.detailLabel}>Saat</Text>
+                    <Text style={styles.detailValue}>
+                      {new Date(earthquake.date).toLocaleTimeString("tr-TR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
+                    </Text>
                   </View>
                 </View>
-              )}
-            </View>
-          </View>
 
-          {/* Impact Assessment */}
-          <View style={styles.impactSection}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="analytics-outline" size={22} color="#2d3748" />
-              <Text style={styles.sectionTitle}>Etki Değerlendirmesi</Text>
+                {earthquake.faultline && (
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIcon}>
+                      <Ionicons
+                        name="git-branch-outline"
+                        size={20}
+                        color={getMagnitudeColor(earthquake.mag)}
+                      />
+                    </View>
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Fay Hattı</Text>
+                      <Text style={styles.detailValue}>
+                        {earthquake.faultline}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {earthquake.region && (
+                  <View style={styles.detailItem}>
+                    <View style={styles.detailIcon}>
+                      <Ionicons
+                        name="location-outline"
+                        size={20}
+                        color={getMagnitudeColor(earthquake.mag)}
+                      />
+                    </View>
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailLabel}>Bölge</Text>
+                      <Text style={styles.detailValue}>{earthquake.region}</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
             </View>
 
-            <View style={styles.impactCard}>
-              <View
-                style={[
-                  styles.impactHeader,
-                  { backgroundColor: `${getMagnitudeColor(earthquake.mag)}15` },
-                ]}
-              >
-                <Text
+            {/* Impact Assessment */}
+            <View style={styles.impactSection}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="analytics-outline" size={22} color="#2d3748" />
+                <Text style={styles.sectionTitle}>Etki Değerlendirmesi</Text>
+              </View>
+
+              <View style={styles.impactCard}>
+                <View
                   style={[
-                    styles.impactTitle,
-                    { color: getMagnitudeColor(earthquake.mag) },
+                    styles.impactHeader,
+                    { backgroundColor: `${getMagnitudeColor(earthquake.mag)}15` },
                   ]}
                 >
-                  {getMagnitudeLabel(earthquake.mag)} Şiddette Deprem
-                </Text>
-              </View>
+                  <Text
+                    style={[
+                      styles.impactTitle,
+                      { color: getMagnitudeColor(earthquake.mag) },
+                    ]}
+                  >
+                    {getMagnitudeLabel(earthquake.mag)} Şiddette Deprem
+                  </Text>
+                </View>
 
-              <View style={styles.impactContent}>
-                <Text style={styles.impactDescription}>
-                  Bu deprem {earthquake.mag.toFixed(1)} büyüklüğünde kaydedilmiş
-                  olup, {earthquake.depth} km derinliğinde gerçekleşmiştir.
-                  {earthquake.mag >= 4.0
-                    ? " Bu şiddetteki depremler genellikle geniş bir alanda hissedilir ve hafif hasarlara neden olabilir."
-                    : earthquake.mag >= 3.0
-                    ? " Bu şiddetteki depremler genellikle sadece yakın çevrede hissedilir."
-                    : " Bu şiddetteki depremler genellikle sadece hassas cihazlarla tespit edilir."}
-                </Text>
+                <View style={styles.impactContent}>
+                  <Text style={styles.impactDescription}>
+                    Bu deprem {earthquake.mag.toFixed(1)} büyüklüğünde kaydedilmiş
+                    olup, {earthquake.depth} km derinliğinde gerçekleşmiştir.
+                    {earthquake.mag >= 4.0
+                      ? " Bu şiddetteki depremler genellikle geniş bir alanda hissedilir ve hafif hasarlara neden olabilir."
+                      : earthquake.mag >= 3.0
+                      ? " Bu şiddetteki depremler genellikle sadece yakın çevrede hissedilir."
+                      : " Bu şiddetteki depremler genellikle sadece hassas cihazlarla tespit edilir."}
+                  </Text>
 
-                <View style={styles.impactMetrics}>
-                  <View style={styles.metricItem}>
-                    <Text style={styles.metricValue}>
-                      {Math.floor(Math.random() * 50) + 10} km
-                    </Text>
-                    <Text style={styles.metricLabel}>Hissedilme Yarıçapı</Text>
-                  </View>
-                  <View style={styles.metricItem}>
-                    <Text style={styles.metricValue}>
-                      {Math.floor(Math.random() * 10) + 1}
-                    </Text>
-                    <Text style={styles.metricLabel}>Mercalli Şiddeti</Text>
+                  <View style={styles.impactMetrics}>
+                    <View style={styles.metricItem}>
+                      <Text style={styles.metricValue}>
+                        {Math.floor(Math.random() * 50) + 10} km
+                      </Text>
+                      <Text style={styles.metricLabel}>Hissedilme Yarıçapı</Text>
+                    </View>
+                    <View style={styles.metricItem}>
+                      <Text style={styles.metricValue}>
+                        {Math.floor(Math.random() * 10) + 1}
+                      </Text>
+                      <Text style={styles.metricLabel}>Mercalli Şiddeti</Text>
+                    </View>
                   </View>
                 </View>
               </View>
             </View>
+
+            {/* Comments Section */}
+            <View style={styles.commentsSection}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="chatbubbles-outline" size={22} color="#2d3748" />
+                <Text style={styles.sectionTitle}>
+                  Yorumlar ({comments?.length || 0})
+                </Text>
+              </View>
+
+              {/* Add Comment */}
+              <View style={styles.addCommentContainer}>
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="Bu deprem hakkında yorumunuzu yazın..."
+                  placeholderTextColor="#9ca3af"
+                  value={newComment}
+                  onChangeText={setNewComment}
+                  multiline
+                  maxLength={500}
+                  textAlignVertical="top"
+                />
+                <View style={styles.commentInputFooter}>
+                  <Text style={styles.characterCount}>
+                    {newComment.length}/500
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.submitCommentButton,
+                      (!newComment.trim() || isAddingComment) && styles.submitCommentButtonDisabled,
+                    ]}
+                    onPress={handleAddComment}
+                    disabled={!newComment.trim() || isAddingComment}
+                  >
+                    {isAddingComment ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <>
+                        <Ionicons name="send" size={16} color="#ffffff" />
+                        <Text style={styles.submitCommentButtonText}>Gönder</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Comments List */}
+              <View style={styles.commentsList}>
+                {isLoadingComments ? (
+                  <View style={styles.commentsLoading}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={styles.commentsLoadingText}>Yorumlar yükleniyor...</Text>
+                  </View>
+                ) : comments && comments.length > 0 ? (
+                  comments.map((comment: any) => (
+                    <CommentItem
+                      key={comment.id}
+                      comment={comment}
+                      onEdit={handleEditComment}
+                      onDelete={handleDeleteComment}
+                      isOwnComment={comment.is_own_comment}
+                    />
+                  ))
+                ) : (
+                  <View style={styles.noCommentsContainer}>
+                    <Ionicons name="chatbubbles-outline" size={48} color="#cbd5e0" />
+                    <Text style={styles.noCommentsText}>
+                      Henüz yorum yapılmamış
+                    </Text>
+                    <Text style={styles.noCommentsSubtext}>
+                      Bu deprem hakkındaki düşüncelerinizi paylaşın!
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+
+        {/* Edit Comment Modal */}
+        <Modal
+          visible={showEditModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowEditModal(false)}
+        >
+          <View style={styles.editModalContainer}>
+            <View style={styles.editModalHeader}>
+              <TouchableOpacity
+                onPress={() => setShowEditModal(false)}
+                style={styles.editModalCloseButton}
+              >
+                <Text style={styles.editModalCloseText}>İptal</Text>
+              </TouchableOpacity>
+              <Text style={styles.editModalTitle}>Yorumu Düzenle</Text>
+              <TouchableOpacity
+                onPress={handleUpdateComment}
+                style={[
+                  styles.editModalSaveButton,
+                  (!editCommentText.trim() || isUpdatingComment) && styles.editModalSaveButtonDisabled,
+                ]}
+                disabled={!editCommentText.trim() || isUpdatingComment}
+              >
+                {isUpdatingComment ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Text style={styles.editModalSaveText}>Kaydet</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+            <View style={styles.editModalContent}>
+              <TextInput
+                style={styles.editCommentInput}
+                value={editCommentText}
+                onChangeText={setEditCommentText}
+                multiline
+                maxLength={500}
+                placeholder="Yorumunuzu yazın..."
+                placeholderTextColor="#9ca3af"
+                autoFocus
+                textAlignVertical="top"
+              />
+              <Text style={styles.editCharacterCount}>
+                {editCommentText.length}/500
+              </Text>
+            </View>
+          </View>
+        </Modal>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -532,6 +822,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#f8fafc",
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   container: {
     flex: 1,
@@ -846,5 +1139,220 @@ const styles = StyleSheet.create({
   },
   feelButtonTextPressed: {
     color: "#ffffff",
+  },
+  // Comments Section Styles
+  commentsSection: {
+    marginBottom: 24,
+  },
+  addCommentContainer: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  commentInput: {
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    color: "#2d3748",
+    minHeight: 80,
+    maxHeight: 120,
+    textAlignVertical: "top",
+  },
+  commentInputFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 12,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
+  submitCommentButton: {
+    backgroundColor: colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  submitCommentButtonDisabled: {
+    backgroundColor: "#cbd5e0",
+  },
+  submitCommentButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 6,
+  },
+  commentsList: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  commentsLoading: {
+    padding: 40,
+    alignItems: "center",
+  },
+  commentsLoadingText: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginTop: 8,
+  },
+  noCommentsContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  noCommentsText: {
+    fontSize: 16,
+    color: "#9ca3af",
+    fontWeight: "500",
+    marginTop: 12,
+  },
+  noCommentsSubtext: {
+    fontSize: 14,
+    color: "#cbd5e0",
+    marginTop: 4,
+    textAlign: "center",
+  },
+  commentItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  commentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8,
+  },
+  commentUserInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  commentAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  commentAvatarText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  commentUserName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#2d3748",
+  },
+  commentDate: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginTop: 2,
+  },
+  editedLabel: {
+    fontStyle: "italic",
+    color: "#9ca3af",
+  },
+  commentMenuButton: {
+    padding: 4,
+  },
+  commentText: {
+    fontSize: 15,
+    color: "#374151",
+    lineHeight: 22,
+    marginLeft: 48,
+  },
+  commentActions: {
+    flexDirection: "row",
+    marginTop: 8,
+    marginLeft: 48,
+  },
+  commentActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 16,
+  },
+  commentActionText: {
+    fontSize: 12,
+    color: "#3b82f6",
+    fontWeight: "500",
+    marginLeft: 4,
+  },
+  // Edit Modal Styles
+  editModalContainer: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+  },
+  editModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  editModalCloseButton: {
+    padding: 8,
+  },
+  editModalCloseText: {
+    fontSize: 16,
+    color: "#6b7280",
+  },
+  editModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#2d3748",
+  },
+  editModalSaveButton: {
+    padding: 8,
+  },
+  editModalSaveButtonDisabled: {
+    opacity: 0.5,
+  },
+  editModalSaveText: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  editModalContent: {
+    flex: 1,
+    padding: 16,
+  },
+  editCommentInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: "#2d3748",
+    textAlignVertical: "top",
+  },
+  editCharacterCount: {
+    fontSize: 12,
+    color: "#6b7280",
+    textAlign: "right",
+    marginTop: 8,
   },
 });
