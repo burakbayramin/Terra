@@ -1277,6 +1277,43 @@ export default function HomeScreen() {
             </View>
           </View>
 
+          {/* Premium CTA Button - Coming Soon Features */}
+          <View style={styles.premiumCTAContainer}>
+            <TouchableOpacity
+              style={styles.premiumCTAButton}
+              activeOpacity={0.8}
+              onPress={() => router.push('/premium-packages')}
+            >
+              <View style={styles.premiumCTAContent}>
+                <View style={styles.premiumCTAHeader}>
+                  <Ionicons name="rocket" size={24} color="#FFD700" />
+                  <Text style={styles.premiumCTATitle}>Önce Deneyimle</Text>
+                  <View style={styles.premiumCTABadge}>
+                    <Text style={styles.premiumCTABadgeText}>Beta Erişim</Text>
+                  </View>
+                </View>
+                <Text style={styles.premiumCTASubtitle}>
+                  Yakında çıkacak özellikleri premium üyelerimizle birlikte ilk siz deneyimleyin
+                </Text>
+                <View style={styles.premiumCTAFeatures}>
+                  <View style={styles.premiumCTAFeature}>
+                    <Ionicons name="flash" size={16} color="#4CAF50" />
+                    <Text style={styles.premiumCTAFeatureText}>Erken Uyarı Sistemi</Text>
+                  </View>
+                  <View style={styles.premiumCTAFeature}>
+                    <Ionicons name="people" size={16} color="#4CAF50" />
+                    <Text style={styles.premiumCTAFeatureText}>Topluluk Özellikleri</Text>
+                  </View>
+                  <View style={styles.premiumCTAFeature}>
+                    <Ionicons name="trending-up" size={16} color="#4CAF50" />
+                    <Text style={styles.premiumCTAFeatureText}>Gelişmiş Raporlar</Text>
+                  </View>
+                </View>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+
           <Divider style={styles.divider} />
 
           {/* haberler */}
@@ -1400,6 +1437,7 @@ export default function HomeScreen() {
                   <TouchableOpacity
                     style={styles.fullWidthSupportButton}
                     activeOpacity={0.7}
+                    onPress={() => router.push('/(protected)/developer-support')}
                   >
                     <LinearGradient
                       colors={["#fff", "#f8f9fa"]}
@@ -1699,7 +1737,13 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontFamily: "NotoSans-Bold",
     textAlign: "center",
+    color: colors.primary,
+    letterSpacing: 3,
+    textShadowColor: colors.light.textPrimary,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 1,
   },
+
   headerLeft: {
     flex: 1,
     alignItems: "flex-start",
@@ -1946,7 +1990,7 @@ const styles = StyleSheet.create({
   },
   supportContainer: {
     paddingHorizontal: 12,
-    paddingBottom: 20,
+    paddingBottom: 8,
   },
   supportGradientContainer: {
     borderRadius: 20,
@@ -1959,28 +2003,28 @@ const styles = StyleSheet.create({
   },
   supportHeader: {
     alignItems: "center",
-    paddingTop: 24,
-    paddingBottom: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   supportIcon: {
-    marginBottom: 12,
+    marginBottom: 2,
     textShadowColor: "rgba(255, 255, 255, 0.3)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   supportTitle: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: "800",
     color: "#fff",
     fontFamily: "NotoSans-Bold",
     textAlign: "center",
-    marginBottom: 4,
+    marginBottom: 1,
     textShadowColor: "rgba(0, 0, 0, 0.1)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   supportSubtitle: {
-    fontSize: 14,
+    fontSize: 11,
     color: "rgba(255, 255, 255, 0.9)",
     fontFamily: "NotoSans-Medium",
     textAlign: "center",
@@ -1990,7 +2034,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 16,
-    padding: 20,
+    padding: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -1998,11 +2042,11 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   supportTextNew: {
-    fontSize: 15,
+    fontSize: 12,
     color: "#444",
-    lineHeight: 22,
+    lineHeight: 16,
     textAlign: "center",
-    marginBottom: 32,
+    marginBottom: 8,
     fontFamily: "NotoSans-Regular",
   },
   supportStatsRow: {
@@ -2062,7 +2106,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   supportButtonGradient: {
-    paddingVertical: 16,
+    paddingVertical: 8,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
@@ -2071,7 +2115,7 @@ const styles = StyleSheet.create({
   primarySupportButtonText: {
     color: "#ff6b6b",
     fontWeight: "700",
-    fontSize: 16,
+    fontSize: 13,
     fontFamily: "NotoSans-Bold",
   },
   secondarySupportButton: {
