@@ -126,11 +126,12 @@ const CITY_EARTHQUAKE_DATA = [
 
 // En aktif fay hatları verisi
 const FAULT_LINE_DATA = [
-  { faultLine: "Kuzey Anadolu Fay Hattı", count: 234, region: "Marmara-Ege" },
-  { faultLine: "Doğu Anadolu Fay Hattı", count: 156, region: "Doğu Anadolu" },
-  { faultLine: "Batı Anadolu Fay Sistemi", count: 98, region: "Ege" },
-  { faultLine: "Güney Anadolu Fay Hattı", count: 67, region: "Akdeniz" },
-  { faultLine: "İç Anadolu Fay Sistemi", count: 45, region: "İç Anadolu" },
+  { faultLine: "Kuzey Anadolu Fay Hattı", count: 287, region: "Marmara-Ege", description: "Türkiye'nin en aktif fay hattı" },
+  { faultLine: "Doğu Anadolu Fay Hattı", count: 189, region: "Doğu Anadolu", description: "Yüksek tektonik aktivite" },
+  { faultLine: "Batı Anadolu Fay Sistemi", count: 134, region: "Ege", description: "Çoklu fay sistemi" },
+  { faultLine: "Güney Anadolu Fay Hattı", count: 89, region: "Akdeniz", description: "Orta düzey aktivite" },
+  { faultLine: "İç Anadolu Fay Sistemi", count: 67, region: "İç Anadolu", description: "Düşük aktivite" },
+  { faultLine: "Güneydoğu Anadolu Fay Hattı", count: 45, region: "Güneydoğu", description: "Minimal aktivite" },
 ];
 
 // Deprem büyüklük dağılımı verisi
@@ -151,9 +152,11 @@ const EarthquakeStats = () => {
   // Bar chart için press state'ler
   const { state: cityChartState } = useChartPressState({ x: "", y: { count: 0 } });
   const { state: magnitudeChartState } = useChartPressState({ x: "", y: { count: 0 } });
+  const { state: faultChartState } = useChartPressState({ x: "", y: { count: 0 } });
   
   const [activeCityIndex, setActiveCityIndex] = useState(-1);
   const [activeMagnitudeIndex, setActiveMagnitudeIndex] = useState(-1);
+  const [activeFaultIndex, setActiveFaultIndex] = useState(-1);
 
   const k = useSharedValue(1);
   const tx = useSharedValue(0);
@@ -200,6 +203,14 @@ const EarthquakeStats = () => {
     () => magnitudeChartState.matchedIndex.value,
     (matchedIndex) => {
       runOnJS(setActiveMagnitudeIndex)(matchedIndex);
+    },
+  );
+
+  // Fault chart press reactions
+  useAnimatedReaction(
+    () => faultChartState.matchedIndex.value,
+    (matchedIndex) => {
+      runOnJS(setActiveFaultIndex)(matchedIndex);
     },
   );
 
@@ -264,11 +275,11 @@ const EarthquakeStats = () => {
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-              <ScrollView 
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
-        >
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
+      >
         <View style={styles.container}>
           {/* Ana başlık */}
           <Text style={styles.sectionTitle}>Bölgelere Göre Deprem Dağılımı</Text>
@@ -448,10 +459,6 @@ const EarthquakeStats = () => {
                         topLeft: 8,
                         topRight: 8,
                       }}
-                      // labels={{
-                      //   color: colors.textPrimary,
-                      //   position: "top",
-                      // }}
                     >
                       <SkiaLinearGradient
                         start={vec(0, 0)}
@@ -524,6 +531,137 @@ const EarthquakeStats = () => {
             )}
           </View>
 
+          {/* En Aktif Fay Hatları Bar Chart */}
+          <View style={styles.chartCardContainer}>
+            <Text style={styles.chartTitle}>En Aktif Fay Hatları</Text>
+            <View style={styles.barChartContainer}>
+              <CartesianChart
+                chartPressState={faultChartState}
+                data={FAULT_LINE_DATA}
+                xKey="faultLine"
+                yKeys={["count"]}
+                domainPadding={{ left: 60, right: 60, top: 60, bottom: 20 }}
+                domain={{ 
+                  x: [0, FAULT_LINE_DATA.length - 1],
+                  y: [0, Math.max(...FAULT_LINE_DATA.map(d => d.count)) + 50] 
+                }}
+                xAxis={{
+                  tickCount: FAULT_LINE_DATA.length,
+                  labelColor: colors.textSecondary,
+                  lineWidth: 0,
+                  formatXLabel: (value) => value,
+                  linePathEffect: <DashPathEffect intervals={[4, 4]} />,
+                  labelRotate: 0,
+                  labelOffset: 12,
+                }}
+                yAxis={[
+                  {
+                    yKeys: ["count"],
+                    labelColor: colors.textSecondary,
+                    linePathEffect: <DashPathEffect intervals={[4, 4]} />,
+                    lineColor: colors.border,
+                    formatYLabel: (value) => `${value}`,
+                    tickCount: 6,
+                  },
+                ]}
+                frame={{
+                  lineWidth: 0,
+                }}
+              >
+                {({ points, chartBounds }) => {
+                  return points.count.map((point, index) => {
+                    // Fay hattına göre renk gradasyonu
+                    const getBarColors = (idx: number) => {
+                      const colorPairs = [
+                        [colors.danger, colors.danger + "80"],        // Kuzey Anadolu (kırmızı)
+                        ["#8B0000", "#8B000080"],                     // Doğu Anadolu (koyu kırmızı)
+                        [colors.warning, colors.warning + "80"],      // Batı Anadolu (turuncu)
+                        [colors.info, colors.info + "80"],           // Güney Anadolu (mavi)
+                        [colors.success, colors.success + "80"],      // İç Anadolu (yeşil)
+                      ];
+                      return colorPairs[idx] || colorPairs[0];
+                    };
+
+                    const [startColor, endColor] = getBarColors(index);
+
+                    return (
+                      <Bar
+                        key={index}
+                        points={[point]}
+                        chartBounds={chartBounds}
+                        animate={{ type: "spring", damping: 15, stiffness: 150 }}
+                        innerPadding={0.5}
+                        roundedCorners={{
+                          topLeft: 8,
+                          topRight: 8,
+                        }}
+                      >
+                        <SkiaLinearGradient
+                          start={vec(0, 0)}
+                          end={vec(0, 400)}
+                          colors={[startColor, endColor]}
+                        />
+                      </Bar>
+                    );
+                  });
+                }}
+              </CartesianChart>
+            </View>
+            {activeFaultIndex >= 0 && (
+              <View style={styles.chartTooltip}>
+                <Text style={styles.tooltipCity}>
+                  {FAULT_LINE_DATA[activeFaultIndex]?.faultLine}
+                </Text>
+                <Text style={styles.tooltipCount}>
+                  {FAULT_LINE_DATA[activeFaultIndex]?.count} deprem
+                </Text>
+                <Text style={styles.tooltipRegion}>
+                  {FAULT_LINE_DATA[activeFaultIndex]?.region} Bölgesi
+                </Text>
+              </View>
+            )}
+
+            {/* Fay Hatları Açıklama */}
+            <View style={styles.chartExplanation}>
+              <Text style={styles.explanationTitle}>Türkiye'nin En Aktif Fay Hatları</Text>
+              <Text style={styles.explanationText}>
+                Y ekseni deprem sayısını, X ekseni fay hatlarını göstermektedir. Kuzey Anadolu Fay Hattı en aktif fay hattı olarak öne çıkmaktadır. 
+                Fay hatlarının aktivitesi bölgesel tektonik hareketlerle doğrudan ilişkilidir. Grafikteki sütunlara dokunarak detaylı bilgi alabilirsiniz.
+              </Text>
+            </View>
+
+            {/* Fay Hatları Detay Listesi */}
+            <View style={styles.chartDetailsList}>
+              <Text style={styles.detailsListTitle}>En Aktif Fay Hatları Analizi</Text>
+              {FAULT_LINE_DATA.map((fault, index) => {
+                const percentage = ((fault.count / FAULT_LINE_DATA.reduce((sum, f) => sum + f.count, 0)) * 100).toFixed(1);
+                const riskLevel = fault.count > 200 ? "Çok Yüksek" : fault.count > 150 ? "Yüksek" : fault.count > 100 ? "Orta" : "Düşük";
+                const riskLevelShort = fault.count > 200 ? "Çok Yük." : fault.count > 150 ? "Yüksek" : fault.count > 100 ? "Orta" : "Düşük";
+                const riskColor = riskLevel === "Çok Yüksek" ? colors.danger : riskLevel === "Yüksek" ? "#8B0000" : riskLevel === "Orta" ? colors.warning : colors.success;
+                
+                return (
+                  <View key={index} style={styles.faultListItem}>
+                    <View style={[styles.faultColorBar, { backgroundColor: riskColor }]} />
+                    <View style={styles.faultInfo}>
+                      <View style={styles.faultHeader}>
+                        <Text style={styles.faultName} numberOfLines={2}>{fault.faultLine}</Text>
+                        <View style={[styles.riskBadgeSmall, { backgroundColor: riskColor + "20", marginLeft: 8 }]}>
+                          <Text style={[styles.riskTextSmall, { color: riskColor }]}>{riskLevelShort}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.faultStats}>
+                        <Text style={styles.faultCount}>{fault.count} deprem</Text>
+                        <Text style={styles.faultPercentage}>%{percentage}</Text>
+                      </View>
+                      <Text style={styles.faultRegion}>{fault.region} Bölgesi</Text>
+                      <Text style={styles.faultDescription}>{fault.description}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
           {/* Deprem Büyüklük Dağılımı Bar Chart */}
           <View style={styles.chartCardContainer}>
             <Text style={styles.chartTitle}>Deprem Büyüklük Dağılımı</Text>
@@ -544,7 +682,7 @@ const EarthquakeStats = () => {
                   lineWidth: 0,
                   formatXLabel: (value) => value,
                   linePathEffect: <DashPathEffect intervals={[4, 4]} />,
-                  labelRotation: 0,
+                  labelRotate: 0,
                   labelOffset: 12,
                 }}
                 yAxis={[
@@ -588,15 +726,6 @@ const EarthquakeStats = () => {
                           topLeft: 8,
                           topRight: 8,
                         }}
-                        labels={({ point }) => [
-                          {
-                            text: `${point.count}`,
-                            color: colors.textPrimary,
-                            position: "top",
-                            fontSize: 12,
-                            fontWeight: "600",
-                          },
-                        ]}
                       >
                         <SkiaLinearGradient
                           start={vec(0, 0)}
@@ -759,8 +888,8 @@ const EarthquakeStats = () => {
             </Text>
           </View>
         </View>
-              </ScrollView>
-      </View>
+      </ScrollView>
+    </View>
     );
 };
 
@@ -1075,6 +1204,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: "500",
   },
+  tooltipRegion: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: "400",
+    marginTop: 2,
+  },
   // Chart Açıklama Stilleri
   chartExplanation: {
     backgroundColor: colors.surface,
@@ -1149,13 +1284,18 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   riskBadgeSmall: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    width: 70,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   riskTextSmall: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "600",
+    textAlign: "center",
   },
   detailsListStats: {
     flexDirection: "row",
@@ -1235,6 +1375,72 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     lineHeight: 17,
+    fontStyle: "italic",
+  },
+  // Fay Hatları Listesi Stilleri
+  faultListItem: {
+    flexDirection: "row",
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  faultColorBar: {
+    width: 4,
+    borderRadius: 2,
+    marginRight: 14,
+  },
+  faultInfo: {
+    flex: 1,
+  },
+  faultHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 6,
+  },
+  faultNameContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  faultName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  faultStats: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  faultCount: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: "500",
+  },
+  faultPercentage: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  faultRegion: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 17,
+    fontStyle: "italic",
+  },
+  faultDescription: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    lineHeight: 15,
+    marginTop: 4,
     fontStyle: "italic",
   },
   // Risk Özeti Stilleri
