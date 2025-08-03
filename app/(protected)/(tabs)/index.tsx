@@ -30,6 +30,7 @@ import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
 import EmergencyButton from "@/components/EmergencyButton";
 import EarthquakeRiskAnalyzer from "@/components/EarthquakeRiskAnalyzer";
+import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -38,6 +39,7 @@ import { useLocation } from "@/hooks/useLocation";
 import { useSafetyScore, useProfile } from "@/hooks/useProfile";
 import { useNews } from "@/hooks/useNews";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
+import { usePremium } from "@/hooks/usePremium";
 import { eventEmitter } from "@/lib/eventEmitter";
 
 // Yeni düzenlenmiş görev verisi (sabit)
@@ -250,6 +252,9 @@ export default function HomeScreen() {
 
 
   const { sendEmergencySMS, loading } = EmergencyButton();
+
+  // Premium hook'u
+  const { hasAccessToFeature, getCurrentLevel, isPremium } = usePremium();
 
   // AI sorulari için örnek veriler
   const aiQuestions = [
@@ -600,90 +605,53 @@ export default function HomeScreen() {
           </View>
           <Divider style={styles.divider} />
           
-          {/* Deprem Risk Analizi Modülü */}
-          <View style={styles.riskAnalysisContainer}>
-            <Text style={styles.sectionTitle}>Konumuna Göre Deprem Riskini Öğren</Text>
-            <View style={styles.riskAnalysisCard}>
-              <LinearGradient
-                colors={[colors.gradientOne, colors.gradientTwo]}
-                style={styles.riskAnalysisGradient}
-              >
-                <View style={styles.riskAnalysisContent}>
-                  <View style={styles.riskAnalysisHeader}>
-                    <MaterialCommunityIcons name="map-marker-alert" size={32} color="#fff" />
-                    <Text style={styles.riskAnalysisTitle}>Deprem Risk Analizi</Text>
-                  </View>
-                  <Text style={styles.riskAnalysisDescription}>
-                    İl, ilçe ve mahalle seçerek konumunuza özel deprem risk değerlendirmesi yapın
-                  </Text>
-                  <View style={styles.riskAnalysisFeatures}>
-                    <View style={styles.riskAnalysisFeature}>
-                      <Ionicons name="location" size={16} color="#fff" />
-                      <Text style={styles.riskAnalysisFeatureText}>İl, İlçe, Mahalle Seçimi</Text>
+          {/* Deprem Risk Analizi Modülü - Premium Özellik */}
+          <PremiumFeatureGate featureId="earthquake-risk-analysis">
+            <View style={styles.riskAnalysisContainer}>
+              <Text style={styles.sectionTitle}>Konumuna Göre Deprem Riskini Öğren</Text>
+              <View style={styles.riskAnalysisCard}>
+                <LinearGradient
+                  colors={[colors.gradientOne, colors.gradientTwo]}
+                  style={styles.riskAnalysisGradient}
+                >
+                  <View style={styles.riskAnalysisContent}>
+                    <View style={styles.riskAnalysisHeader}>
+                      <MaterialCommunityIcons name="map-marker-alert" size={32} color="#fff" />
+                      <Text style={styles.riskAnalysisTitle}>Deprem Risk Analizi</Text>
                     </View>
-                    <View style={styles.riskAnalysisFeature}>
-                      <Ionicons name="search" size={16} color="#fff" />
-                      <Text style={styles.riskAnalysisFeatureText}>Google Maps Entegrasyonu</Text>
+                    <Text style={styles.riskAnalysisDescription}>
+                      İl, ilçe ve mahalle seçerek konumunuza özel deprem risk değerlendirmesi yapın
+                    </Text>
+                    <View style={styles.riskAnalysisFeatures}>
+                      <View style={styles.riskAnalysisFeature}>
+                        <Ionicons name="location" size={16} color="#fff" />
+                        <Text style={styles.riskAnalysisFeatureText}>İl, İlçe, Mahalle Seçimi</Text>
+                      </View>
+                      <View style={styles.riskAnalysisFeature}>
+                        <Ionicons name="search" size={16} color="#fff" />
+                        <Text style={styles.riskAnalysisFeatureText}>Google Maps Entegrasyonu</Text>
+                      </View>
+                      <View style={styles.riskAnalysisFeature}>
+                        <Ionicons name="analytics" size={16} color="#fff" />
+                        <Text style={styles.riskAnalysisFeatureText}>Detaylı Risk Analizi</Text>
+                      </View>
                     </View>
-                    <View style={styles.riskAnalysisFeature}>
-                      <Ionicons name="analytics" size={16} color="#fff" />
-                      <Text style={styles.riskAnalysisFeatureText}>Detaylı Risk Analizi</Text>
-                    </View>
                   </View>
-                </View>
-              </LinearGradient>
-              <TouchableOpacity
-                style={styles.riskAnalysisButton}
-                activeOpacity={0.8}
-                onPress={() => {
-                  // Navigate to risk analyzer screen
-                  router.push('/(protected)/earthquake-risk-analyzer');
-                }}
-              >
-                <Text style={styles.riskAnalysisButtonText}>Risk Analizi Yap</Text>
-                <Ionicons name="arrow-forward" size={20} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <Divider style={styles.divider} />
-          
-          {/* Premium CTA Button */}
-          <View style={styles.premiumCTAContainer}>
-            <TouchableOpacity
-              style={styles.premiumCTAButton}
-              activeOpacity={0.8}
-              onPress={() => router.push('/premium-packages')}
-            >
-              <View style={styles.premiumCTAContent}>
-                <View style={styles.premiumCTAHeader}>
-                  <Ionicons name="star" size={24} color="#FFD700" />
-                  <Text style={styles.premiumCTATitle}>Premium'a Geç</Text>
-                  <View style={styles.premiumCTABadge}>
-                    <Text style={styles.premiumCTABadgeText}>%17 İndirim</Text>
-                  </View>
-                </View>
-                <Text style={styles.premiumCTASubtitle}>
-                  Gelişmiş güvenlik özellikleri ve reklamsız deneyim
-                </Text>
-                <View style={styles.premiumCTAFeatures}>
-                  <View style={styles.premiumCTAFeature}>
-                    <Ionicons name="shield-checkmark" size={16} color="#4CAF50" />
-                    <Text style={styles.premiumCTAFeatureText}>Gelişmiş Bildirimler</Text>
-                  </View>
-                  <View style={styles.premiumCTAFeature}>
-                    <Ionicons name="map" size={16} color="#4CAF50" />
-                    <Text style={styles.premiumCTAFeatureText}>Tam Harita Erişimi</Text>
-                  </View>
-                  <View style={styles.premiumCTAFeature}>
-                    <Ionicons name="close-circle" size={16} color="#4CAF50" />
-                    <Text style={styles.premiumCTAFeatureText}>Reklamsız Deneyim</Text>
-                  </View>
-                </View>
+                </LinearGradient>
+                <TouchableOpacity
+                  style={styles.riskAnalysisButton}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    // Navigate to risk analyzer screen
+                    router.push('/(protected)/earthquake-risk-analyzer');
+                  }}
+                >
+                  <Text style={styles.riskAnalysisButtonText}>Risk Analizi Yap</Text>
+                  <Ionicons name="arrow-forward" size={20} color={colors.primary} />
+                </TouchableOpacity>
               </View>
-              <Ionicons name="arrow-forward" size={20} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
+            </View>
+          </PremiumFeatureGate>
 
           <Divider style={styles.divider} />
           <View style={styles.aiQuestionsSection}>
@@ -1233,41 +1201,43 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.detailedSettingsButton}
-              onPress={() => {
-                router.push("/(protected)/notification-settings");
-              }}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.detailedSettingsGradient}
+            <PremiumFeatureGate featureId="smart-notification-engine" compact={true}>
+              <TouchableOpacity
+                style={styles.detailedSettingsButton}
+                onPress={() => {
+                  router.push("/(protected)/notification-settings");
+                }}
+                activeOpacity={0.8}
               >
-                <View style={styles.detailedSettingsContent}>
-                  <View style={styles.detailedSettingsLeft}>
-                    <View style={styles.detailedSettingsIconContainer}>
-                      <Ionicons name="settings" size={20} color="#fff" />
+                <LinearGradient
+                  colors={[colors.primary, colors.primaryDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.detailedSettingsGradient}
+                >
+                  <View style={styles.detailedSettingsContent}>
+                    <View style={styles.detailedSettingsLeft}>
+                      <View style={styles.detailedSettingsIconContainer}>
+                        <Ionicons name="settings" size={20} color="#fff" />
+                      </View>
+                      <View style={styles.detailedSettingsTextContainer}>
+                        <Text style={styles.detailedSettingsText}>
+                          Akıllı Bildirim Kural Motoru
+                        </Text>
+                        <Text style={styles.detailedSettingsSubtext}>
+                          Özelleştirilebilir deprem bildirimleri
+                        </Text>
+                      </View>
                     </View>
-                    <View style={styles.detailedSettingsTextContainer}>
-                      <Text style={styles.detailedSettingsText}>
-                        Akıllı Bildirim Kural Motoru
-                      </Text>
-                      <Text style={styles.detailedSettingsSubtext}>
-                        Özelleştirilebilir deprem bildirimleri
-                      </Text>
-                    </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color="#fff"
+                    />
                   </View>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={20}
-                    color="#fff"
-                  />
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
+                </LinearGradient>
+              </TouchableOpacity>
+            </PremiumFeatureGate>
           </View>
 
           <Divider style={styles.divider} />
@@ -1421,7 +1391,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={styles.premiumCTAButton}
               activeOpacity={0.8}
-              onPress={() => router.push('/premium-packages')}
+              onPress={() => router.push('/(protected)/premium-packages')}
             >
               <View style={styles.premiumCTAContent}>
                 <View style={styles.premiumCTAHeader}>

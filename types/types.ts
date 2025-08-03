@@ -119,3 +119,90 @@ export interface NotificationSource {
   code: string;
   description: string;
 }
+
+// Premium Package Types
+export enum PremiumPackageType {
+  FREE = 'free',
+  SUPPORTER = 'supporter', // Seviye 1
+  PROTECTOR = 'protector',  // Seviye 2
+  SPONSOR = 'sponsor'       // Seviye 3
+}
+
+export enum PaymentPeriod {
+  MONTHLY = 'monthly',
+  YEARLY = 'yearly'
+}
+
+export interface UserPremiumInfo {
+  isPremium: boolean;
+  premiumPackageType: PremiumPackageType;
+  paymentPeriod: PaymentPeriod;
+  firstPaymentDate: string;
+  nextPaymentDate: string;
+  subscriptionStartDate: string;
+  subscriptionEndDate: string;
+  isActive: boolean;
+  autoRenew: boolean;
+}
+
+// Premium Feature Requirements
+export interface PremiumFeature {
+  id: string;
+  name: string;
+  description: string;
+  requiredLevel: PremiumPackageType;
+  location: string; // Screen/component where this feature is used
+}
+
+// Premium Features Configuration
+export const PREMIUM_FEATURES: PremiumFeature[] = [
+  {
+    id: 'all-comments',
+    name: 'Tüm Yorumları Gör',
+    description: 'Deprem detay sayfasında tüm kullanıcı deneyimlerini ve yorumlarını görüntüleyerek topluluk bilgilerine erişim sağlayın',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'earthquake-detail'
+  },
+  {
+    id: 'terra-ai-comment',
+    name: 'Terra AI Yorumu',
+    description: 'Deprem hakkında AI tarafından oluşturulan detaylı teknik analiz, etki alanı hesaplaması ve güvenlik önerilerini görün',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'earthquake-detail'
+  },
+  {
+    id: 'earthquake-risk-analysis',
+    name: 'Deprem Risk Analizi',
+    description: 'İl, ilçe, mahalle ve konum bazlı zemin analizi, altyapı sistemleri ve fay hatlarına göre kişiselleştirilmiş risk değerlendirmesi yapın',
+    requiredLevel: PremiumPackageType.PROTECTOR,
+    location: 'home'
+  },
+  {
+    id: 'detailed-statistics',
+    name: 'Detaylı İstatistikler',
+    description: 'Gelişmiş deprem istatistikleri, trend analizleri, bölgesel karşılaştırmalar ve gelecek tahmin modellerine erişim',
+    requiredLevel: PremiumPackageType.PROTECTOR,
+    location: 'home'
+  },
+  {
+    id: 'smart-notification-engine',
+    name: 'Akıllı Bildirim Kural Motoru',
+    description: 'Kişiselleştirilmiş bildirim kuralları, otomatik filtreleme, öncelik sıralaması ve gelişmiş uyarı sistemleri',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'home'
+  },
+  {
+    id: 'risk-assessment-ai',
+    name: 'Risk Değerlendirme AI Yorumu',
+    description: 'Risk formu sonuçlarında AI tarafından oluşturulan detaylı analiz, iyileştirme önerileri ve kişiselleştirilmiş güvenlik planları',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'risk-form'
+  },
+  {
+    id: 'terra-ai-daily-questions',
+    name: 'Terra AI Günlük 3+ Soru Kullanımı',
+    description: 'Günlük AI soru limitini aşın, sınırsız AI desteği alın ve deprem güvenliği konusunda uzman seviyesinde bilgi edinin',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'ai-menu'
+  }
+];

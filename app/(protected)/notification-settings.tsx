@@ -18,7 +18,9 @@ import { colors } from '@/constants/colors';
 import { NotificationSetting, NotificationSource } from '@/types/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotificationSettings } from '@/hooks/useNotificationSettings';
+import { usePremium } from '@/hooks/usePremium';
 import { LinearGradient } from 'expo-linear-gradient';
+import PremiumFeatureGate from '@/components/PremiumFeatureGate';
 // import turkeyCitiesData from '../../assets/data/turkey-cities-districts.json';
 
 // Türkiye şehirleri - doğrudan tanımlama
@@ -150,6 +152,7 @@ export default function NotificationSettingsScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [dummyToggleValue, setDummyToggleValue] = useState(true);
+  const { hasAccessToFeature } = usePremium();
   
   const {
     notifications,
@@ -310,12 +313,23 @@ export default function NotificationSettingsScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Bildirim Ayarları</Text>
         <TouchableOpacity
-          style={styles.addButton}
+          style={[
+            styles.addButton,
+            !hasAccessToFeature('smart-notification-engine') && styles.lockedButton
+          ]}
           onPress={() => {
-            router.push("/(protected)/create-notification-wizard");
+            if (hasAccessToFeature('smart-notification-engine')) {
+              router.push("/(protected)/create-notification-wizard");
+            } else {
+              router.push('/(protected)/premium-packages');
+            }
           }}
         >
-          <Ionicons name="add" size={24} color={colors.primary} />
+          {hasAccessToFeature('smart-notification-engine') ? (
+            <Ionicons name="add" size={24} color={colors.primary} />
+          ) : (
+            <Ionicons name="lock-closed" size={20} color={colors.premium.primary} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -750,6 +764,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 40,
+  },
+  lockedButton: {
+    backgroundColor: colors.premium.light,
+    borderWidth: 1,
+    borderColor: colors.premium.primary,
   },
 
 }); 

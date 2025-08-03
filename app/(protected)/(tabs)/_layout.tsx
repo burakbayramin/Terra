@@ -195,6 +195,7 @@ export default function TabLayout() {
         name="earthquake-stats"
         options={{
           href: null, // This hides the tab from the tab bar
+          headerShown: false,
         }}
       />
       {/* <Tabs.Screen

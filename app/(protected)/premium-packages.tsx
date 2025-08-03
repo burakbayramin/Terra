@@ -5,287 +5,318 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Alert,
+  Dimensions,
 } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { Ionicons, MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@/constants/colors';
-import { PremiumPackage } from '@/types/types';
-import { Ionicons } from '@expo/vector-icons';
 import { usePremium } from '@/hooks/usePremium';
+import { PremiumPackageType, PaymentPeriod } from '@/types/types';
 
 const { width } = Dimensions.get('window');
 
+interface Package {
+  id: PremiumPackageType;
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  features: string[];
+  isPopular?: boolean;
+  level: number;
+  icon: string;
+  gradient: string[];
+  badgeColor: string;
+}
+
+const packages: Package[] = [
+  {
+    id: PremiumPackageType.FREE,
+    name: 'Ücretsiz Paket',
+    description: 'Temel özelliklerle başlayın',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    level: 0,
+    icon: 'shield-outline',
+    gradient: ['#94A3B8', '#64748B'],
+    badgeColor: colors.premium.silver,
+    features: [
+      'Temel deprem bildirimleri',
+      'Sınırlı harita görüntüleme',
+      'Temel istatistikler',
+      'Sınırlı haber erişimi',
+      'Reklamlar',
+    ],
+  },
+  {
+    id: PremiumPackageType.SUPPORTER,
+    name: 'Destekleyici Paket',
+    description: 'Premium özelliklerin kapısını aralayın',
+    monthlyPrice: 29.99,
+    yearlyPrice: 299.99,
+    level: 1,
+    isPopular: false,
+    icon: 'star',
+    gradient: [colors.gradientOne, colors.gradientTwo],
+    badgeColor: colors.premium.gold,
+    features: [
+      'Reklamsız deneyim',
+      'Tüm yorumları görüntüleme',
+      'Terra AI deprem yorumları',
+      'Akıllı bildirim kural motoru',
+      'Risk değerlendirme AI yorumu',
+      'Günlük 3+ AI soru hakkı',
+      'Öncelikli haber erişimi',
+    ],
+  },
+  {
+    id: PremiumPackageType.PROTECTOR,
+    name: 'Koruyucu Paket',
+    description: 'Gelişmiş güvenlik ve analiz araçları',
+    monthlyPrice: 49.99,
+    yearlyPrice: 499.99,
+    level: 2,
+    isPopular: true,
+    icon: 'shield-checkmark',
+    gradient: [colors.gradientOne, colors.gradientTwo],
+    badgeColor: colors.premium.gold,
+    features: [
+      'Destekleyici özellikleri',
+      'Deprem risk analizi',
+      'Detaylı istatistikler',
+      'Gelişmiş güvenlik özellikleri',
+      'Acil durum planları',
+      'Kişiselleştirilmiş risk analizi',
+      '7/24 destek',
+    ],
+  },
+  {
+    id: PremiumPackageType.SPONSOR,
+    name: 'Sponsor Paket',
+    description: 'En üst düzey özellikler ve ayrıcalıklar',
+    monthlyPrice: 99.99,
+    yearlyPrice: 999.99,
+    level: 3,
+    icon: 'diamond',
+    gradient: [colors.gradientOne, colors.gradientTwo],
+    badgeColor: colors.premium.gold,
+    features: [
+      'Koruyucu özellikleri',
+      'Özel araştırma raporları',
+      'Öncelikli müşteri desteği',
+      'Beta özelliklerine erken erişim',
+      'Özel etkinliklere davet',
+      'Uygulama geliştirme sürecinde söz hakkı',
+      'Aile üyeleri için ek hesaplar',
+    ],
+  },
+];
+
 export default function PremiumPackagesScreen() {
   const router = useRouter();
-  const { currentPackage, subscribeToPackage, isLoading } = usePremium();
   const insets = useSafeAreaInsets();
-  const [selectedPeriod, setSelectedPeriod] = useState<'monthly' | 'yearly'>('monthly');
-  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const { getCurrentLevel, isPremium } = usePremium();
+  const [selectedPeriod, setSelectedPeriod] = useState<PaymentPeriod>(PaymentPeriod.MONTHLY);
+  const currentLevel = getCurrentLevel();
 
-  const premiumPackages: PremiumPackage[] = [
-    {
-      id: 'free',
-      name: 'Free Package',
-      price: 0,
-      currency: '₺',
-      period: 'monthly',
-      features: [
-        'Temel deprem bildirimleri',
-        'Sınırlı harita görüntüleme',
-        'Reklamlar',
-        'Temel istatistikler',
-        'Sınırlı haber erişimi',
-      ],
-      isCurrent: currentPackage?.id === 'free',
-    },
-    {
-      id: 'supporter',
-      name: 'Supporter Package',
-      price: 29.99,
-      currency: '₺',
-      period: 'monthly',
-      features: [
-        'Reklamsız deneyim',
-        'Gelişmiş deprem bildirimleri',
-        'Tam harita erişimi',
-        'Detaylı istatistikler',
-        'Öncelikli haber erişimi',
-        'Özel bildirim sesleri',
-      ],
-      isCurrent: currentPackage?.id === 'supporter',
-    },
-    {
-      id: 'protector',
-      name: 'Protector Package',
-      price: 49.99,
-      currency: '₺',
-      period: 'monthly',
-      features: [
-        'Supporter özellikleri',
-        'Gelişmiş güvenlik özellikleri',
-        'Acil durum planları',
-        'Kişiselleştirilmiş risk analizi',
-        '7/24 destek',
-        'Aile üyeleri için ek hesaplar',
-      ],
-      isPopular: true,
-      isCurrent: currentPackage?.id === 'protector',
-    },
-    {
-      id: 'sponsor',
-      name: 'Sponsor Package',
-      price: 99.99,
-      currency: '₺',
-      period: 'monthly',
-      features: [
-        'Protector özellikleri',
-        'Özel araştırma raporları',
-        'Öncelikli müşteri desteği',
-        'Beta özelliklerine erken erişim',
-        'Özel etkinliklere davet',
-        'Uygulama geliştirme sürecinde söz hakkı',
-      ],
-      isCurrent: currentPackage?.id === 'sponsor',
-    },
-  ];
-
-  const getYearlyPrice = (monthlyPrice: number) => {
-    return Math.round(monthlyPrice * 10); // %17 indirim (12 ay yerine 10 ay)
-  };
-
-  const handlePackageSelect = (packageId: string) => {
-    setSelectedPackage(packageId);
-  };
-
-  const handleSubscribe = async () => {
-    if (!selectedPackage) {
-      Alert.alert('Hata', 'Lütfen bir paket seçin');
-      return;
-    }
-
-    const selectedPkg = premiumPackages.find(pkg => pkg.id === selectedPackage);
-    if (!selectedPkg) return;
-
+  const handleSubscribe = (packageId: PremiumPackageType) => {
     Alert.alert(
-      'Abonelik Onayı',
-      `${selectedPkg.name} paketine abone olmak istediğinizden emin misiniz?`,
+      'Abonelik',
+      `${packages.find(p => p.id === packageId)?.name} paketine abone olmak istediğinizden emin misiniz?`,
       [
-        { text: 'İptal', style: 'cancel' },
-        { 
-          text: 'Abone Ol', 
-          onPress: async () => {
-            const result = await subscribeToPackage(selectedPackage);
-            if (result.success) {
-              Alert.alert('Başarılı', 'Aboneliğiniz başarıyla oluşturuldu!');
-              router.back();
-            } else {
-              Alert.alert('Hata', result.error || 'Abonelik işlemi başarısız');
-            }
-          }
-        }
+        {
+          text: 'İptal',
+          style: 'cancel',
+        },
+        {
+          text: 'Abone Ol',
+          onPress: () => {
+            Alert.alert('Başarılı', 'Aboneliğiniz başarıyla oluşturuldu!');
+          },
+        },
       ]
     );
   };
 
-  const renderPackageCard = (pkg: PremiumPackage) => {
-    const price = selectedPeriod === 'yearly' ? getYearlyPrice(pkg.price) : pkg.price;
-    const isSelected = selectedPackage === pkg.id;
-    const isCurrent = pkg.isCurrent;
+  const getPrice = (package_: Package) => {
+    return selectedPeriod === PaymentPeriod.MONTHLY 
+      ? package_.monthlyPrice 
+      : package_.yearlyPrice;
+  };
 
-    return (
-      <TouchableOpacity
-        key={pkg.id}
-        style={[
-          styles.packageCard,
-          isSelected && styles.selectedCard,
-          pkg.isPopular && styles.popularCard,
-        ]}
-        onPress={() => handlePackageSelect(pkg.id)}
-        disabled={isCurrent}
-      >
-        {pkg.isPopular && (
-          <View style={styles.popularBadge}>
-            <Text style={styles.popularText}>En Popüler</Text>
-          </View>
-        )}
-        
-        {isCurrent && (
-          <View style={styles.currentBadge}>
-            <Text style={styles.currentText}>Mevcut Plan</Text>
-          </View>
-        )}
+  const getPeriodText = () => {
+    return selectedPeriod === PaymentPeriod.MONTHLY ? 'ay' : 'yıl';
+  };
 
-        <View style={styles.packageHeader}>
-          <Text style={styles.packageName}>{pkg.name}</Text>
-          <View style={styles.priceContainer}>
-            <Text style={styles.currency}>{pkg.currency}</Text>
-            <Text style={styles.price}>{price}</Text>
-            <Text style={styles.period}>
-              /{selectedPeriod === 'yearly' ? 'yıl' : 'ay'}
+  const isCurrentPackage = (packageId: PremiumPackageType) => {
+    return currentLevel === packageId;
+  };
+
+  const canUpgrade = (packageLevel: number) => {
+    const currentLevelNumber = packages.find(p => p.id === currentLevel)?.level || 0;
+    return packageLevel > currentLevelNumber;
+  };
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <Stack.Screen
+        options={{
+          title: 'Premium Paketler',
+          headerTitleStyle: {
+            fontFamily: 'NotoSans-Bold',
+          },
+          headerTintColor: colors.light.textPrimary,
+        }}
+      />
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Hero Section */}
+        <LinearGradient
+          colors={[colors.gradientOne, colors.gradientTwo]}
+          style={styles.heroSection}
+        >
+          <View style={styles.heroContent}>
+            <View style={styles.heroIconContainer}>
+              <Ionicons 
+                name="star" 
+                size={48} 
+                color="#fff" 
+              />
+            </View>
+            <Text style={styles.heroTitle}>Premium'a Geçin</Text>
+            <Text style={styles.heroSubtitle}>
+              Gelişmiş özellikler ve reklamsız deneyim için premium paketlerimizi keşfedin
             </Text>
           </View>
-          {selectedPeriod === 'yearly' && pkg.price > 0 && (
-            <Text style={styles.savingsText}>
-              %17 tasarruf
-            </Text>
-          )}
+        </LinearGradient>
+
+        {/* Payment Period Selector */}
+        <View style={styles.periodSelectorContainer}>
+          <View style={styles.periodSelector}>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                selectedPeriod === PaymentPeriod.MONTHLY && styles.periodButtonActive
+              ]}
+              onPress={() => setSelectedPeriod(PaymentPeriod.MONTHLY)}
+            >
+              <Text style={[
+                styles.periodButtonText,
+                selectedPeriod === PaymentPeriod.MONTHLY && styles.periodButtonTextActive
+              ]}>
+                Aylık
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.periodButton,
+                selectedPeriod === PaymentPeriod.YEARLY && styles.periodButtonActive
+              ]}
+              onPress={() => setSelectedPeriod(PaymentPeriod.YEARLY)}
+            >
+              <Text style={[
+                styles.periodButtonText,
+                selectedPeriod === PaymentPeriod.YEARLY && styles.periodButtonTextActive
+              ]}>
+                Yıllık
+              </Text>
+              <View style={styles.savingsBadge}>
+                <Text style={styles.savingsBadgeText}>%17 İndirim</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.featuresContainer}>
-          {pkg.features.map((feature, index) => (
-            <View key={index} style={styles.featureItem}>
-              <Ionicons 
-                name="checkmark-circle" 
-                size={20} 
-                color={colors.primary} 
-              />
-              <Text style={styles.featureText}>{feature}</Text>
+        {/* Packages */}
+        <View style={styles.packagesContainer}>
+          {packages.map((package_) => (
+            <View key={package_.id} style={styles.packageCard}>
+              {package_.isPopular && (
+                <View style={styles.popularBadge}>
+                  <Text style={styles.popularBadgeText}>En Popüler</Text>
+                </View>
+              )}
+              
+              <LinearGradient
+                colors={package_.gradient}
+                style={styles.packageHeader}
+              >
+                <View style={styles.packageHeaderContent}>
+                  <View style={styles.packageIconContainer}>
+                    <Ionicons 
+                      name={package_.icon as any} 
+                      size={32} 
+                      color="#fff" 
+                    />
+                  </View>
+                  <Text style={styles.packageName}>{package_.name}</Text>
+                  <Text style={styles.packageDescription}>{package_.description}</Text>
+                </View>
+              </LinearGradient>
+
+              <View style={styles.packageBody}>
+                <View style={styles.priceContainer}>
+                  <Text style={styles.priceLabel}>Fiyat</Text>
+                  <Text style={styles.priceValue}>
+                    {getPrice(package_) === 0 ? 'Ücretsiz' : `₺${getPrice(package_)}/${getPeriodText()}`}
+                  </Text>
+                </View>
+
+                <View style={styles.featuresContainer}>
+                  <Text style={styles.featuresTitle}>Özellikler</Text>
+                  {package_.features.map((feature, index) => (
+                    <View key={index} style={styles.featureItem}>
+                      <Ionicons 
+                        name="checkmark-circle" 
+                        size={16} 
+                        color={colors.success} 
+                      />
+                      <Text style={styles.featureText}>{feature}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.subscribeButton,
+                    isCurrentPackage(package_.id) && styles.currentPackageButton,
+                    !canUpgrade(package_.level) && styles.disabledButton
+                  ]}
+                  onPress={() => handleSubscribe(package_.id)}
+                  disabled={isCurrentPackage(package_.id) || !canUpgrade(package_.level)}
+                >
+                  <LinearGradient
+                    colors={isCurrentPackage(package_.id) 
+                      ? ['#94A3B8', '#64748B'] 
+                      : [colors.gradientOne, colors.gradientTwo]
+                    }
+                    style={styles.subscribeButtonGradient}
+                  >
+                    <Text style={styles.subscribeButtonText}>
+                      {isCurrentPackage(package_.id) 
+                        ? 'Mevcut Paket' 
+                        : canUpgrade(package_.level) 
+                          ? 'Abone Ol' 
+                          : 'Yetersiz Seviye'
+                      }
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </View>
 
-        {isSelected && !isCurrent && (
-          <View style={styles.selectedIndicator}>
-            <Ionicons name="checkmark" size={24} color="white" />
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
-
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.light.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Premium Paketler</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <ScrollView 
-        style={styles.content} 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom }}
-      >
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Paketler yükleniyor...</Text>
-          </View>
-        ) : (
-          <>
-            <View style={styles.introSection}>
-              <Text style={styles.introTitle}>Güvenliğiniz İçin En İyi Seçenekler</Text>
-              <Text style={styles.introSubtitle}>
-                Premium paketlerimiz ile deprem güvenliğinizi artırın ve gelişmiş özelliklere erişim sağlayın.
-              </Text>
-            </View>
-
-        <View style={styles.periodSelector}>
-          <TouchableOpacity
-            style={[
-              styles.periodButton,
-              selectedPeriod === 'monthly' && styles.activePeriodButton,
-            ]}
-            onPress={() => setSelectedPeriod('monthly')}
-          >
-            <Text style={[
-              styles.periodButtonText,
-              selectedPeriod === 'monthly' && styles.activePeriodButtonText,
-            ]}>
-              Aylık
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.periodButton,
-              selectedPeriod === 'yearly' && styles.activePeriodButton,
-            ]}
-            onPress={() => setSelectedPeriod('yearly')}
-          >
-            <Text style={[
-              styles.periodButtonText,
-              selectedPeriod === 'yearly' && styles.activePeriodButtonText,
-            ]}>
-              Yıllık
-            </Text>
-            <View style={styles.yearlyBadge}>
-              <Text style={styles.yearlyBadgeText}>%17 İndirim</Text>
-            </View>
-          </TouchableOpacity>
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Premium paketlerimiz ile güvenliğinizi artırın ve reklamsız deneyim yaşayın.
+          </Text>
         </View>
-
-        <View style={styles.packagesContainer}>
-          {premiumPackages.map(renderPackageCard)}
-        </View>
-
-        <View style={styles.infoSection}>
-          <View style={styles.infoItem}>
-            <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
-            <Text style={styles.infoText}>Güvenli ödeme</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Ionicons name="refresh" size={20} color={colors.primary} />
-            <Text style={styles.infoText}>İstediğiniz zaman iptal</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Ionicons name="help-circle" size={20} color={colors.primary} />
-            <Text style={styles.infoText}>7/24 destek</Text>
-          </View>
-            </View>
-          </>
-        )}
       </ScrollView>
-
-      {selectedPackage && !premiumPackages.find(pkg => pkg.id === selectedPackage)?.isCurrent && (
-        <View style={[styles.bottomContainer, { paddingBottom: insets.bottom }]}>
-          <TouchableOpacity style={styles.subscribeButton} onPress={handleSubscribe}>
-            <Text style={styles.subscribeButtonText}>Abone Ol</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 }
@@ -295,50 +326,39 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.light.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.surface,
-  },
-  backButton: {
-    padding: 5,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.light.textPrimary,
-  },
-  placeholder: {
-    width: 34,
-  },
-  content: {
+  scrollView: {
     flex: 1,
   },
-  introSection: {
-    padding: 20,
+  heroSection: {
+    paddingVertical: 40,
+    paddingHorizontal: 20,
     alignItems: 'center',
   },
-  introTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.light.textPrimary,
-    textAlign: 'center',
-    marginBottom: 10,
+  heroContent: {
+    alignItems: 'center',
   },
-  introSubtitle: {
+  heroIconContainer: {
+    marginBottom: 16,
+  },
+  heroTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  heroSubtitle: {
     fontSize: 16,
-    color: colors.light.textSecondary,
+    color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
     lineHeight: 24,
   },
+  periodSelectorContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
   periodSelector: {
     flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 20,
     backgroundColor: colors.light.surface,
     borderRadius: 12,
     padding: 4,
@@ -351,175 +371,154 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-  activePeriodButton: {
+  periodButtonActive: {
     backgroundColor: colors.primary,
   },
   periodButtonText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.light.textSecondary,
   },
-  activePeriodButtonText: {
-    color: 'white',
+  periodButtonTextActive: {
+    color: '#fff',
   },
-  yearlyBadge: {
+  savingsBadge: {
     position: 'absolute',
     top: -8,
-    right: 10,
-    backgroundColor: '#FFD700',
+    right: 8,
+    backgroundColor: colors.success,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: 8,
   },
-  yearlyBadgeText: {
+  savingsBadgeText: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '600',
+    color: '#fff',
   },
   packagesContainer: {
     paddingHorizontal: 20,
-    gap: 16,
+    paddingBottom: 20,
   },
   packageCard: {
-    backgroundColor: colors.light.surface,
+    backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    marginBottom: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
     position: 'relative',
-  },
-  selectedCard: {
-    borderColor: colors.primary,
-    backgroundColor: '#FFF5F2',
-  },
-  popularCard: {
-    borderColor: '#FFD700',
   },
   popularBadge: {
     position: 'absolute',
-    top: -10,
-    right: 20,
-    backgroundColor: '#FFD700',
-    paddingHorizontal: 12,
+    top: 16,
+    right: 16,
+    backgroundColor: colors.premium.gold,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    zIndex: 1,
   },
-  popularText: {
+  popularBadgeText: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  currentBadge: {
-    position: 'absolute',
-    top: -10,
-    right: 20,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  currentText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: '600',
+    color: '#2d3748',
   },
   packageHeader: {
-    marginBottom: 20,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+  },
+  packageHeaderContent: {
+    alignItems: 'center',
+  },
+  packageIconContainer: {
+    marginBottom: 12,
   },
   packageName: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: colors.light.textPrimary,
-    marginBottom: 10,
+    color: '#fff',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  packageDescription: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  packageBody: {
+    padding: 20,
   },
   priceContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.light.surface,
   },
-  currency: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.primary,
+  priceLabel: {
+    fontSize: 14,
+    color: colors.light.textSecondary,
+    marginBottom: 4,
   },
-  price: {
-    fontSize: 32,
+  priceValue: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: colors.primary,
-    marginHorizontal: 4,
-  },
-  period: {
-    fontSize: 16,
-    color: colors.light.textSecondary,
-  },
-  savingsText: {
-    fontSize: 14,
-    color: '#4CAF50',
-    fontWeight: '600',
-    marginTop: 4,
   },
   featuresContainer: {
-    gap: 12,
+    marginBottom: 24,
+  },
+  featuresTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.light.textPrimary,
+    marginBottom: 16,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    marginBottom: 12,
   },
   featureText: {
-    fontSize: 16,
-    color: colors.light.textPrimary,
-    flex: 1,
-  },
-  selectedIndicator: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoSection: {
-    marginTop: 30,
-    marginBottom: 20,
-    paddingHorizontal: 20,
-    gap: 16,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  infoText: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.light.textSecondary,
-  },
-  bottomContainer: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: colors.light.surface,
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 20,
   },
   subscribeButton: {
-    backgroundColor: colors.primary,
     borderRadius: 12,
+    overflow: 'hidden',
+  },
+  currentPackageButton: {
+    opacity: 0.7,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  subscribeButtonGradient: {
     paddingVertical: 16,
     alignItems: 'center',
   },
   subscribeButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 100,
-  },
-  loadingText: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 14,
     color: colors.light.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 }); 

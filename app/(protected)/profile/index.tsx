@@ -25,6 +25,8 @@ import { colors } from "@/constants/colors";
 import { Divider } from "react-native-paper";
 import { useSafetyScore, useSafetyFormCompletion, useProfile, useProfileCompletion } from "@/hooks/useProfile";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePremium } from "@/hooks/usePremium";
+import { PremiumPackageType } from "@/types/types";
 
 // Animated Progress Bar Component
 const AnimatedProgressBar = ({ percentage }: { percentage: number }) => {
@@ -63,6 +65,23 @@ export default function ProfileScreen() {
   const { data: safetyScore = 0 } = useSafetyScore(user?.id || "");
   const { data: hasCompletedForm = false, isLoading: isLoadingFormCompletion } = useSafetyFormCompletion(user?.id || "");
   const { data: profileCompletion = { percentage: 0, completedFields: 0, totalFields: 6 } } = useProfileCompletion(user?.id || "");
+  const { getCurrentLevel } = usePremium();
+  
+  // Premium seviye adını getir
+  const getPremiumLevelName = (level: PremiumPackageType): string => {
+    switch (level) {
+      case PremiumPackageType.FREE:
+        return 'Katılımcı (Ücretsiz)';
+      case PremiumPackageType.SUPPORTER:
+        return 'Destekleyici (Premium 1)';
+      case PremiumPackageType.PROTECTOR:
+        return 'Koruyucu (Premium 2)';
+      case PremiumPackageType.SPONSOR:
+        return 'Sponsor (Premium 3)';
+      default:
+        return 'Katılımcı (Ücretsiz)';
+    }
+  };
   
   // Check if form is completed (even if score is 0, it means assessment was done)
   const isFormCompleted = hasCompletedForm;
@@ -113,6 +132,24 @@ export default function ProfileScreen() {
             />
           </View>
           <Text style={styles.userName}>Burak Bayramin</Text>
+
+          {/* Premium Status */}
+          <View style={styles.premiumStatusContainer}>
+            <TouchableOpacity
+              style={styles.premiumStatusChip}
+              activeOpacity={0.7}
+              onPress={() => router.push("/(protected)/premium-packages")}
+            >
+              <Ionicons
+                name="star"
+                size={16}
+                color="#FFD700"
+              />
+              <Text style={styles.premiumStatusText}>
+                Üyelik Seviyesi: {getPremiumLevelName(getCurrentLevel())}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Security Score Chip - Only show if assessment is completed and has a score > 0 */}
           {isFormCompleted && safetyScore > 0 && (
@@ -522,6 +559,25 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: "NotoSans-Bold",
     marginBottom: 5,
+  },
+  premiumStatusContainer: {
+    marginBottom: 10,
+  },
+  premiumStatusChip: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  premiumStatusText: {
+    color: "white",
+    fontSize: 14,
+    fontFamily: "NotoSans-Medium",
+    marginLeft: 8,
   },
   chipContainer: {
     flexDirection: "row",

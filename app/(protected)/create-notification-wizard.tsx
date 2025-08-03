@@ -17,9 +17,11 @@ import { colors } from '@/constants/colors';
 import { NotificationSetting, NotificationSource } from '@/types/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotificationSettings } from '@/hooks/useNotificationSettings';
+import { usePremium } from '@/hooks/usePremium';
 import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import { FlatList } from 'react-native';
+import PremiumFeatureGate from '@/components/PremiumFeatureGate';
 
 // Türkiye şehirleri
 const turkeyCities = [
@@ -157,6 +159,7 @@ export default function CreateNotificationWizard() {
   const router = useRouter();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { hasAccessToFeature } = usePremium();
   const { addNotification, isAdding } = useNotificationSettings();
   
   const [currentStep, setCurrentStep] = useState(1);
@@ -462,171 +465,171 @@ export default function CreateNotificationWizard() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Yeni Bildirim</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View 
-            style={[
-              styles.progressFill, 
-              { width: `${(currentStep / 5) * 100}%` }
-            ]} 
-          />
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Yeni Bildirim</Text>
+          <View style={styles.headerSpacer} />
         </View>
-        <Text style={styles.progressText}>
-          Adım {currentStep} / 5
-        </Text>
-      </View>
 
-      {/* Step Title */}
-      <View style={styles.stepHeader}>
-        <Text style={styles.stepTitle}>{steps[currentStep - 1].title}</Text>
-        <Text style={styles.stepSubtitle}>{steps[currentStep - 1].subtitle}</Text>
-      </View>
-
-      {/* Step Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {renderStepContent()}
-      </ScrollView>
-
-      {/* Navigation Buttons */}
-      <View style={[styles.navigationContainer, { paddingBottom: insets.bottom }]}>
-        {currentStep > 1 && (
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={goToPreviousStep}
-          >
-            <Ionicons name="arrow-back" size={20} color={colors.primary} />
-            <Text style={styles.navButtonText}>Geri</Text>
-          </TouchableOpacity>
-        )}
-        
-        {currentStep < 5 ? (
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              styles.nextButton,
-              !canProceed() && styles.disabledButton,
-              { marginLeft: 'auto' }
-            ]}
-            onPress={goToNextStep}
-            disabled={!canProceed()}
-          >
-            <Text style={[
-              styles.navButtonText,
-              styles.nextButtonText,
-              !canProceed() && styles.disabledButtonText
-            ]}>
-              İleri
-            </Text>
-            <Ionicons 
-              name="arrow-forward" 
-              size={20} 
-              color={canProceed() ? '#fff' : colors.gray} 
+        {/* Progress Bar */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View 
+              style={[
+                styles.progressFill, 
+                { width: `${(currentStep / 5) * 100}%` }
+              ]} 
             />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              styles.createButton,
-              !canProceed() && styles.disabledButton,
-              { marginLeft: 'auto' }
-            ]}
-            onPress={createNotification}
-            disabled={!canProceed() || isAdding}
-          >
-            {isAdding ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Text style={[
-                  styles.navButtonText,
-                  styles.createButtonText,
-                  !canProceed() && styles.disabledButtonText
-                ]}>
-                  Oluştur
-                </Text>
-                <Ionicons 
-                  name="checkmark" 
-                  size={20} 
-                  color={canProceed() ? '#fff' : colors.gray} 
-                />
-              </>
-            )}
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Şehir Seçici Modal */}
-      <Modal
-        visible={showCitySelector}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={[styles.modalContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setShowCitySelector(false)}
-            >
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Şehir Seçimi</Text>
-            <TouchableOpacity
-              style={styles.modalSaveButton}
-              onPress={() => setShowCitySelector(false)}
-            >
-              <Text style={styles.modalSaveButtonText}>Tamam</Text>
-            </TouchableOpacity>
           </View>
+          <Text style={styles.progressText}>
+            Adım {currentStep} / 5
+          </Text>
+        </View>
 
-          <View style={styles.citySelectorContent}>
-            <Text style={styles.citySelectorInfo}>
-              {selectedCities.length} şehir seçildi
-            </Text>
-            
-            <FlatList
-              data={turkeyCities}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.cityItem,
-                    selectedCities.includes(item.name) && styles.cityItemSelected
-                  ]}
-                  onPress={() => toggleCity(item.name)}
-                >
-                  <View style={styles.cityItemContent}>
-                    <Text style={[
-                      styles.cityItemText,
-                      selectedCities.includes(item.name) && styles.cityItemTextSelected
-                    ]}>
-                      {item.name}
-                    </Text>
-                    {selectedCities.includes(item.name) && (
-                      <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                    )}
-                  </View>
-                </TouchableOpacity>
+        {/* Step Title */}
+        <View style={styles.stepHeader}>
+          <Text style={styles.stepTitle}>{steps[currentStep - 1].title}</Text>
+          <Text style={styles.stepSubtitle}>{steps[currentStep - 1].subtitle}</Text>
+        </View>
+
+        {/* Step Content */}
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {renderStepContent()}
+        </ScrollView>
+
+        {/* Navigation Buttons */}
+        <View style={[styles.navigationContainer, { paddingBottom: insets.bottom }]}>
+          {currentStep > 1 && (
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={goToPreviousStep}
+            >
+              <Ionicons name="arrow-back" size={20} color={colors.primary} />
+              <Text style={styles.navButtonText}>Geri</Text>
+            </TouchableOpacity>
+          )}
+          
+          {currentStep < 5 ? (
+            <TouchableOpacity
+              style={[
+                styles.navButton,
+                styles.nextButton,
+                !canProceed() && styles.disabledButton,
+                { marginLeft: 'auto' }
+              ]}
+              onPress={goToNextStep}
+              disabled={!canProceed()}
+            >
+              <Text style={[
+                styles.navButtonText,
+                styles.nextButtonText,
+                !canProceed() && styles.disabledButtonText
+              ]}>
+                İleri
+              </Text>
+              <Ionicons 
+                name="arrow-forward" 
+                size={20} 
+                color={canProceed() ? '#fff' : colors.gray} 
+              />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.navButton,
+                styles.createButton,
+                !canProceed() && styles.disabledButton,
+                { marginLeft: 'auto' }
+              ]}
+              onPress={createNotification}
+              disabled={!canProceed() || isAdding}
+            >
+              {isAdding ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Text style={[
+                    styles.navButtonText,
+                    styles.createButtonText,
+                    !canProceed() && styles.disabledButtonText
+                  ]}>
+                    Oluştur
+                  </Text>
+                  <Ionicons 
+                    name="checkmark" 
+                    size={20} 
+                    color={canProceed() ? '#fff' : colors.gray} 
+                  />
+                </>
               )}
-              showsVerticalScrollIndicator={false}
-            />
-          </View>
+            </TouchableOpacity>
+          )}
         </View>
-      </Modal>
-    </View>
+
+        {/* Şehir Seçici Modal */}
+        <Modal
+          visible={showCitySelector}
+          animationType="slide"
+          presentationStyle="pageSheet"
+        >
+          <View style={[styles.modalContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowCitySelector(false)}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Şehir Seçimi</Text>
+              <TouchableOpacity
+                style={styles.modalSaveButton}
+                onPress={() => setShowCitySelector(false)}
+              >
+                <Text style={styles.modalSaveButtonText}>Tamam</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.citySelectorContent}>
+              <Text style={styles.citySelectorInfo}>
+                {selectedCities.length} şehir seçildi
+              </Text>
+              
+              <FlatList
+                data={turkeyCities}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.cityItem,
+                      selectedCities.includes(item.name) && styles.cityItemSelected
+                    ]}
+                    onPress={() => toggleCity(item.name)}
+                  >
+                    <View style={styles.cityItemContent}>
+                      <Text style={[
+                        styles.cityItemText,
+                        selectedCities.includes(item.name) && styles.cityItemTextSelected
+                      ]}>
+                        {item.name}
+                      </Text>
+                      {selectedCities.includes(item.name) && (
+                        <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                )}
+                showsVerticalScrollIndicator={false}
+              />
+            </View>
+          </View>
+        </Modal>
+      </View>
   );
 }
 

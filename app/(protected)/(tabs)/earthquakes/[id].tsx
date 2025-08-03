@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
   Modal,
 } from "react-native";
+import Toast from "@/components/Toast";
 import { PanGestureHandler, State } from "react-native-gesture-handler";
 
 import MapView, { Marker } from "react-native-maps";
@@ -26,6 +27,8 @@ import { colors } from "@/constants/colors";
 import { useEarthquakeById } from "@/hooks/useEarthquakes";
 import { useEarthquakeFeltReports } from "@/hooks/useEarthquakeFeltReports";
 import { useEarthquakeComments } from "@/hooks/useEarthquakeComments";
+import { usePremium } from "@/hooks/usePremium";
+import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const getMagnitudeColor = (magnitude: number) => {
@@ -258,12 +261,24 @@ export default function EarthquakeDetailScreen() {
   const [editCommentText, setEditCommentText] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
   
+  // Toast states
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
+  
   // AI Comment states
   const [showAIComment, setShowAIComment] = useState(false);
   const [aiCommentText, setAiCommentText] = useState('');
   const [displayedAIComment, setDisplayedAIComment] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isTypingAI, setIsTypingAI] = useState(false);
+
+  // Toast function
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
 
   // Custom back navigation based on source
   const handleBackNavigation = useCallback(() => {
@@ -335,6 +350,9 @@ export default function EarthquakeDetailScreen() {
     comments: allComments,
   } = useEarthquakeComments(id as string);
 
+  // Premium hook'u
+  const { hasAccessToFeature, getCurrentLevel } = usePremium();
+
   // Loading durumu
   if (isLoading) {
     return (
@@ -380,7 +398,7 @@ export default function EarthquakeDetailScreen() {
 
   const handleAddComment = async () => {
     if (!newComment.trim()) {
-      Alert.alert("Uyarı", "Lütfen bir yorum yazın.");
+      showToast("Lütfen bir yorum yazın.", "error");
       return;
     }
 
@@ -388,16 +406,16 @@ export default function EarthquakeDetailScreen() {
       console.log('Starting to add comment...');
       await addComment(newComment.trim());
       setNewComment("");
-      Alert.alert("Başarılı", "Yorumunuz eklendi.");
+      showToast("Yorumunuz eklendi.", "success");
     } catch (error) {
       console.error('handleAddComment error:', error);
       
       // Detaylı hata mesajı
       const errorMessage = error instanceof Error 
-        ? `Hata: ${error.message}` 
+        ? error.message 
         : "Yorum eklenirken bilinmeyen hata oluştu.";
         
-      Alert.alert("Hata", errorMessage);
+      showToast(errorMessage, "error");
     }
   };
 
@@ -409,7 +427,7 @@ export default function EarthquakeDetailScreen() {
 
   const handleUpdateComment = async () => {
     if (!editCommentText.trim()) {
-      Alert.alert("Uyarı", "Lütfen bir yorum yazın.");
+      showToast("Lütfen bir yorum yazın.", "error");
       return;
     }
 
@@ -418,11 +436,11 @@ export default function EarthquakeDetailScreen() {
       setShowEditModal(false);
       setEditingComment(null);
       setEditCommentText("");
-      Alert.alert("Başarılı", "Yorumunuz güncellendi.");
+      showToast("Yorumunuz güncellendi.", "success");
     } catch (error) {
-      Alert.alert(
-        "Hata",
-        error instanceof Error ? error.message : "Yorum güncellenirken hata oluştu."
+      showToast(
+        error instanceof Error ? error.message : "Yorum güncellenirken hata oluştu.",
+        "error"
       );
     }
   };
@@ -439,11 +457,11 @@ export default function EarthquakeDetailScreen() {
           onPress: async () => {
             try {
               await deleteComment(commentId);
-              Alert.alert("Başarılı", "Yorum silindi.");
+              showToast("Yorum silindi.", "success");
             } catch (error) {
-              Alert.alert(
-                "Hata",
-                error instanceof Error ? error.message : "Yorum silinirken hata oluştu."
+              showToast(
+                error instanceof Error ? error.message : "Yorum silinirken hata oluştu.",
+                "error"
               );
             }
           },
@@ -660,10 +678,9 @@ export default function EarthquakeDetailScreen() {
                 try {
                   await toggleFeltReport();
                 } catch (error) {
-                  Alert.alert(
-                    "Hata",
+                  showToast(
                     error instanceof Error ? error.message : "Bir hata oluştu",
-                    [{ text: "Tamam" }]
+                    "error"
                   );
                 }
               }}
@@ -923,56 +940,58 @@ export default function EarthquakeDetailScreen() {
               </View>
             </View>
 
-            {/* AI Comment Section */}
-            <View style={styles.aiCommentSection}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="sparkles-outline" size={22} color="#2d3748" />
-                <Text style={styles.sectionTitle}>Terra AI Deprem Yorumu</Text>
-              </View>
-
-              {!showAIComment ? (
-                <TouchableOpacity
-                  style={styles.aiCommentButton}
-                  onPress={generateAIComment}
-                  disabled={isGeneratingAI}
-                >
-                  {isGeneratingAI ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <>
-                      <Ionicons name="sparkles" size={20} color="#ffffff" />
-                      <Text style={styles.aiCommentButtonText}>
-                        Yorumu Gör
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.aiCommentContent}>
-                  <View style={styles.aiCommentHeader}>
-                    <Ionicons name="sparkles" size={20} color={colors.primary} />
-                    <Text style={styles.aiCommentTitle}>Terra AI Analizi</Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setShowAIComment(false);
-                        setDisplayedAIComment('');
-                        setAiCommentText('');
-                        setIsTypingAI(false);
-                      }}
-                      style={styles.closeAICommentButton}
-                    >
-                      <Ionicons name="close" size={18} color="#6b7280" />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.aiCommentTextContainer}>
-                    <Text style={styles.aiCommentText}>
-                      {displayedAIComment}
-                      {isTypingAI && <Text style={styles.typingCursor}>|</Text>}
-                    </Text>
-                  </View>
+            {/* AI Comment Section - Premium Özellik */}
+            <PremiumFeatureGate featureId="terra-ai-comment">
+              <View style={styles.aiCommentSection}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="sparkles-outline" size={22} color="#2d3748" />
+                  <Text style={styles.sectionTitle} numberOfLines={2} ellipsizeMode="tail">Terra AI Deprem Yorumu</Text>
                 </View>
-              )}
-            </View>
+
+                {!showAIComment ? (
+                  <TouchableOpacity
+                    style={styles.aiCommentButton}
+                    onPress={generateAIComment}
+                    disabled={isGeneratingAI}
+                  >
+                    {isGeneratingAI ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <>
+                        <Ionicons name="sparkles" size={20} color="#ffffff" />
+                        <Text style={styles.aiCommentButtonText}>
+                          Yorumu Gör
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.aiCommentContent}>
+                    <View style={styles.aiCommentHeader}>
+                      <Ionicons name="sparkles" size={20} color={colors.primary} />
+                      <Text style={styles.aiCommentTitle}>Terra AI Analizi</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setShowAIComment(false);
+                          setDisplayedAIComment('');
+                          setAiCommentText('');
+                          setIsTypingAI(false);
+                        }}
+                        style={styles.closeAICommentButton}
+                      >
+                        <Ionicons name="close" size={18} color="#6b7280" />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.aiCommentTextContainer}>
+                      <Text style={styles.aiCommentText}>
+                        {displayedAIComment}
+                        {isTypingAI && <Text style={styles.typingCursor}>|</Text>}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </PremiumFeatureGate>
 
             {/* Comments Section */}
             <View style={styles.commentsSection}>
@@ -1040,14 +1059,10 @@ export default function EarthquakeDetailScreen() {
                     
                     {/* View All Comments Button - sadece 3'ten fazla yorum varsa göster */}
                     {allComments && allComments.length > 3 && (
-                      <TouchableOpacity
-                        style={styles.viewAllCommentsButton}
-                        onPress={() => {
-                          console.log('Navigating to all-comments with params:', {
-                            earthquakeId: id,
-                            earthquakeTitle: earthquake.title,
-                          });
-                          try {
+                      <PremiumFeatureGate featureId="all-comments" compact>
+                        <TouchableOpacity
+                          style={styles.viewAllCommentsButton}
+                          onPress={() => {
                             router.push({
                               pathname: "/(protected)/(tabs)/earthquakes/all-comments",
                               params: {
@@ -1055,17 +1070,16 @@ export default function EarthquakeDetailScreen() {
                                 earthquakeTitle: earthquake.title,
                               },
                             });
-                          } catch (error) {
-                            console.error('Navigation error:', error);
-                            Alert.alert('Hata', 'Sayfa açılırken bir hata oluştu.');
-                          }
-                        }}
-                      >
-                        <Text style={styles.viewAllCommentsText}>
-                          Tüm Yorumları Gör ({allComments.length} yorum)
-                        </Text>
-                        <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-                      </TouchableOpacity>
+                          }}
+                        >
+                          <View style={styles.viewAllCommentsContent}>
+                            <Text style={styles.viewAllCommentsText}>
+                              Tüm Yorumları Gör ({allComments.length} yorum)
+                            </Text>
+                            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                          </View>
+                        </TouchableOpacity>
+                      </PremiumFeatureGate>
                     )}
 
                   </>
@@ -1134,6 +1148,15 @@ export default function EarthquakeDetailScreen() {
             </View>
           </View>
         </Modal>
+        
+        {/* Toast Component */}
+        <Toast
+          visible={toastVisible}
+          message={toastMessage}
+          type={toastType}
+          onHide={() => setToastVisible(false)}
+          duration={3000}
+        />
         </KeyboardAvoidingView>
       </View>
     </PanGestureHandler>
@@ -1264,12 +1287,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
+    paddingRight: 10,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#2d3748",
     marginLeft: 8,
+    flex: 1,
+    flexShrink: 1,
   },
   mapContainer: {
     backgroundColor: "#ffffff",
@@ -1618,6 +1644,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginHorizontal: 16,
     marginBottom: 16,
+  },
+  viewAllCommentsContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   viewAllCommentsText: {
     fontSize: 16,

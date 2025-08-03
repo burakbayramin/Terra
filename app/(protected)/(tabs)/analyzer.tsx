@@ -15,6 +15,11 @@ import { colors } from "../../../constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { Divider } from "react-native-paper";
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { usePremium } from "@/hooks/usePremium";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 interface ChatMessage {
   id: string;
@@ -65,6 +70,14 @@ const predefinedQuestions: PredefinedQuestion[] = [
 const genAI = new GoogleGenerativeAI("AIzaSyA9gguZnXbvAcOmVvDxTm1vNVeIqOYfejA");
 
 export default function AnalyzerScreen() {
+  const { user } = useAuth();
+  const { hasAccessToFeature } = usePremium();
+  
+  // Günlük soru limiti state'leri
+  const [dailyQuestionCount, setDailyQuestionCount] = useState(0);
+  const [lastQuestionDate, setLastQuestionDate] = useState<string>('');
+  const [isLimitReached, setIsLimitReached] = useState(false);
+  
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "0",
@@ -81,6 +94,45 @@ export default function AnalyzerScreen() {
   const [currentTypingMessageId, setCurrentTypingMessageId] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
+
+  // Günlük soru sayısını kontrol et
+  const checkDailyQuestionLimit = async () => {
+    if (!user) return false;
+    
+    const today = new Date().toDateString();
+    
+    // Eğer bugün ilk soru ise, sayacı sıfırla
+    if (lastQuestionDate !== today) {
+      setDailyQuestionCount(0);
+      setLastQuestionDate(today);
+      setIsLimitReached(false);
+      return true;
+    }
+    
+    // Premium kullanıcılar için limit yok
+    if (hasAccessToFeature('terra-ai-daily-questions')) {
+      return true;
+    }
+    
+    // Ücretsiz kullanıcılar için 3 soru limiti
+    if (dailyQuestionCount >= 3) {
+      setIsLimitReached(true);
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Soru sayısını artır
+  const incrementQuestionCount = () => {
+    const today = new Date().toDateString();
+    if (lastQuestionDate !== today) {
+      setDailyQuestionCount(1);
+      setLastQuestionDate(today);
+    } else {
+      setDailyQuestionCount(prev => prev + 1);
+    }
+  };
 
   // Typing effect fonksiyonu
   const typeText = (text: string, messageId: string, speed: number = 30) => {
@@ -102,7 +154,20 @@ export default function AnalyzerScreen() {
     }, speed);
   };
 
-  const handlePredefinedQuestion = (question: PredefinedQuestion) => {
+  const handlePredefinedQuestion = async (question: PredefinedQuestion) => {
+    // Günlük limit kontrolü
+    const canAskQuestion = await checkDailyQuestionLimit();
+    if (!canAskQuestion) {
+      const limitMessage: ChatMessage = {
+        id: Date.now().toString(),
+        text: "Günlük soru limitinize ulaştınız. Premium üyeliğe geçerek sınırsız soru sorabilirsiniz.",
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, limitMessage]);
+      return;
+    }
+
     // Kullanıcının sorusunu ekle
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -123,6 +188,9 @@ export default function AnalyzerScreen() {
     // Sorulan soruyu listeye ekle
     setAskedQuestions((prev) => [...prev, question.id]);
     
+    // Soru sayısını artır
+    incrementQuestionCount();
+    
     // Typing effect başlat
     setTimeout(() => {
       typeText(question.answer, aiMessage.id);
@@ -131,6 +199,20 @@ export default function AnalyzerScreen() {
 
   const handleSendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
+
+    // Günlük limit kontrolü
+    const canAskQuestion = await checkDailyQuestionLimit();
+    if (!canAskQuestion) {
+      const limitMessage: ChatMessage = {
+        id: Date.now().toString(),
+        text: "Günlük soru limitinize ulaştınız. Premium üyeliğe geçerek sınırsız soru sorabilirsiniz.",
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, limitMessage]);
+      setInputText("");
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -160,6 +242,9 @@ export default function AnalyzerScreen() {
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+      
+      // Soru sayısını artır
+      incrementQuestionCount();
       
       // Typing effect başlat
       setTimeout(() => {
@@ -201,6 +286,32 @@ export default function AnalyzerScreen() {
             <View style={styles.onlineIndicator} />
           </View>
         </View>
+
+        {/* Günlük Soru Sayısı */}
+        {!hasAccessToFeature('terra-ai-daily-questions') && (
+          <View style={styles.dailyLimitContainer}>
+            <View style={styles.limitInfo}>
+              <Ionicons name="time-outline" size={16} color={colors.primary} />
+              <Text style={styles.limitText}>
+                Günlük Soru: {dailyQuestionCount}/3
+              </Text>
+            </View>
+            {isLimitReached && (
+              <TouchableOpacity 
+                style={styles.upgradeButton}
+                onPress={() => router.push('/(protected)/premium-packages')}
+              >
+                <LinearGradient
+                  colors={[colors.primary, '#8B5CF6']}
+                  style={styles.upgradeButtonGradient}
+                >
+                  <Ionicons name="sparkles" size={16} color="#fff" />
+                  <Text style={styles.upgradeButtonText}>Premium'a Geç</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         <ScrollView
           ref={scrollViewRef}
@@ -387,7 +498,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.background,
   },
   scrollContent: {
-    paddingBottom: 60,
+    paddingBottom: 40,
   },
   messageWrapper: {
     marginVertical: 6,
@@ -472,7 +583,7 @@ const styles = StyleSheet.create({
   quickQuestionsTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: colors.light.textPrimary,
+    color: "#ffffff",
     marginBottom: 10,
     textAlign: "center",
   },
@@ -499,7 +610,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   quickQuestionText: {
-    color: colors.light.textPrimary,
+    color: "#ffffff",
     fontSize: 12,
     textAlign: "center",
     lineHeight: 16,
@@ -546,5 +657,42 @@ const styles = StyleSheet.create({
   },
   sendButtonText: {
     fontSize: 18,
+  },
+  // Günlük limit stilleri
+  dailyLimitContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(139, 92, 246, 0.2)',
+  },
+  limitInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  limitText: {
+    fontSize: 14,
+    color: colors.light.textPrimary,
+    fontWeight: '500',
+  },
+  upgradeButton: {
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  upgradeButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  upgradeButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
   },
 });
