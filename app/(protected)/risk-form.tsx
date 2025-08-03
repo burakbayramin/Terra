@@ -15,6 +15,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafetyScore, useUpdateProfile } from "@/hooks/useProfile";
+import { supabase } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Option {
   label: string;
@@ -35,6 +37,7 @@ const RiskForm = () => {
   const router = useRouter();
   const { showResults } = useLocalSearchParams();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: currentSafetyScore = 0, isLoading: isLoadingSafetyScore } =
     useSafetyScore(user?.id || "");
   const updateProfileMutation = useUpdateProfile();
@@ -389,12 +392,29 @@ const RiskForm = () => {
       // Calculate final score: current safety score + form result
       const finalScore = Math.max(0, Math.min(100, formScore));
 
-      await updateProfileMutation.mutateAsync({
-        userId: user.id,
-        profileData: {
+      // First, try to upsert the profile to ensure it exists
+      const { error: upsertError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: user.id,
           safety_score: finalScore,
           has_completed_safety_form: true,
-        },
+          updated_at: new Date().toISOString(),
+        });
+
+      if (upsertError) {
+        throw upsertError;
+      }
+
+      // Invalidate and refetch all related queries
+      await queryClient.invalidateQueries({
+        queryKey: ["safetyScore", user.id],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["safetyFormCompletion", user.id],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["profile", user.id],
       });
 
       Alert.alert("Başarılı", `Güvenlik skorunuz güncellendi: %${finalScore}`, [

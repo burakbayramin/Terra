@@ -1,7 +1,6 @@
 import { Stack } from "expo-router";
-import { colors } from "@/constants/colors";
 
-export default function NewsLayout() {
+export default function ProfileLayout() {
   return (
     <Stack>
       <Stack.Screen
@@ -11,59 +10,33 @@ export default function NewsLayout() {
         }}
       />
       <Stack.Screen
-        name="support"
+        name="profile-settings"
         options={{
-          headerTitleAlign: "center",
           headerShown: false,
-          headerTitleStyle: {
-            fontFamily: "NotoSans-Bold",
-            color: colors.light.textPrimary,
-            fontSize: 20,
-          },
-          presentation: "modal",
-          animation: "slide_from_bottom",
-        }}
-      />
-      <Stack.Screen
-        name="community-rules"
-        options={{
-          headerTitleAlign: "center",
-          headerShown: false,
-          headerTitleStyle: {
-            fontFamily: "NotoSans-Bold",
-            color: colors.light.textPrimary,
-            fontSize: 20,
-          },
-          presentation: "modal",
-          animation: "slide_from_bottom",
         }}
       />
       <Stack.Screen
         name="terms-of-service"
         options={{
-          headerTitleAlign: "center",
           headerShown: false,
-          headerTitleStyle: {
-            fontFamily: "NotoSans-Bold",
-            color: colors.light.textPrimary,
-            fontSize: 20,
-          },
-          presentation: "modal",
-          animation: "slide_from_bottom",
         }}
       />
       <Stack.Screen
-        name="profile-settings"
+        name="community-rules"
         options={{
-          headerTitleAlign: "center",
           headerShown: false,
-          headerTitleStyle: {
-            fontFamily: "NotoSans-Bold",
-            color: colors.light.textPrimary,
-            fontSize: 20,
-          },
-          // presentation: "modal",
-          // animation: "slide_from_bottom",
+        }}
+      />
+      <Stack.Screen
+        name="support"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="risk-assessment"
+        options={{
+          headerShown: false,
         }}
       />
     </Stack>

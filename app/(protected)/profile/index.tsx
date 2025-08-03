@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "expo-router";
+import { useAuth } from "@/hooks/useAuth";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Ionicons,
@@ -21,12 +22,21 @@ import {
 } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 import { Divider } from "react-native-paper";
+import { useSafetyScore, useSafetyFormCompletion, useProfile } from "@/hooks/useProfile";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: safetyScore = 0 } = useSafetyScore(user?.id || "");
+  const { data: hasCompletedForm = false, isLoading: isLoadingFormCompletion } = useSafetyFormCompletion(user?.id || "");
+  
+  // Check if form is completed (even if score is 0, it means assessment was done)
+  const isFormCompleted = hasCompletedForm;
+  
   const profileCompletionPercentage = 75;
   const missionCompletionPercentage = 15;
-  const [securityScore] = useState(78);
   const insets = useSafeAreaInsets();
 
   // Güvenlik skoru renk fonksiyonu
@@ -38,6 +48,19 @@ export default function ProfileScreen() {
     if (score >= 25) return "#e67e22"; // Turuncu
     if (score >= 10) return "#e74c3c"; // Kırmızı
     return "#c0392b"; // Koyu Kırmızı
+  };
+
+  // Risk değerlendirme buton rengi fonksiyonu
+  const getRiskButtonColors = (isCompleted: boolean, score: number): [string, string] => {
+    if (!isCompleted) {
+      return ["#f8f9fa", "#e9ecef"]; // Gri gradient - değerlendirme yapılmamış
+    }
+    
+    // Değerlendirme tamamlanmış, skora göre renk belirle
+    if (score >= 80) return ["#27ae60", "#2ecc71"]; // Yeşil gradient
+    if (score >= 60) return ["#f39c12", "#f1c40f"]; // Sarı gradient
+    if (score >= 40) return ["#e67e22", "#f39c12"]; // Turuncu gradient
+    return ["#e74c3c", "#c0392b"]; // Kırmızı gradient (0-39 arası)
   };
 
   return (
@@ -61,33 +84,35 @@ export default function ProfileScreen() {
           </View>
           <Text style={styles.userName}>Burak Bayramin</Text>
 
-          {/* Security Score Chip */}
-          <View style={styles.securityScoreContainer}>
-            <TouchableOpacity
-              style={[
-                styles.securityScoreChip,
-                { borderColor: getScoreColor(securityScore) },
-              ]}
-              activeOpacity={0.7}
-              onPress={() => {
-                // router.push("/(protected)/security-score");
-              }}
-            >
-              <MaterialCommunityIcons
-                name="shield-check"
-                size={16}
-                color={getScoreColor(securityScore)}
-              />
-              <Text
+          {/* Security Score Chip - Only show if assessment is completed and has a score > 0 */}
+          {isFormCompleted && safetyScore > 0 && (
+            <View style={styles.securityScoreContainer}>
+              <TouchableOpacity
                 style={[
-                  styles.securityScoreText,
-                  { color: getScoreColor(securityScore) },
+                  styles.securityScoreChip,
+                  { borderColor: getScoreColor(safetyScore) },
                 ]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  // router.push("/(protected)/security-score");
+                }}
               >
-                % {securityScore}
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <MaterialCommunityIcons
+                  name="shield-check"
+                  size={16}
+                  color={getScoreColor(safetyScore)}
+                />
+                <Text
+                  style={[
+                    styles.securityScoreText,
+                    { color: getScoreColor(safetyScore) },
+                  ]}
+                >
+                  % {safetyScore}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={styles.chipContainer}>
             <View style={styles.profileCompletionChip}>
@@ -188,6 +213,66 @@ export default function ProfileScreen() {
                 onPress={() => router.push("/(protected)/premium-packages")}
               ></TouchableOpacity>
             </TouchableOpacity>
+
+            <View style={styles.riskAssessmentContainer}>
+              <TouchableOpacity
+                style={styles.riskAssessmentButton}
+                onPress={() => {
+                  // Invalidate cache before navigating
+                  queryClient.invalidateQueries({
+                    queryKey: ["safetyScore", user?.id],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["safetyFormCompletion", user?.id],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["profile", user?.id],
+                  });
+                  router.push("/profile/risk-assessment");
+                }}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={getRiskButtonColors(isFormCompleted, safetyScore)}
+                  style={styles.riskAssessmentGradient}
+                >
+                  <View style={styles.riskAssessmentContent}>
+                    <View style={styles.riskAssessmentLeft}>
+                      <View style={[
+                        styles.riskAssessmentIconContainer,
+                        { backgroundColor: isFormCompleted ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.05)" }
+                      ]}>
+                        <MaterialCommunityIcons
+                          name={isFormCompleted ? "shield-check" : "clipboard-check-outline"}
+                          size={24}
+                          color={isFormCompleted ? "#fff" : "#666"}
+                        />
+                      </View>
+                      <View style={styles.riskAssessmentTextContainer}>
+                        <Text style={[
+                          styles.riskAssessmentTitle,
+                          { color: isFormCompleted ? "#fff" : "#1a1a1a" }
+                        ]}>
+                          Risk Değerlendirme
+                        </Text>
+                        <Text style={[
+                          styles.riskAssessmentSubtitle,
+                          { color: isFormCompleted ? "rgba(255, 255, 255, 0.8)" : "#666" }
+                        ]}>
+                          {isFormCompleted ? `Güvenlik Skoru: %${safetyScore}` : "Değerlendirme bekleniyor"}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={24}
+                      color={isFormCompleted ? "#fff" : "#666"}
+                    />
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* <View style={styles.sectionContainer}>
@@ -689,5 +774,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     fontFamily: "NotoSans-Bold",
+  },
+  riskAssessmentContainer: {
+    marginBottom: 15,
+  },
+  riskAssessmentButton: {
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: colors.gradientTwo,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  riskAssessmentGradient: {
+    padding: 20,
+  },
+  riskAssessmentContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  riskAssessmentLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  riskAssessmentIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  riskAssessmentTextContainer: {
+    flex: 1,
+  },
+  riskAssessmentTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    fontFamily: "NotoSans-Bold",
+    marginBottom: 4,
+  },
+  riskAssessmentSubtitle: {
+    fontSize: 14,
+    fontFamily: "NotoSans-Regular",
   },
 });

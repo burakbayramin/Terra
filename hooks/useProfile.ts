@@ -76,11 +76,41 @@ export const useSafetyScore = (userId: string) => {
         .eq("id", userId)
         .single();
 
-      if (error && error.code !== "PGRST116") {
+      if (error) {
+        if (error.code === "PGRST116") {
+          // Profil bulunamadı, skor 0 demektir
+          return 0;
+        }
         throw new Error("Güvenlik skoru alınamadı.");
       }
 
       return data?.safety_score || 0;
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2, // 2 dakika
+    gcTime: 1000 * 60 * 5, // 5 dakika
+  });
+};
+
+export const useSafetyFormCompletion = (userId: string) => {
+  return useQuery({
+    queryKey: ["safetyFormCompletion", userId],
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("has_completed_safety_form")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          // Profil bulunamadı, form tamamlanmamış demektir
+          return false;
+        }
+        throw new Error("Güvenlik formu durumu alınamadı.");
+      }
+
+      return data?.has_completed_safety_form || false;
     },
     enabled: !!userId,
     staleTime: 1000 * 60 * 2, // 2 dakika
