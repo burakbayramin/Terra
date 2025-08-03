@@ -33,17 +33,17 @@ export const usePremium = () => {
       return;
     }
 
-    // Şimdilik statik olarak Destekleyici paket ayarla
+    // Şimdilik statik olarak Katılımcı paket ayarla
     // Daha sonra bu değer profil ekranından güncellenebilir
     setPremiumInfo({
-      isPremium: true,
-      premiumPackageType: PremiumPackageType.SUPPORTER, // Destekleyici (Premium 1)
+      isPremium: false,
+      premiumPackageType: PremiumPackageType.FREE, // Katılımcı (Ücretsiz)
       paymentPeriod: PaymentPeriod.MONTHLY,
       firstPaymentDate: '',
       nextPaymentDate: '',
       subscriptionStartDate: '',
       subscriptionEndDate: '',
-      isActive: true,
+      isActive: false,
       autoRenew: false
     });
   };

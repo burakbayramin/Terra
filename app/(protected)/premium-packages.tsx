@@ -68,7 +68,7 @@ const packages: Package[] = [
       'Terra AI deprem yorumları',
       'Akıllı bildirim kural motoru',
       'Risk değerlendirme AI yorumu',
-      'Günlük 3+ AI soru hakkı',
+      'Limitsiz AI Soru Hakkı',
       'Öncelikli haber erişimi',
     ],
   },
