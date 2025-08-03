@@ -25,6 +25,12 @@ export default function AppLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="earthquake-risk-analyzer"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

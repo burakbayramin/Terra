@@ -30,6 +30,7 @@ import EarthquakeStats from "@/components/EarthquakeStats";
 import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
 import EmergencyButton from "@/components/EmergencyButton";
+import EarthquakeRiskAnalyzer from "@/components/EarthquakeRiskAnalyzer";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -529,6 +530,54 @@ export default function HomeScreen() {
               <Text style={styles.quickAccessText}>İlk Yardım</Text>
             </TouchableOpacity>
           </View>
+          <Divider style={styles.divider} />
+          
+          {/* Deprem Risk Analizi Modülü */}
+          <View style={styles.riskAnalysisContainer}>
+            <Text style={styles.sectionTitle}>Konumuna Göre Deprem Riskini Öğren</Text>
+            <View style={styles.riskAnalysisCard}>
+              <LinearGradient
+                colors={[colors.gradientOne, colors.gradientTwo]}
+                style={styles.riskAnalysisGradient}
+              >
+                <View style={styles.riskAnalysisContent}>
+                  <View style={styles.riskAnalysisHeader}>
+                    <MaterialCommunityIcons name="map-marker-alert" size={32} color="#fff" />
+                    <Text style={styles.riskAnalysisTitle}>Deprem Risk Analizi</Text>
+                  </View>
+                  <Text style={styles.riskAnalysisDescription}>
+                    İl, ilçe ve mahalle seçerek konumunuza özel deprem risk değerlendirmesi yapın
+                  </Text>
+                  <View style={styles.riskAnalysisFeatures}>
+                    <View style={styles.riskAnalysisFeature}>
+                      <Ionicons name="location" size={16} color="#fff" />
+                      <Text style={styles.riskAnalysisFeatureText}>İl, İlçe, Mahalle Seçimi</Text>
+                    </View>
+                    <View style={styles.riskAnalysisFeature}>
+                      <Ionicons name="search" size={16} color="#fff" />
+                      <Text style={styles.riskAnalysisFeatureText}>Google Maps Entegrasyonu</Text>
+                    </View>
+                    <View style={styles.riskAnalysisFeature}>
+                      <Ionicons name="analytics" size={16} color="#fff" />
+                      <Text style={styles.riskAnalysisFeatureText}>Detaylı Risk Analizi</Text>
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+              <TouchableOpacity
+                style={styles.riskAnalysisButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  // Navigate to risk analyzer screen
+                  router.push('/(protected)/earthquake-risk-analyzer');
+                }}
+              >
+                <Text style={styles.riskAnalysisButtonText}>Risk Analizi Yap</Text>
+                <Ionicons name="arrow-forward" size={20} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <Divider style={styles.divider} />
           
           {/* Premium CTA Button */}
@@ -2653,6 +2702,75 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginLeft: 8,
     fontWeight: "500",
+  },
+  // Risk Analysis Module Styles
+  riskAnalysisContainer: {
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    backgroundColor: colors.light.background,
+  },
+  riskAnalysisCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  riskAnalysisGradient: {
+    padding: 20,
+  },
+  riskAnalysisContent: {
+    alignItems: "center",
+  },
+  riskAnalysisHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  riskAnalysisTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#fff",
+    marginLeft: 10,
+  },
+  riskAnalysisDescription: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 15,
+  },
+  riskAnalysisFeatures: {
+    width: "100%",
+  },
+  riskAnalysisFeature: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  riskAnalysisFeatureText: {
+    fontSize: 13,
+    color: "#fff",
+    marginLeft: 8,
+    fontWeight: "500",
+  },
+  riskAnalysisButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.2)",
+  },
+  riskAnalysisButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: colors.primary,
   },
 });
 

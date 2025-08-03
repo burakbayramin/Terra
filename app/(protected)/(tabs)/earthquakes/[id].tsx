@@ -1123,6 +1123,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
+    minHeight: 60,
   },
   feelButtonPressed: {
     backgroundColor: colors.primary,
