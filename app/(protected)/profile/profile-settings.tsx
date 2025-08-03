@@ -18,6 +18,7 @@ import { colors } from "@/constants/colors";
 import cityDistrictData from "@/assets/data/turkey-cities-districts.json";
 import { useAuth } from "@/providers/AuthProvider";
 import { useProfile, useUpdateProfile, useEmergencyContacts } from "@/hooks/useProfile";
+import { useQueryClient } from "@tanstack/react-query";
 import { Profile, City, District } from "@/types/types";
 import EmergencyContactsManager from "@/components/EmergencyContactsManager";
 import LocationConfirmationModal from "@/components/LocationConfirmationModal";
@@ -189,6 +190,7 @@ const CityDistrictSelector = React.memo(
 // ---------------------- ANA SAYFA
 const ProfileSettingsPage = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
 
   const [formData, setFormData] = useState({
@@ -361,6 +363,11 @@ const ProfileSettingsPage = () => {
       // Profile verilerini yeniden yükle (backend'den güncel verileri almak için)
       refetch();
       
+      // Invalidate profile completion cache
+      queryClient.invalidateQueries({
+        queryKey: ["profileCompletion", user?.id],
+      });
+      
       // 1 saniye sonra flag'i sıfırla
       setTimeout(() => {
         setLocationJustConfirmed(false);
@@ -398,6 +405,10 @@ const ProfileSettingsPage = () => {
       { userId: user.id, profileData },
       {
         onSuccess: () => {
+          // Invalidate profile completion cache
+          queryClient.invalidateQueries({
+            queryKey: ["profileCompletion", user.id],
+          });
           Alert.alert("Başarılı", "Profil bilgileriniz kaydedildi");
         },
         onError: (error) => {

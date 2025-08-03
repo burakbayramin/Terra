@@ -146,3 +146,48 @@ export const useEmergencyContacts = (userId: string) => {
     gcTime: 1000 * 60 * 5, // 5 dakika
   });
 };
+
+export const useProfileCompletion = (userId: string) => {
+  return useQuery({
+    queryKey: ["profileCompletion", userId],
+    queryFn: async (): Promise<{ percentage: number; completedFields: number; totalFields: number }> => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("name, surname, city, district, address, emergency_contacts")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          return { percentage: 0, completedFields: 0, totalFields: 6 };
+        }
+        throw new Error("Profil tamamlanma durumu alınamadı.");
+      }
+
+      // Kişisel bilgiler alanlarını kontrol et
+      const fields = [
+        { value: data?.name, name: 'name' },
+        { value: data?.surname, name: 'surname' },
+        { value: data?.city, name: 'city' },
+        { value: data?.district, name: 'district' },
+        { value: data?.address, name: 'address' },
+        { value: data?.emergency_contacts && data.emergency_contacts.length > 0, name: 'emergency_contacts' }
+      ];
+
+      const completedFields = fields.filter(field => {
+        if (field.name === 'emergency_contacts') {
+          return field.value === true; // Boolean değer
+        }
+        return field.value && field.value.toString().trim().length > 0;
+      }).length;
+
+      const totalFields = fields.length;
+      const percentage = Math.round((completedFields / totalFields) * 100);
+
+      return { percentage, completedFields, totalFields };
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2, // 2 dakika
+    gcTime: 1000 * 60 * 5, // 5 dakika
+  });
+};

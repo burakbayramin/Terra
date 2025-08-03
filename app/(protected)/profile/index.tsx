@@ -8,6 +8,7 @@ import {
   Switch,
   ScrollView,
   Linking,
+  Animated,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState } from "react";
@@ -22,8 +23,38 @@ import {
 } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 import { Divider } from "react-native-paper";
-import { useSafetyScore, useSafetyFormCompletion, useProfile } from "@/hooks/useProfile";
+import { useSafetyScore, useSafetyFormCompletion, useProfile, useProfileCompletion } from "@/hooks/useProfile";
 import { useQueryClient } from "@tanstack/react-query";
+
+// Animated Progress Bar Component
+const AnimatedProgressBar = ({ percentage }: { percentage: number }) => {
+  const animatedWidth = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(animatedWidth, {
+      toValue: percentage,
+      duration: 800,
+      useNativeDriver: false,
+    }).start();
+  }, [percentage, animatedWidth]);
+
+  return (
+    <View style={styles.miniProgressBar}>
+      <Animated.View
+        style={[
+          styles.miniProgressFill,
+          { 
+            width: animatedWidth.interpolate({
+              inputRange: [0, 100],
+              outputRange: ['0%', '100%'],
+            }),
+            backgroundColor: percentage === 100 ? '#27ae60' : 'white',
+          },
+        ]}
+      />
+    </View>
+  );
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -31,11 +62,10 @@ export default function ProfileScreen() {
   const queryClient = useQueryClient();
   const { data: safetyScore = 0 } = useSafetyScore(user?.id || "");
   const { data: hasCompletedForm = false, isLoading: isLoadingFormCompletion } = useSafetyFormCompletion(user?.id || "");
+  const { data: profileCompletion = { percentage: 0, completedFields: 0, totalFields: 6 } } = useProfileCompletion(user?.id || "");
   
   // Check if form is completed (even if score is 0, it means assessment was done)
   const isFormCompleted = hasCompletedForm;
-  
-  const profileCompletionPercentage = 75;
   const missionCompletionPercentage = 15;
   const insets = useSafeAreaInsets();
 
@@ -115,28 +145,30 @@ export default function ProfileScreen() {
           )}
 
           <View style={styles.chipContainer}>
-            <View style={styles.profileCompletionChip}>
-              <View style={styles.miniProgressBar}>
-                <View
-                  style={[
-                    styles.miniProgressFill,
-                    { width: `${profileCompletionPercentage}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.profileCompletionText}>
-                Profili tamamla %{profileCompletionPercentage}
+            <TouchableOpacity 
+              style={styles.profileCompletionChip}
+              onPress={() => {
+                // Invalidate profile completion cache before navigating
+                queryClient.invalidateQueries({
+                  queryKey: ["profileCompletion", user?.id],
+                });
+                router.push("/profile/profile-settings");
+              }}
+              activeOpacity={0.7}
+            >
+              <AnimatedProgressBar percentage={profileCompletion.percentage} />
+              <Text style={[
+                styles.profileCompletionText,
+                profileCompletion.percentage === 100 && { color: '#27ae60', fontWeight: 'bold' }
+              ]}>
+                {profileCompletion.percentage === 100 
+                  ? 'Profil Tamamlandı!' 
+                  : `Profili tamamla %${profileCompletion.percentage}`
+                }
               </Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.profileCompletionChip}>
-              <View style={styles.miniProgressBar}>
-                <View
-                  style={[
-                    styles.miniProgressFill,
-                    { width: `${missionCompletionPercentage}%` },
-                  ]}
-                />
-              </View>
+              <AnimatedProgressBar percentage={missionCompletionPercentage} />
               <Text style={styles.profileCompletionText}>
                 Görevleri tamamla %{missionCompletionPercentage}
               </Text>
