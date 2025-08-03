@@ -40,6 +40,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import ViewShot from 'react-native-view-shot';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const { width } = Dimensions.get("window");
 
@@ -183,6 +184,11 @@ const EarthquakeStats = () => {
   const [activeMagnitudeIndex, setActiveMagnitudeIndex] = useState(-1);
   const [activeFaultIndex, setActiveFaultIndex] = useState(-1);
   const [activeTrendIndex, setActiveTrendIndex] = useState(-1);
+  const [showAISummary, setShowAISummary] = useState(false);
+  const [aiSummaryText, setAiSummaryText] = useState('');
+  const [displayedText, setDisplayedText] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
 
   // Grafik referansları
   const pieChartRef = useRef<ViewShot | null>(null);
@@ -256,6 +262,99 @@ const EarthquakeStats = () => {
   );
 
   const totalEarthquakes = data.reduce((sum, item) => sum + item.value, 0);
+
+  // Typing effect fonksiyonu
+  const typeText = (text: string, speed: number = 50) => {
+    setIsTyping(true);
+    setDisplayedText('');
+    let index = 0;
+    
+    const typeInterval = setInterval(() => {
+      if (index < text.length) {
+        setDisplayedText(text.substring(0, index + 1));
+        index++;
+      } else {
+        clearInterval(typeInterval);
+        setIsTyping(false);
+      }
+    }, speed);
+  };
+
+  // Gemini AI ile özet oluşturma fonksiyonu
+  const generateGeminiAISummary = async () => {
+    try {
+      setIsGeneratingAI(true);
+      
+      const genAI = new GoogleGenerativeAI("AIzaSyA9gguZnXbvAcOmVvDxTm1vNVeIqOYfejA");
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      
+      // İstatistik verilerini hazırla
+      const statsData = {
+        totalEarthquakes,
+        regionalData: data,
+        cityData: CITY_EARTHQUAKE_DATA,
+        faultLineData: FAULT_LINE_DATA,
+        monthlyTrendData: MONTHLY_TREND_DATA,
+        magnitudeData: MAGNITUDE_DISTRIBUTION_DATA
+      };
+      
+      const prompt = `
+        Aşağıdaki Türkiye deprem istatistiklerini analiz ederek, tam olarak 5-6 cümlelik kısa bir özet oluştur:
+        
+        Toplam Deprem Sayısı: ${totalEarthquakes}
+        
+        Bölgesel Dağılım:
+        ${data.map(item => `${item.region}: ${item.value} deprem (%${((item.value / totalEarthquakes) * 100).toFixed(1)})`).join('\n')}
+        
+        En Aktif Şehirler:
+        ${CITY_EARTHQUAKE_DATA.map(city => `${city.city}: ${city.count} deprem`).join('\n')}
+        
+        En Aktif Fay Hatları:
+        ${FAULT_LINE_DATA.map(fault => `${fault.faultLine}: ${fault.count} deprem`).join('\n')}
+        
+        Aylık Trend (Son 12 Ay):
+        ${MONTHLY_TREND_DATA.map(month => `${month.month}: ${month.count} deprem`).join('\n')}
+        
+        Büyüklük Dağılımı:
+        ${MAGNITUDE_DISTRIBUTION_DATA.map(mag => `${mag.magnitude}: ${mag.count} deprem`).join('\n')}
+        
+        ÖNEMLİ: Yanıtını tam olarak 5-6 cümle ile sınırla. Daha uzun yanıt verme.
+        
+        Bu verileri analiz ederek kısa bir özet yap:
+        1. Genel deprem aktivitesi durumu
+        2. En önemli risk faktörü
+        3. Dikkat çeken bir trend
+        4. Kısa bir öneri
+        
+        Yanıtı Türkçe olarak, tam olarak 5-6 cümlelik bir paragraf halinde ver. Daha uzun yanıt verme.
+      `;
+      
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let text = response.text();
+      
+      // Cümle sayısını kontrol et ve sınırla
+      const sentences = text.split(/[.!?]+/).filter(sentence => sentence.trim().length > 0);
+      if (sentences.length > 6) {
+        text = sentences.slice(0, 6).join('. ') + '.';
+      }
+      
+      setAiSummaryText(text);
+      setShowAISummary(true);
+      
+      // Typing effect başlat
+      setTimeout(() => {
+        typeText(text, 40);
+      }, 200);
+      
+    } catch (error) {
+      console.error('AI özet oluşturma hatası:', error);
+      setAiSummaryText('AI özeti oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+      setShowAISummary(true);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
 
   // AI Özet fonksiyonu
   const generateAISummary = () => {
@@ -1655,6 +1754,62 @@ ${aiSummary}
             </Text>
           </View>
 
+          {/* AI Özet Butonu */}
+          <View style={styles.aiSummaryContainer}>
+            <TouchableOpacity 
+              style={styles.aiSummaryButton} 
+              onPress={generateGeminiAISummary}
+              disabled={isGeneratingAI}
+            >
+              <LinearGradient
+                colors={[colors.warning, "#FF8C00"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.aiSummaryButtonGradient}
+              >
+                <MaterialCommunityIcons 
+                  name={isGeneratingAI ? "loading" : "robot"} 
+                  size={20} 
+                  color="#fff" 
+                />
+                <Text style={styles.aiSummaryButtonText}>
+                  {isGeneratingAI ? "AI Analiz Ediyor..." : "Terra AI İstatistik Özeti"}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* AI Özet Alanı */}
+          {showAISummary && (
+            <View style={styles.aiSummaryContent}>
+              <View style={styles.aiSummaryHeader}>
+                <MaterialCommunityIcons name="robot" size={24} color={colors.warning} />
+                <Text style={styles.aiSummaryTitle}>Terra AI Analizi</Text>
+              </View>
+              <ScrollView 
+                style={styles.aiSummaryScrollView}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
+              >
+                <Text style={styles.aiSummaryText}>
+                  {displayedText}
+                  {isTyping && <Text style={styles.typingCursor}>|</Text>}
+                </Text>
+              </ScrollView>
+              <TouchableOpacity 
+                style={styles.closeAISummaryButton}
+                onPress={() => {
+                  setShowAISummary(false);
+                  setDisplayedText('');
+                  setAiSummaryText('');
+                  setIsTyping(false);
+                }}
+              >
+                <Text style={styles.closeAISummaryText}>Kapat</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Paylaşım ve İndirme Butonları */}
           <View style={styles.actionButtonsContainer}>
             <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
@@ -2396,7 +2551,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 12,
-    marginTop: 20,
+    marginTop: 10,
     marginBottom: 20,
   },
   actionButton: {
@@ -2421,6 +2576,84 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
     marginLeft: 8,
+  },
+  // AI Özet Stilleri
+  aiSummaryContainer: {
+    marginTop: 30,
+    marginBottom: 10,
+  },
+  aiSummaryButton: {
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: colors.warning,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  aiSummaryButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  aiSummaryButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+    marginLeft: 8,
+  },
+  aiSummaryContent: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  aiSummaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  aiSummaryTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    marginLeft: 10,
+  },
+  aiSummaryText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    lineHeight: 22,
+    marginBottom: 15,
+  },
+  aiSummaryScrollView: {
+    maxHeight: 200,
+    marginBottom: 15,
+  },
+  typingCursor: {
+    color: colors.warning,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  closeAISummaryButton: {
+    alignSelf: "flex-end",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: colors.border,
+    borderRadius: 8,
+  },
+  closeAISummaryText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textSecondary,
   },
 });
 
