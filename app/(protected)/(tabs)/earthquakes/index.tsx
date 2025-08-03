@@ -14,6 +14,8 @@ import { colors } from "@/constants/colors";
 import { useEarthquakes } from "@/hooks/useEarthquakes";
 import EarthquakeFilter from "@/components/EarthquakeFilter"; // Import the new component
 import { Ionicons } from '@expo/vector-icons';
+import { useScrollToTop } from "@/hooks/useScrollToTop";
+import { eventEmitter } from "@/lib/eventEmitter";
 
 interface MagnitudeRange {
   min: number;
@@ -58,6 +60,8 @@ export default function EarthquakesScreen() {
     isFetching,
   } = useEarthquakes();
 
+  const { scrollViewRef, scrollToTop } = useScrollToTop();
+
   // Get unique sources from earthquakes
   const availableSources = useMemo(() => {
     if (!earthquakes || earthquakes.length === 0) return [];
@@ -78,6 +82,19 @@ export default function EarthquakesScreen() {
       sourcesInitialized.current = true;
     }
   }, [availableSources]);
+
+  useEffect(() => {
+    const handleEarthquakesDoubleTap = () => {
+      console.log('Earthquakes double tap event received, calling scrollToTop');
+      scrollToTop();
+    };
+    console.log('Setting up earthquakes double tap listener');
+    eventEmitter.on('earthquakesDoubleTap', handleEarthquakesDoubleTap);
+    return () => {
+      console.log('Cleaning up earthquakes double tap listener');
+      eventEmitter.off('earthquakesDoubleTap', handleEarthquakesDoubleTap);
+    };
+  }, [scrollToTop]);
 
   // Function to open filter modal and sync temporary states
   const openFilterModal = () => {
@@ -434,6 +451,7 @@ export default function EarthquakesScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom }}

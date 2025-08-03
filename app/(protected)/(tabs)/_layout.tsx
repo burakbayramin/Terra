@@ -12,6 +12,7 @@ import { TouchableOpacity, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { eventEmitter } from "@/lib/eventEmitter";
+import { usePathname } from "expo-router";
 
 // Custom Tab Bar Component for Double Tap
 const CustomTabBarButton = ({ 
@@ -58,10 +59,24 @@ const CustomTabBarButton = ({
 // TODO zustand eklendiginde scrollaninca tabbar kaybolacak yukari kaydirinca geri gelecek
 export default function TabLayout() {
   const router = useRouter();
+  const pathname = usePathname();
+
+  console.log('Current pathname:', pathname);
 
   const handleEarthquakesDoubleTap = () => {
-    // Navigate to earthquakes index (list view)
-    router.push("/(protected)/(tabs)/earthquakes");
+    console.log('handleEarthquakesDoubleTap called, pathname:', pathname);
+    // Her zaman event'i emit et, earthquakes sayfası dinleyecek
+    console.log('Emitting earthquakesDoubleTap event');
+    eventEmitter.emit('earthquakesDoubleTap');
+    // Sadece earthquakes sayfasındayken scroll to top yap, diğer durumlarda navigasyon yap
+    const isOnEarthquakesPage = pathname === '/earthquakes' || pathname === '/(protected)/(tabs)/earthquakes';
+    console.log('isOnEarthquakesPage:', isOnEarthquakesPage);
+    if (!isOnEarthquakesPage) {
+      console.log('Navigating to earthquakes');
+      router.push('/(protected)/(tabs)/earthquakes');
+    } else {
+      console.log('Already on earthquakes page, not navigating');
+    }
   };
 
   const handleHomeDoubleTap = () => {
