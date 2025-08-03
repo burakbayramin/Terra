@@ -24,6 +24,7 @@ import { colors } from "@/constants/colors";
 import { useEarthquakeById } from "@/hooks/useEarthquakes";
 import { useEarthquakeFeltReports } from "@/hooks/useEarthquakeFeltReports";
 import { useEarthquakeComments } from "@/hooks/useEarthquakeComments";
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const getMagnitudeColor = (magnitude: number) => {
   if (magnitude >= 5.0) return "#FF4444";
@@ -177,6 +178,13 @@ export default function EarthquakeDetailScreen() {
   const [editingComment, setEditingComment] = useState<any>(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
+  
+  // AI Comment states
+  const [showAIComment, setShowAIComment] = useState(false);
+  const [aiCommentText, setAiCommentText] = useState('');
+  const [displayedAIComment, setDisplayedAIComment] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isTypingAI, setIsTypingAI] = useState(false);
 
   const {
     data: earthquake,
@@ -322,6 +330,105 @@ export default function EarthquakeDetailScreen() {
         },
       ]
     );
+  };
+
+  // Typing effect fonksiyonu
+  const typeText = (text: string, speed: number = 50) => {
+    setIsTypingAI(true);
+    setDisplayedAIComment('');
+    let index = 0;
+    
+    const typeInterval = setInterval(() => {
+      if (index < text.length) {
+        setDisplayedAIComment(text.substring(0, index + 1));
+        index++;
+      } else {
+        clearInterval(typeInterval);
+        setIsTypingAI(false);
+      }
+    }, speed);
+  };
+
+  // Gemini AI ile deprem yorumu oluşturma fonksiyonu
+  const generateAIComment = async () => {
+    if (!earthquake) return;
+    
+    try {
+      setIsGeneratingAI(true);
+      
+      const genAI = new GoogleGenerativeAI("AIzaSyA9gguZnXbvAcOmVvDxTm1vNVeIqOYfejA");
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      
+      // Deprem verilerini hazırla
+      const earthquakeData = {
+        title: earthquake.title,
+        magnitude: earthquake.mag,
+        depth: earthquake.depth,
+        date: earthquake.date,
+        region: earthquake.region,
+        faultline: earthquake.faultline,
+        latitude: earthquake.latitude,
+        longitude: earthquake.longitude,
+        provider: earthquake.provider
+      };
+      
+      const prompt = `
+        Aşağıdaki deprem verilerini analiz ederek, tam olarak 4-5 cümlelik kısa bir yorum oluştur:
+        
+        Deprem Bilgileri:
+        - Başlık: ${earthquakeData.title}
+        - Büyüklük: ${earthquakeData.magnitude}
+        - Derinlik: ${earthquakeData.depth} km
+        - Tarih: ${earthquakeData.date}
+        - Bölge: ${earthquakeData.region}
+        - Fay Hattı: ${earthquakeData.faultline || 'Belirtilmemiş'}
+        - Koordinatlar: ${earthquakeData.latitude}, ${earthquakeData.longitude}
+        - Kaynak: ${earthquakeData.provider}
+        
+        ÖNEMLİ: Yanıtını tam olarak 4-5 cümle ile sınırla. Daha uzun yanıt verme.
+        
+        Bu deprem verilerini analiz ederek kısa bir yorum yap:
+        1. Depremin genel karakteristiği
+        2. Büyüklük ve derinlik değerlendirmesi
+        3. Bölgesel etki potansiyeli
+        4. Kısa bir güvenlik önerisi
+        
+        Yanıtı Türkçe olarak, tam olarak 4-5 cümlelik bir paragraf halinde ver. Daha uzun yanıt verme.
+      `;
+      
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let text = response.text();
+      
+      // Metni temizle ve formatla
+      text = text.trim()
+        .replace(/\s+/g, ' ') // Birden fazla boşluğu tek boşluğa çevir
+        .replace(/\n+/g, ' ') // Satır sonlarını boşluğa çevir
+        .replace(/\s+([.!?])(?!\d)/g, '$1') // Noktalama işaretlerinden önceki boşlukları kaldır (sayı değilse)
+        .replace(/([.!?])(?!\d)\s*/g, '$1 ') // Noktalama işaretlerinden sonra tek boşluk bırak (sayı değilse)
+        .trim();
+      
+      // Cümle sayısını kontrol et ve sınırla
+      const sentences = text.split(/[.!?]+/).filter(sentence => sentence.trim().length > 0);
+      if (sentences.length > 5) {
+        text = sentences.slice(0, 5).join('. ') + '.';
+      }
+      
+      setAiCommentText(text);
+      setShowAIComment(true);
+      
+      // Typing effect başlat
+      setTimeout(() => {
+        typeText(text, 40);
+      }, 200);
+      
+    } catch (error) {
+      console.error('AI yorum oluşturma hatası:', error);
+      setAiCommentText('AI yorumu oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+      setShowAIComment(true);
+    } finally {
+      setIsGeneratingAI(false);
+    }
   };
 
   return (
@@ -684,6 +791,57 @@ export default function EarthquakeDetailScreen() {
                   </View>
                 </View>
               </View>
+            </View>
+
+            {/* AI Comment Section */}
+            <View style={styles.aiCommentSection}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="sparkles-outline" size={22} color="#2d3748" />
+                <Text style={styles.sectionTitle}>Terra AI Deprem Yorumu</Text>
+              </View>
+
+              {!showAIComment ? (
+                <TouchableOpacity
+                  style={styles.aiCommentButton}
+                  onPress={generateAIComment}
+                  disabled={isGeneratingAI}
+                >
+                  {isGeneratingAI ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <Ionicons name="sparkles" size={20} color="#ffffff" />
+                      <Text style={styles.aiCommentButtonText}>
+                        Yorumu Gör
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.aiCommentContent}>
+                  <View style={styles.aiCommentHeader}>
+                    <Ionicons name="sparkles" size={20} color={colors.primary} />
+                    <Text style={styles.aiCommentTitle}>Terra AI Analizi</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setShowAIComment(false);
+                        setDisplayedAIComment('');
+                        setAiCommentText('');
+                        setIsTypingAI(false);
+                      }}
+                      style={styles.closeAICommentButton}
+                    >
+                      <Ionicons name="close" size={18} color="#6b7280" />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.aiCommentTextContainer}>
+                    <Text style={styles.aiCommentText}>
+                      {displayedAIComment}
+                      {isTypingAI && <Text style={styles.typingCursor}>|</Text>}
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
 
             {/* Comments Section */}
@@ -1355,5 +1513,74 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     textAlign: "right",
     marginTop: 8,
+  },
+  // AI Comment Section Styles
+  aiCommentSection: {
+    marginBottom: 24,
+  },
+  aiCommentButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+    minHeight: 60,
+  },
+  aiCommentButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: "NotoSans-Bold",
+    marginLeft: 8,
+  },
+  aiCommentContent: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  aiCommentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  aiCommentTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#2d3748",
+    flex: 1,
+    marginLeft: 8,
+  },
+  closeAICommentButton: {
+    padding: 4,
+  },
+  aiCommentTextContainer: {
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  aiCommentText: {
+    fontSize: 15,
+    color: "#374151",
+    lineHeight: 22,
+    textAlign: "left",
+    fontFamily: "NotoSans-Regular",
+  },
+  typingCursor: {
+    color: colors.primary,
+    fontWeight: 'bold',
   },
 });
