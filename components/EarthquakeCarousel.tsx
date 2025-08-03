@@ -41,19 +41,20 @@ const EarthquakeCarousel: React.FC<EarthquakeCarouselProps> = ({
 
   // Filter earthquakes based on provider and limit to last 15
   const filteredData = carouselData.filter(earthquake => {
-    if (filter === "afad") return earthquake.provider === "AFAD";
-    if (filter === "kandilli") return earthquake.provider === "KANDILLI";
-    if (filter === "usgs") return earthquake.provider === "USGS";
-    if (filter === "iris") return earthquake.provider === "IRIS";
-    if (filter === "emsc") return earthquake.provider === "EMSC";
+    const providerUpper = earthquake.provider?.toUpperCase();
+    if (filter === "afad") return providerUpper === "AFAD";
+    if (filter === "kandilli") return providerUpper === "KANDILLI" || providerUpper === "KANDİLLİ" || providerUpper?.includes("KANDILLI");
+    if (filter === "usgs") return providerUpper === "USGS";
+    if (filter === "iris") return providerUpper === "IRIS";
+    if (filter === "emsc") return providerUpper === "EMSC";
     return true; // Show all if no specific filter
   }).slice(0, 15); // Only show last 15 earthquakes
 
-  // Debug: Log filtering results
+  // Debug: Log filtering results (only in development)
   useEffect(() => {
-    console.log(`Filter: ${filter}, Total data: ${carouselData.length}, Filtered: ${filteredData.length}`);
-    if (filteredData.length === 0 && carouselData.length > 0) {
-      console.log('Available providers in data:', [...new Set(carouselData.map(eq => eq.provider))]);
+    if (__DEV__ && filteredData.length === 0 && carouselData.length > 0) {
+      console.log(`No data found for filter: ${filter}`);
+      console.log('Available providers:', [...new Set(carouselData.map(eq => eq.provider))]);
     }
   }, [filter, carouselData.length, filteredData.length]);
 
@@ -72,12 +73,15 @@ const EarthquakeCarousel: React.FC<EarthquakeCarouselProps> = ({
   if (filteredData.length === 0) {
     return (
       <View style={[styles.card, { height: CARD_HEIGHT + 140, justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ fontSize: 16, color: '#666' }}>
+        <Text style={{ fontSize: 16, color: '#666', textAlign: 'center', paddingHorizontal: 20 }}>
           {filter === "afad" ? "AFAD" : 
            filter === "kandilli" ? "KANDILLI" : 
            filter === "usgs" ? "USGS" : 
            filter === "iris" ? "IRIS" : 
            filter === "emsc" ? "EMSC" : ""} verisi bulunamadı
+        </Text>
+        <Text style={{ fontSize: 14, color: '#999', textAlign: 'center', marginTop: 10, paddingHorizontal: 20 }}>
+          Diğer kaynakları deneyebilir veya daha sonra tekrar kontrol edebilirsiniz.
         </Text>
       </View>
     );

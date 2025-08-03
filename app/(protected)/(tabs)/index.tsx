@@ -120,9 +120,9 @@ export default function HomeScreen() {
   // Deprem verileri
   const { data: earthquakes = [], isLoading: isLoadingEarthquakes } = useEarthquakes();
 
-  // Debug: Log available providers
+  // Debug: Log available providers (only in development)
   useEffect(() => {
-    if (earthquakes.length > 0) {
+    if (__DEV__ && earthquakes.length > 0) {
       const providers = [...new Set(earthquakes.map(eq => eq.provider))];
       console.log('Available providers:', providers);
       console.log('Provider counts:', providers.map(provider => ({
