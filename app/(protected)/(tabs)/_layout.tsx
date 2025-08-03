@@ -157,6 +157,24 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="network"
+        options={{
+          title: "Ağım",
+          headerTitle: "Ağım",
+          headerShown: false,
+          headerTitleAlign: "center",
+          headerTitleStyle: {
+            fontFamily: "NotoSans-Bold",
+          },
+          headerTintColor: colors.light.textPrimary,
+          tabBarActiveTintColor: colors.light.textPrimary,
+          tabBarInactiveTintColor: colors.light.textSecondary,
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="account-group" size={24} color={color} />
+          ),
+        }}
+      />
 
       <Tabs.Screen
         name="earthquake-stats"
