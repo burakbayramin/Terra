@@ -31,6 +31,18 @@ export default function AppLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="developer-support"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="premium-packages"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

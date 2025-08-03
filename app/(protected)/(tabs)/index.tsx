@@ -1548,7 +1548,7 @@ export default function HomeScreen() {
                     style={styles.fullWidthSupportButton}
                     activeOpacity={0.7}
                     onPress={() => {
-                      // İletişim formuna yönlendirme veya mail açma işlemi
+                      Linking.openURL('mailto:info@terraapp.io');
                     }}
                   >
                     <LinearGradient

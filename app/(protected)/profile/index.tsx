@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Switch,
   ScrollView,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState } from "react";
@@ -337,7 +338,7 @@ export default function ProfileScreen() {
               style={styles.contactMainButton}
               activeOpacity={0.7}
               onPress={() => {
-                // İletişim formuna yönlendirme veya mail açma işlemi
+                Linking.openURL('mailto:info@terraapp.io');
               }}
             >
               <Text style={styles.contactButtonText}>İletişime Geç</Text>
