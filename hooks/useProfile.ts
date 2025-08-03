@@ -35,6 +35,8 @@ export const useUpdateProfile = () => {
       userId: string;
       profileData: Partial<Profile>;
     }): Promise<Profile> => {
+      console.log("Updating profile with data:", { userId, profileData });
+      
       const { data, error } = await supabase
         .from("profiles")
         .update({
@@ -46,9 +48,11 @@ export const useUpdateProfile = () => {
         .single();
 
       if (error) {
-        throw new Error("Profil güncellenemedi.");
+        console.error("Supabase error details:", error);
+        throw new Error(`Profil güncellenemedi: ${error.message}`);
       }
 
+      console.log("Profile updated successfully:", data);
       return data;
     },
     onSuccess: (data, variables) => {
@@ -111,6 +115,31 @@ export const useSafetyFormCompletion = (userId: string) => {
       }
 
       return data?.has_completed_safety_form || false;
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2, // 2 dakika
+    gcTime: 1000 * 60 * 5, // 5 dakika
+  });
+};
+
+export const useEmergencyContacts = (userId: string) => {
+  return useQuery({
+    queryKey: ["emergencyContacts", userId],
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("emergency_contacts")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          return [];
+        }
+        throw new Error("Acil durum kontakları alınamadı.");
+      }
+
+      return data?.emergency_contacts || [];
     },
     enabled: !!userId,
     staleTime: 1000 * 60 * 2, // 2 dakika

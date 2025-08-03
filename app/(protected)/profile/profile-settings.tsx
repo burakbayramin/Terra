@@ -17,9 +17,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 import cityDistrictData from "@/assets/data/turkey-cities-districts.json";
 import { useAuth } from "@/providers/AuthProvider";
-import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
+import { useProfile, useUpdateProfile, useEmergencyContacts } from "@/hooks/useProfile";
 import { Profile, City, District } from "@/types/types";
-import * as Contacts from "expo-contacts";
+import EmergencyContactsManager from "@/components/EmergencyContactsManager";
+import LocationConfirmationModal from "@/components/LocationConfirmationModal";
 
 function cleanAndFormatTurkishNumber(input: string): string {
   let number = input.replace(/\D/g, "");
@@ -193,17 +194,16 @@ const ProfileSettingsPage = () => {
   const [formData, setFormData] = useState({
     name: "",
     surname: "",
-    emergency_phone: "",
+    address: "",
   });
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<District | null>(
     null
   );
   const [modalVisible, setModalVisible] = useState(false);
-
-  // Contacts için state
-  const [contacts, setContacts] = useState<Contacts.Contact[]>([]);
-  const [contactsModalVisible, setContactsModalVisible] = useState(false);
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const [emergencyContacts, setEmergencyContacts] = useState<string[]>([]);
+  const [locationJustConfirmed, setLocationJustConfirmed] = useState(false);
 
   // TanStack Query hooks
   const {
@@ -213,18 +213,20 @@ const ProfileSettingsPage = () => {
     refetch,
   } = useProfile(user?.id || "");
 
+  const { data: savedEmergencyContacts = [] } = useEmergencyContacts(user?.id || "");
+
   const updateProfileMutation = useUpdateProfile();
 
   // Profile datayı form state'e yükle
   useEffect(() => {
-    if (profile) {
+    if (profile && !locationJustConfirmed) {
       setFormData({
         name: profile.name || "",
         surname: profile.surname || "",
-        emergency_phone: profile.emergency_phone || "",
+        address: profile.address || "",
       });
 
-      // Set city and district
+      // Set city and district from backend data
       if (profile.city) {
         const cityData = findCityByName(profile.city);
         if (cityData) setSelectedCity(cityData);
@@ -235,7 +237,22 @@ const ProfileSettingsPage = () => {
         if (districtData) setSelectedDistrict(districtData);
       }
     }
-  }, [profile]);
+  }, [profile, locationJustConfirmed]);
+
+  // Emergency contacts'ı yükle
+  useEffect(() => {
+    if (savedEmergencyContacts.length > 0 && emergencyContacts.length === 0) {
+      setEmergencyContacts(savedEmergencyContacts);
+    }
+  }, [savedEmergencyContacts, emergencyContacts.length]);
+
+  const handleEmergencyContactsChange = useCallback((contacts: string[] | ((prev: string[]) => string[])) => {
+    if (typeof contacts === 'function') {
+      setEmergencyContacts(contacts);
+    } else {
+      setEmergencyContacts(contacts);
+    }
+  }, []);
 
   const handleLocationSelect = useCallback((city: City, district: District) => {
     setSelectedCity(city);
@@ -255,36 +272,106 @@ const ProfileSettingsPage = () => {
 
   const updateFormData = useCallback(
     (field: keyof typeof formData, value: string | null) => {
-      setFormData((prev) => ({ ...prev, [field]: value || "" }));
+      setFormData((prev) => {
+        const newData = { ...prev, [field]: value || "" };
+        return newData;
+      });
     },
     []
   );
 
-  const formatPhoneNumber = useCallback((value: string) => {
-    const numeric = value.replace(/\D/g, "");
-    const limited = numeric.slice(0, 10);
-    if (limited.length >= 7) {
-      return limited.replace(/(\d{3})(\d{3})(\d{2})(\d{2})/, "$1 $2 $3 $4");
-    } else if (limited.length >= 6) {
-      return limited.replace(/(\d{3})(\d{3})(\d{1,2})/, "$1 $2 $3");
-    } else if (limited.length >= 3) {
-      return limited.replace(/(\d{3})(\d{1,3})/, "$1 $2");
+  const handleGetGPSLocation = useCallback(() => {
+    setLocationModalVisible(true);
+  }, []);
+
+  // Konum onaylandığında çalışacak fonksiyon
+  const handleLocationConfirmed = useCallback(async (locationInfo: {
+    latitude: number;
+    longitude: number;
+    city?: string;
+    district?: string;
+    address?: string;
+  }) => {
+    // Konum onaylandığını işaretle
+    setLocationJustConfirmed(true);
+    
+    try {
+      // Açık adres alanını oluştur
+      let fullAddress = "";
+      
+      // Şehir ve ilçe bilgilerini ekle
+      if (locationInfo.city && locationInfo.district) {
+        fullAddress += `${locationInfo.city}, ${locationInfo.district}`;
+      } else if (locationInfo.city) {
+        fullAddress += locationInfo.city;
+      } else if (locationInfo.district) {
+        fullAddress += locationInfo.district;
+      }
+
+      // Detaylı adres bilgisini ekle
+      if (locationInfo.address) {
+        if (fullAddress) {
+          fullAddress += "\n";
+        }
+        fullAddress += locationInfo.address;
+      }
+
+      // Koordinat bilgilerini ekle
+      if (fullAddress) {
+        fullAddress += "\n";
+      }
+      fullAddress += `Koordinatlar: ${locationInfo.latitude.toFixed(6)}, ${locationInfo.longitude.toFixed(6)}`;
+
+      // Tüm profile verilerini backend'e kaydet
+      const profileData = {
+        latitude: locationInfo.latitude,
+        longitude: locationInfo.longitude,
+        city: locationInfo.city || null,
+        district: locationInfo.district || null,
+        address: fullAddress,
+      };
+
+      if (user?.id) {
+        await updateProfileMutation.mutateAsync({
+          userId: user.id,
+          profileData,
+        });
+      }
+
+      // UI'da şehir ve ilçe bilgilerini güncelle
+      if (locationInfo.city) {
+        const cityData = findCityByName(locationInfo.city);
+        if (cityData) {
+          setSelectedCity(cityData);
+        }
+      }
+
+      if (locationInfo.district) {
+        const districtData = findDistrictByName(locationInfo.district);
+        if (districtData) {
+          setSelectedDistrict(districtData);
+        }
+      }
+
+      // Form data'yı güncelle
+      updateFormData("address", fullAddress);
+      
+      Alert.alert("Başarılı", "Konumunuz başarıyla alındı ve kaydedildi");
+      
+      // Profile verilerini yeniden yükle (backend'den güncel verileri almak için)
+      refetch();
+      
+      // 1 saniye sonra flag'i sıfırla
+      setTimeout(() => {
+        setLocationJustConfirmed(false);
+      }, 1000);
+      
+    } catch (error) {
+      console.error("Error in handleLocationConfirmed:", error);
+      Alert.alert("Hata", "Konum kaydedilirken bir hata oluştu");
+      setLocationJustConfirmed(false);
     }
-    return limited;
-  }, []);
-
-  const handlePhoneChange = useCallback(
-    (text: string) => {
-      const formatted = formatPhoneNumber(text);
-      updateFormData("emergency_phone", formatted);
-    },
-    [formatPhoneNumber, updateFormData]
-  );
-
-  const validatePhoneNumber = useCallback((phone: string) => {
-    const numeric = phone.replace(/\D/g, "");
-    return numeric.length === 10;
-  }, []);
+  }, [updateProfileMutation, user?.id, updateFormData, refetch]);
 
   const handleSaveProfile = useCallback(async () => {
     if (!user) return;
@@ -297,22 +384,14 @@ const ProfileSettingsPage = () => {
       showAlert("Lütfen soyisminizi girin");
       return;
     }
-    if (
-      formData.emergency_phone &&
-      !validatePhoneNumber(formData.emergency_phone)
-    ) {
-      showAlert("Lütfen geçerli bir telefon numarası girin (10 haneli)");
-      return;
-    }
 
     const profileData = {
       name: formData.name.trim(),
       surname: formData.surname.trim(),
-      emergency_phone: formData.emergency_phone
-        ? formData.emergency_phone.replace(/\D/g, "")
-        : null,
+      address: formData.address.trim() || null,
       city: selectedCity ? selectedCity.name : null,
       district: selectedDistrict ? selectedDistrict.name : null,
+      emergency_contacts: emergencyContacts.length > 0 ? emergencyContacts : null,
     };
 
     updateProfileMutation.mutate(
@@ -331,33 +410,10 @@ const ProfileSettingsPage = () => {
     formData,
     selectedCity,
     selectedDistrict,
+    emergencyContacts,
     updateProfileMutation,
     showAlert,
-    validatePhoneNumber,
   ]);
-
-  // ---------- REHBERDEN SEÇ BUTONU ----------
-  const openContacts = useCallback(async () => {
-    const { status } = await Contacts.requestPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("İzin Gerekli", "Rehbere erişim izni verilmedi.");
-      return;
-    }
-
-    const { data } = await Contacts.getContactsAsync({
-      fields: [Contacts.Fields.PhoneNumbers],
-      sort: Contacts.SortTypes.FirstName,
-    });
-
-    if (data.length > 0) {
-      setContacts(
-        data.filter((c) => c.phoneNumbers && c.phoneNumbers.length > 0)
-      );
-      setContactsModalVisible(true);
-    } else {
-      Alert.alert("Uyarı", "Rehberde telefon numarası bulunamadı.");
-    }
-  }, []);
 
   // ---------- LOADING ----------
   if (isLoading) {
@@ -439,41 +495,51 @@ const ProfileSettingsPage = () => {
                 color={colors.light.textSecondary}
               />
             </TouchableOpacity>
+            
+            {/* GPS Konum Butonu */}
+            <TouchableOpacity
+              style={[styles.gpsButton, isSaving && styles.disabledButton]}
+              onPress={handleGetGPSLocation}
+              disabled={isSaving}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="location"
+                size={16}
+                color={colors.gradientTwo}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.gpsButtonText}>
+                Konumumu Seç
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          {/* ---- ACİL DURUM TELEFONU ---- */}
+          {/* Adres Alanı */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Acil Durum Telefonu</Text>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                placeholder="5XX XXX XX XX"
-                value={formData.emergency_phone}
-                onChangeText={handlePhoneChange}
-                placeholderTextColor={colors.light.textSecondary}
-                keyboardType="phone-pad"
-                maxLength={13} // XXX XXX XX XX format
-                editable={!isSaving}
-              />
-              <TouchableOpacity
-                style={{ marginLeft: 8 }}
-                onPress={openContacts}
-                disabled={isSaving}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="person-add"
-                  size={24}
-                  color={colors.gradientTwo}
-                />
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.inputLabel}>Adres</Text>
+            <TextInput
+              style={[styles.input, styles.addressInput]}
+              placeholder="Açık adresinizi girin"
+              value={formData.address}
+              onChangeText={(text) => updateFormData("address", text)}
+              placeholderTextColor={colors.light.textSecondary}
+              editable={!isSaving}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
             <Text style={styles.helperText}>
-              Tehlikedeyim butonuna basıldığında mesaj gidecek numara (isteğe bağlı)
+              GPS konumunuz alındığında otomatik olarak doldurulacaktır
             </Text>
           </View>
 
-          
+          {/* Acil Durum Telefonları */}
+          <EmergencyContactsManager
+            contacts={emergencyContacts}
+            onContactsChange={handleEmergencyContactsChange}
+            disabled={isSaving}
+          />
         </View>
 
         <View style={styles.section}>
@@ -517,61 +583,11 @@ const ProfileSettingsPage = () => {
         selectedDistrict={selectedDistrict}
       />
 
-      {/* --------- REHBER MODAL --------- */}
-      <Modal
-        visible={contactsModalVisible}
-        animationType="slide"
-        onRequestClose={() => setContactsModalVisible(false)}
-      >
-        <View style={[{ flex: 1, backgroundColor: "#fff" }, { paddingTop: insets.top }]}>
-          <View style={[styles.modalHeader, { borderBottomWidth: 0 }]}>
-            <Text style={styles.modalTitle}>Rehberden Kişi Seç</Text>
-            <TouchableOpacity onPress={() => setContactsModalVisible(false)}>
-              <Ionicons name="close" size={24} color={colors.gradientTwo} />
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={contacts}
-            keyExtractor={(item) =>
-              item.id
-                ? String(item.id)
-                : String(item.phoneNumbers?.[0]?.number || Math.random())
-            }
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.listItem}
-                onPress={() => {
-                  // İlk telefon numarasını al
-                  const phoneRaw = item.phoneNumbers?.[0]?.number || "";
-                  const phone = cleanAndFormatTurkishNumber(phoneRaw);
-                  setContactsModalVisible(false);
-                  handlePhoneChange(phone);
-                }}
-              >
-                <Text style={styles.listItemText}>
-                  {item.name ||
-                    [item.firstName, item.lastName].filter(Boolean).join(" ")}
-                </Text>
-                <Text
-                  style={[
-                    styles.listItemText,
-                    {
-                      color: colors.light.textSecondary,
-                      marginLeft: 12,
-                      fontSize: 14,
-                    },
-                  ]}
-                >
-                  {item.phoneNumbers?.[0]?.number}
-                </Text>
-              </TouchableOpacity>
-            )}
-            ItemSeparatorComponent={() => (
-              <View style={{ height: 1, backgroundColor: "#eee" }} />
-            )}
-          />
-        </View>
-      </Modal>
+      <LocationConfirmationModal
+        visible={locationModalVisible}
+        onClose={() => setLocationModalVisible(false)}
+        onConfirm={handleLocationConfirmed}
+      />
     </View>
   );
 };
@@ -650,6 +666,11 @@ const styles = StyleSheet.create({
     color: colors.light.textPrimary,
     fontFamily: "NotoSans-Regular",
   },
+  addressInput: {
+    minHeight: 80,
+    paddingTop: 12,
+    paddingBottom: 12,
+  },
   helperText: {
     fontSize: 12,
     color: colors.light.textSecondary,
@@ -666,6 +687,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 8,
   },
   locationButtonText: {
     fontSize: 15,
@@ -674,6 +696,22 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     color: colors.light.textSecondary,
+  },
+  gpsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.light.surface,
+    borderWidth: 1,
+    borderColor: colors.gradientTwo,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  gpsButtonText: {
+    fontSize: 14,
+    color: colors.gradientTwo,
+    fontFamily: "NotoSans-Bold",
   },
   disabledButton: {
     opacity: 0.6,

@@ -15,6 +15,14 @@ interface LocationState {
   hasPermission: boolean;
 }
 
+interface LocationInfo {
+  latitude: number;
+  longitude: number;
+  city?: string;
+  district?: string;
+  address?: string;
+}
+
 export const useLocation = () => {
   const { user, loading: authLoading } = useAuth();
   const [locationState, setLocationState] = useState<LocationState>({
@@ -89,6 +97,40 @@ export const useLocation = () => {
     }
   };
 
+  // Reverse geocoding ile adres bilgisi alma
+  const getAddressFromCoordinates = async (
+    latitude: number,
+    longitude: number
+  ): Promise<{ city?: string; district?: string; address?: string }> => {
+    try {
+      const reverseGeocode = await Location.reverseGeocodeAsync({
+        latitude,
+        longitude,
+      });
+
+      if (reverseGeocode.length > 0) {
+        const location = reverseGeocode[0];
+        return {
+          city: location.city || location.subregion,
+          district: location.district || location.subLocality,
+          address: [
+            location.street,
+            location.streetNumber,
+            location.subLocality,
+            location.locality,
+            location.region,
+          ]
+            .filter(Boolean)
+            .join(", "),
+        };
+      }
+      return {};
+    } catch (error) {
+      console.error("Reverse geocoding error:", error);
+      return {};
+    }
+  };
+
   // Kullanıcının konumunu Supabase'e kaydetme
   const saveLocationToSupabase = async (
     locationData: LocationData
@@ -158,6 +200,26 @@ export const useLocation = () => {
     return false;
   };
 
+  // Konum al ve adres bilgisi ile birlikte döndür
+  const getLocationWithAddress = async (): Promise<LocationInfo | null> => {
+    const locationData = await getCurrentLocation();
+    
+    if (locationData) {
+      const addressInfo = await getAddressFromCoordinates(
+        locationData.latitude,
+        locationData.longitude
+      );
+      
+      return {
+        latitude: locationData.latitude,
+        longitude: locationData.longitude,
+        ...addressInfo,
+      };
+    }
+    
+    return null;
+  };
+
   // Component mount olduğunda izni kontrol et
   useEffect(() => {
     const checkPermission = async () => {
@@ -178,5 +240,7 @@ export const useLocation = () => {
     getCurrentLocation,
     saveLocationToSupabase,
     getAndSaveLocation,
+    getLocationWithAddress,
+    getAddressFromCoordinates,
   };
 };

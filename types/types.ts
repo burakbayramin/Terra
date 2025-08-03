@@ -55,8 +55,12 @@ export interface Profile {
   surname: string | null;
   city: string | null;
   district: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string | null;
   emergency_phone: string | null;
+  emergency_contacts: string[] | null;
   safety_score?: number | null;
   has_completed_safety_form: boolean;
 }
