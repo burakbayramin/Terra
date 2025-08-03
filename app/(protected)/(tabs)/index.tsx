@@ -25,7 +25,6 @@ import { ICarouselInstance } from "react-native-reanimated-carousel";
 import { colors } from "@/constants/colors";
 import EarthquakeCarousel from "@/components/EarthquakeCarousel";
 import { Earthquake } from "@/types/types";
-import { news } from "data";
 import EarthquakeStats from "@/components/EarthquakeStats";
 import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
@@ -37,6 +36,9 @@ import { supabase } from "@/lib/supabase";
 import { useEarthquakes } from "@/hooks/useEarthquakes";
 import { useLocation } from "@/hooks/useLocation";
 import { useSafetyScore, useProfile } from "@/hooks/useProfile";
+import { useNews } from "@/hooks/useNews";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
+import { eventEmitter } from "@/lib/eventEmitter";
 
 // Yeni düzenlenmiş görev verisi (sabit)
 const taskData = [
@@ -95,6 +97,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { scrollViewRef, scrollToTop } = useScrollToTop();
   const {
     getAndSaveLocation,
     hasPermission,
@@ -102,7 +105,7 @@ export default function HomeScreen() {
     authLoading,
   } = useLocation();
   const [activeSegment, setActiveSegment] = useState<
-    "afad" | "kandilli" | "usgs"
+    "afad" | "kandilli" | "usgs" | "iris" | "emsc"
   >("kandilli");
   const carouselRef = useRef<ICarouselInstance | null>(null);
   const progress = useSharedValue(0);
@@ -115,7 +118,22 @@ export default function HomeScreen() {
   const { data: profileData } = useProfile(user?.id || "");
 
   // Deprem verileri
-  const { data: earthquakeData = [] } = useEarthquakes();
+  const { data: earthquakes = [], isLoading: isLoadingEarthquakes } = useEarthquakes();
+
+  // Debug: Log available providers
+  useEffect(() => {
+    if (earthquakes.length > 0) {
+      const providers = [...new Set(earthquakes.map(eq => eq.provider))];
+      console.log('Available providers:', providers);
+      console.log('Provider counts:', providers.map(provider => ({
+        provider,
+        count: earthquakes.filter(eq => eq.provider === provider).length
+      })));
+    }
+  }, [earthquakes]);
+
+  // Haber verileri
+  const { data: news = [], isLoading: isLoadingNews } = useNews();
 
   // Kullanıcının hissettiği depremler
   const { data: userFeltEarthquakes, isLoading: isLoadingFeltEarthquakes } =
@@ -138,9 +156,9 @@ export default function HomeScreen() {
 
         // Earthquake ID'leri ile gerçek deprem verilerini eşleştir
         const earthquakeIds = data?.map((report) => report.earthquake_id) || [];
-        const filteredEarthquakes = earthquakeData
-          .filter((eq) => earthquakeIds.includes(eq.id))
-          .map((eq) => {
+        const filteredEarthquakes = earthquakes
+          .filter((eq: Earthquake) => earthquakeIds.includes(eq.id))
+          .map((eq: Earthquake) => {
             const report = data?.find((r) => r.earthquake_id === eq.id);
             return {
               ...eq,
@@ -150,7 +168,7 @@ export default function HomeScreen() {
 
         return filteredEarthquakes;
       },
-      enabled: !!user?.id && earthquakeData.length > 0,
+      enabled: !!user?.id && earthquakes.length > 0,
       staleTime: 5 * 60 * 1000, // 5 dakika fresh
     });
 
@@ -184,9 +202,9 @@ export default function HomeScreen() {
       // Manually fetch earthquake details for each comment
       const commentsWithEarthquakes = await Promise.all(
         (data || []).map(async (comment) => {
-          // Find earthquake data from the existing earthquakeData
-          const earthquake = earthquakeData.find(
-            (eq) => eq.id === comment.earthquake_id
+          // Find earthquake data from the existing earthquakes
+          const earthquake = earthquakes.find(
+            (eq: Earthquake) => eq.id === comment.earthquake_id
           );
 
           return {
@@ -198,7 +216,7 @@ export default function HomeScreen() {
 
       return commentsWithEarthquakes;
     },
-    enabled: !!user?.id && earthquakeData.length > 0,
+    enabled: !!user?.id && earthquakes.length > 0,
     staleTime: 5 * 60 * 1000, // 5 dakika fresh
   });
 
@@ -229,7 +247,7 @@ export default function HomeScreen() {
     });
   };
 
-  const { earthquakes }: { earthquakes: Earthquake[] } = require("@/data");
+
 
   const { sendEmergencySMS, loading } = EmergencyButton();
 
@@ -336,9 +354,24 @@ export default function HomeScreen() {
     handleLocationOnLoad();
   }, [user, authLoading]); // authLoading'i de dependency'e ekle
 
+  // Handle double-tap to scroll to top
+  useEffect(() => {
+    const handleHomeDoubleTap = () => {
+      scrollToTop();
+    };
+
+    // Listen for home double-tap event
+    eventEmitter.on('homeDoubleTap', handleHomeDoubleTap);
+
+    return () => {
+      eventEmitter.off('homeDoubleTap', handleHomeDoubleTap);
+    };
+  }, [scrollToTop]);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom }}
@@ -437,7 +470,7 @@ export default function HomeScreen() {
                 activeSegment === "kandilli" && styles.activeSegmentText,
               ]}
             >
-              Kandilli
+              KANDILLI
             </Text>
           </TouchableOpacity>
 
@@ -457,6 +490,40 @@ export default function HomeScreen() {
               USGS
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              activeSegment === "iris" && styles.activeSegmentButton,
+            ]}
+            onPress={() => setActiveSegment("iris")}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                activeSegment === "iris" && styles.activeSegmentText,
+              ]}
+            >
+              IRIS
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              activeSegment === "emsc" && styles.activeSegmentButton,
+            ]}
+            onPress={() => setActiveSegment("emsc")}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                activeSegment === "emsc" && styles.activeSegmentText,
+              ]}
+            >
+              EMSC
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.content}>
@@ -470,6 +537,7 @@ export default function HomeScreen() {
               progress={progress}
               styles={carouselStyles}
               formatDate={formatDate}
+              isLoading={isLoadingEarthquakes}
             />
           </View>
 
@@ -1370,28 +1438,39 @@ export default function HomeScreen() {
           {/* haberler */}
           <View style={styles.newsSection}>
             <Text style={styles.sectionTitle}>Haberler</Text>
-            <FlashList
-              data={news}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              estimatedItemSize={200}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingHorizontal: 12 }}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.newsCard} activeOpacity={0.8}>
-                  <Image
-                    source={{ uri: item.image }}
-                    style={styles.newsImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.newsOverlay}>
-                    <Text style={styles.newsSnippet} numberOfLines={2}>
-                      {item.snippet}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            />
+            {isLoadingNews ? (
+              <View style={styles.newsLoading}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.newsLoadingText}>Haberler yükleniyor...</Text>
+              </View>
+            ) : news.length > 0 ? (
+              <FlashList
+                data={news}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                estimatedItemSize={200}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ paddingHorizontal: 12 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.newsCard} activeOpacity={0.8}>
+                    <Image
+                      source={{ uri: item.image }}
+                      style={styles.newsImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.newsOverlay}>
+                      <Text style={styles.newsSnippet} numberOfLines={2}>
+                        {item.snippet}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              />
+            ) : (
+              <View style={styles.newsEmpty}>
+                <Text style={styles.newsEmptyText}>Henüz haber bulunmuyor</Text>
+              </View>
+            )}
           </View>
 
           <Divider style={styles.divider} />
@@ -1813,12 +1892,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
     marginBottom: 10,
-    paddingHorizontal: 15,
+    paddingHorizontal: 5,
   },
   segmentButton: {
     flex: 1,
     alignItems: "center",
     paddingVertical: 10,
+    paddingHorizontal: 2,
     position: "relative",
   },
   activeSegmentButton: {
@@ -1826,7 +1906,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.primary,
   },
   segmentText: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#808080",
     fontWeight: "500",
   },
@@ -1950,6 +2030,27 @@ const styles = StyleSheet.create({
   newsSection: {
     // paddingVertical: 1,
     backgroundColor: colors.light.background,
+  },
+  newsLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 20,
+  },
+  newsLoadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  newsEmpty: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  newsEmptyText: {
+    fontSize: 16,
+    color: "#6b7280",
+    textAlign: "center",
   },
   newsCard: {
     width: 180,

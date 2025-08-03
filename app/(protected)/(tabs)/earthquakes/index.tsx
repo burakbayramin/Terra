@@ -296,7 +296,10 @@ export default function EarthquakesScreen() {
                 title={eq.title}
                 description={`Büyüklük: ${eq.mag} - Derinlik: ${eq.depth} km`}
                 onCalloutPress={() => {
-                  router.push(`/earthquakes/${eq.id}`);
+                  router.push({
+                    pathname: `/(protected)/(tabs)/earthquakes/${eq.id}`,
+                    params: { source: 'list' }
+                  });
                 }}
                 tracksViewChanges={false}
               >
@@ -339,7 +342,10 @@ export default function EarthquakesScreen() {
               key={eq.id}
               style={[styles.earthquakeCard, index === 0 && styles.firstCard]}
               activeOpacity={0.7}
-              onPress={() => router.push(`/earthquakes/${eq.id}`)}
+              onPress={() => router.push({
+                pathname: `/(protected)/(tabs)/earthquakes/${eq.id}`,
+                params: { source: 'list' }
+              })}
             >
               {/* Magnitude Chip */}
               <View

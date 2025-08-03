@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,8 +16,10 @@ import {
   KeyboardAvoidingView,
   Modal,
 } from "react-native";
+import { PanGestureHandler, State } from "react-native-gesture-handler";
+
 import MapView, { Marker } from "react-native-maps";
-import { useLocalSearchParams, Stack, router } from "expo-router";
+import { useLocalSearchParams, Stack, router, useFocusEffect } from "expo-router";
 import { Earthquake } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
@@ -173,7 +175,7 @@ const CommentItem = ({ comment, onEdit, onDelete, isOwnComment }: any) => {
 };
 
 export default function EarthquakeDetailScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, source } = useLocalSearchParams();
   const [newComment, setNewComment] = useState("");
   const [editingComment, setEditingComment] = useState<any>(null);
   const [editCommentText, setEditCommentText] = useState("");
@@ -185,6 +187,42 @@ export default function EarthquakeDetailScreen() {
   const [displayedAIComment, setDisplayedAIComment] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isTypingAI, setIsTypingAI] = useState(false);
+
+  // Custom back navigation based on source
+  const handleBackNavigation = useCallback(() => {
+    console.log('handleBackNavigation called with source:', source);
+    
+    if (source === 'carousel') {
+      // If came from carousel (Ana Sayfa), go back to Ana Sayfa
+      console.log('Navigating to Ana Sayfa');
+      router.push("/(protected)/(tabs)/");
+    } else if (source === 'list') {
+      // If came from earthquakes list, go back to earthquakes list
+      console.log('Navigating to earthquakes list');
+      router.push("/(protected)/(tabs)/earthquakes");
+    } else {
+      // Default fallback - go back in navigation stack
+      console.log('Using default back navigation');
+      router.back();
+    }
+  }, [source, router]);
+
+  // Handle swipe gesture with better configuration
+  const onGestureEvent = useCallback((event: any) => {
+    const { translationX, state } = event.nativeEvent;
+    
+    console.log('Gesture event:', { translationX, state });
+    
+    if (state === State.END) {
+      // If swiped right more than 50px, trigger back navigation
+      if (translationX > 50) {
+        console.log('Triggering back navigation');
+        handleBackNavigation();
+      }
+    }
+  }, [handleBackNavigation]);
+
+
 
   const {
     data: earthquake,
@@ -439,13 +477,18 @@ export default function EarthquakeDetailScreen() {
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a365d" />
+    <PanGestureHandler 
+      onGestureEvent={onGestureEvent}
+      activeOffsetX={[-5, 5]}
+      activeOffsetY={[-15, 15]}
+    >
+      <View style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor="#1a365d" />
 
-      <KeyboardAvoidingView 
-        style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <ScrollView
           style={styles.container}
           showsVerticalScrollIndicator={false}
@@ -1011,8 +1054,9 @@ export default function EarthquakeDetailScreen() {
             </View>
           </View>
         </Modal>
-      </KeyboardAvoidingView>
-    </View>
+        </KeyboardAvoidingView>
+      </View>
+    </PanGestureHandler>
   );
 }
 
