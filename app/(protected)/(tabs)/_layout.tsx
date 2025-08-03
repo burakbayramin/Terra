@@ -157,22 +157,11 @@ export default function TabLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="earthquake-stats"
         options={{
-          title: "İstatistikler",
-          headerTitle: "Deprem İstatistikleri",
-          headerShown: false,
-          headerTitleAlign: "center",
-          headerTitleStyle: {
-            fontFamily: "NotoSans-Bold",
-          },
-          headerTintColor: colors.light.textPrimary,
-          tabBarActiveTintColor: colors.light.textPrimary,
-          tabBarInactiveTintColor: colors.light.textSecondary,
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="stats-chart" size={24} color={color} />
-          ),
+          href: null, // This hides the tab from the tab bar
         }}
       />
       {/* <Tabs.Screen
