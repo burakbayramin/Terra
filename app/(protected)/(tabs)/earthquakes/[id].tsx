@@ -680,7 +680,7 @@ export default function EarthquakeDetailScreen() {
                 >
                   {stats?.user_has_reported
                     ? "Depremi Hissettim ✓"
-                    : "Depremi Hissetin Mi?"}
+                    : "Depremi Hissettin Mi?"}
                 </Text>
               )}
             </TouchableOpacity>
