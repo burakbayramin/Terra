@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity } from "react-native";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { Earthquake } from "@/types/types";
 import MapView, { Marker } from "react-native-maps";
 import {
@@ -26,6 +26,7 @@ export default function EarthquakesScreen() {
   const mapHeight = 280;
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const sourcesInitialized = useRef(false);
 
   // Filter states
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -33,6 +34,14 @@ export default function EarthquakesScreen() {
   const [selectedMagnitudeRanges, setSelectedMagnitudeRanges] = useState<
     MagnitudeRange[]
   >([]);
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
+
+  // Temporary filter states (for modal)
+  const [tempSelectedRegions, setTempSelectedRegions] = useState<string[]>([]);
+  const [tempSelectedMagnitudeRanges, setTempSelectedMagnitudeRanges] = useState<
+    MagnitudeRange[]
+  >([]);
+  const [tempSelectedSources, setTempSelectedSources] = useState<string[]>([]);
 
   const region = {
     latitude: 39.0,
@@ -49,14 +58,93 @@ export default function EarthquakesScreen() {
     isFetching,
   } = useEarthquakes();
 
+  // Get unique sources from earthquakes
+  const availableSources = useMemo(() => {
+    if (!earthquakes || earthquakes.length === 0) return [];
+
+    const sources = new Set<string>();
+    earthquakes.forEach((eq: Earthquake) => {
+      if (eq.provider && eq.provider.trim() !== "") {
+        sources.add(eq.provider);
+      }
+    });
+    return Array.from(sources).sort();
+  }, [earthquakes]);
+
+  // Initialize selectedSources with all available sources when they change
+  useEffect(() => {
+    if (availableSources && availableSources.length > 0 && !sourcesInitialized.current) {
+      setSelectedSources([...availableSources]);
+      sourcesInitialized.current = true;
+    }
+  }, [availableSources]);
+
+  // Function to open filter modal and sync temporary states
+  const openFilterModal = () => {
+    try {
+      // Ensure we have the latest filter states with proper null checks
+      const currentRegions = Array.isArray(selectedRegions) ? [...selectedRegions] : [];
+      const currentMagnitudeRanges = Array.isArray(selectedMagnitudeRanges) ? [...selectedMagnitudeRanges] : [];
+      const currentSources = Array.isArray(selectedSources) ? [...selectedSources] : [];
+      
+      setTempSelectedRegions(currentRegions);
+      setTempSelectedMagnitudeRanges(currentMagnitudeRanges);
+      setTempSelectedSources(currentSources);
+      setShowFilterModal(true);
+    } catch (error) {
+      console.error('Error opening filter modal:', error);
+      // Fallback: open modal with empty states
+      setTempSelectedRegions([]);
+      setTempSelectedMagnitudeRanges([]);
+      setTempSelectedSources([]);
+      setShowFilterModal(true);
+    }
+  };
+
+  // Function to apply filters
+  const applyFilters = () => {
+    try {
+      // Safely copy temporary states to actual filter states
+      const tempRegions = tempSelectedRegions || [];
+      const tempMagnitudeRanges = tempSelectedMagnitudeRanges || [];
+      const tempSources = tempSelectedSources || [];
+      
+      // Use functional updates to ensure state consistency
+      setSelectedRegions(() => [...tempRegions]);
+      setSelectedMagnitudeRanges(() => [...tempMagnitudeRanges]);
+      setSelectedSources(() => [...tempSources]);
+      
+      // Close modal after state updates
+      setTimeout(() => {
+        setShowFilterModal(false);
+      }, 0);
+    } catch (error) {
+      console.error('Error applying filters:', error);
+      // Fallback: close modal even if there's an error
+      setShowFilterModal(false);
+    }
+  };
+
+  // Function to close modal without applying filters
+  const closeFilterModal = () => {
+    setShowFilterModal(false);
+  };
+
   // Filter earthquakes based on selected filters
   const filteredEarthquakes = useMemo(() => {
     if (!earthquakes || earthquakes.length === 0) return [];
 
     let filtered = [...earthquakes];
 
+    // Source filter - only apply if sources are selected
+    if (selectedSources && Array.isArray(selectedSources) && selectedSources.length > 0) {
+      filtered = filtered.filter((eq: Earthquake) =>
+        selectedSources.includes(eq.provider)
+      );
+    }
+
     // Region filter
-    if (selectedRegions.length > 0) {
+    if (selectedRegions && Array.isArray(selectedRegions) && selectedRegions.length > 0) {
       filtered = filtered.filter((eq: Earthquake) =>
         selectedRegions.some(
           (region) =>
@@ -67,7 +155,7 @@ export default function EarthquakesScreen() {
     }
 
     // Magnitude filter - multiple ranges support
-    if (selectedMagnitudeRanges.length > 0) {
+    if (selectedMagnitudeRanges && Array.isArray(selectedMagnitudeRanges) && selectedMagnitudeRanges.length > 0) {
       filtered = filtered.filter((eq: Earthquake) =>
         selectedMagnitudeRanges.some(
           (range) => eq.mag >= range.min && eq.mag <= range.max
@@ -76,7 +164,7 @@ export default function EarthquakesScreen() {
     }
 
     return filtered;
-  }, [earthquakes, selectedRegions, selectedMagnitudeRanges]);
+  }, [earthquakes, selectedSources, selectedRegions, selectedMagnitudeRanges]);
 
   // Get unique regions from earthquakes
   const availableRegions = useMemo(() => {
@@ -159,8 +247,9 @@ export default function EarthquakesScreen() {
 
   // Clear all filters
   const clearFilters = () => {
-    setSelectedRegions([]);
-    setSelectedMagnitudeRanges([]);
+    setTempSelectedRegions([]);
+    setTempSelectedMagnitudeRanges([]);
+    setTempSelectedSources(availableSources ? [...availableSources] : []);
   };
 
   // Check if any filters are active
@@ -204,9 +293,74 @@ export default function EarthquakesScreen() {
     });
   };
 
+  // Toggle source selection - deselect if already selected
+  const toggleSource = (source: string) => {
+    setSelectedSources((prev) => {
+      const currentSources = prev || [];
+      if (currentSources.includes(source)) {
+        // Deselect: Remove from array
+        return currentSources.filter((s) => s !== source);
+      } else {
+        // Select: Add to array
+        return [...currentSources, source];
+      }
+    });
+  };
+
+  // Temporary toggle functions (for modal)
+  const toggleTempRegion = (region: string) => {
+    setTempSelectedRegions((prev) => {
+      if (prev.includes(region)) {
+        return prev.filter((r) => r !== region);
+      } else {
+        return [...prev, region];
+      }
+    });
+  };
+
+  const toggleTempMagnitudeRange = (range: MagnitudeRange) => {
+    setTempSelectedMagnitudeRanges((prev) => {
+      const isSelected = prev.some(
+        (r) =>
+          r.min === range.min && r.max === range.max && r.label === range.label
+      );
+      if (isSelected) {
+        return prev.filter(
+          (r) =>
+            !(
+              r.min === range.min &&
+              r.max === range.max &&
+              r.label === range.label
+            )
+        );
+      } else {
+        return [...prev, range];
+      }
+    });
+  };
+
+  const toggleTempSource = (source: string) => {
+    setTempSelectedSources((prev) => {
+      const currentSources = prev || [];
+      if (currentSources.includes(source)) {
+        return currentSources.filter((s) => s !== source);
+      } else {
+        return [...currentSources, source];
+      }
+    });
+  };
+
   // Check if magnitude range is selected - more precise matching
   const isMagnitudeRangeSelected = (range: MagnitudeRange) => {
     return selectedMagnitudeRanges.some(
+      (r) =>
+        r.min === range.min && r.max === range.max && r.label === range.label
+    );
+  };
+
+  // Temporary magnitude range selection check (for modal)
+  const isTempMagnitudeRangeSelected = (range: MagnitudeRange) => {
+    return tempSelectedMagnitudeRanges.some(
       (r) =>
         r.min === range.min && r.max === range.max && r.label === range.label
     );
@@ -277,6 +431,7 @@ export default function EarthquakesScreen() {
         {/* Map Container */}
         <View style={styles.mapContainer}>
           <MapView
+            key={`map-${(selectedSources || []).join('-')}-${(selectedRegions || []).join('-')}-${(selectedMagnitudeRanges || []).length}`}
             style={[styles.map, { width: width - 32, height: mapHeight }]}
             initialRegion={mapRegion}
             showsUserLocation={false}
@@ -319,14 +474,20 @@ export default function EarthquakesScreen() {
             <EarthquakeFilter
               showFilterModal={showFilterModal}
               setShowFilterModal={setShowFilterModal}
-              selectedRegions={selectedRegions}
+              selectedRegions={tempSelectedRegions}
               availableRegions={availableRegions}
-              selectedMagnitudeRanges={selectedMagnitudeRanges}
-              toggleRegion={toggleRegion}
-              toggleMagnitudeRange={toggleMagnitudeRange}
+              selectedMagnitudeRanges={tempSelectedMagnitudeRanges}
+              selectedSources={tempSelectedSources}
+              availableSources={availableSources}
+              toggleRegion={toggleTempRegion}
+              toggleMagnitudeRange={toggleTempMagnitudeRange}
+              toggleSource={toggleTempSource}
               clearFilters={clearFilters}
-              isMagnitudeRangeSelected={isMagnitudeRangeSelected}
+              isMagnitudeRangeSelected={isTempMagnitudeRangeSelected}
               hasActiveFilters={hasActiveFilters}
+              onApply={applyFilters}
+              onOpenModal={openFilterModal}
+              onClose={closeFilterModal}
             />
           </View>
 
@@ -408,6 +569,16 @@ export default function EarthquakesScreen() {
                     </View>
                   )}
                 </View>
+
+                {/* Source indicator */}
+                {eq.provider && (
+                  <View style={styles.sourceContainer}>
+                    <Text style={styles.sourceLabel}>Kaynak:</Text>
+                    <View style={styles.sourceBadge}>
+                      <Text style={styles.sourceText}>{eq.provider}</Text>
+                    </View>
+                  </View>
+                )}
               </View>
 
               {/* Time Badge for recent earthquakes */}
@@ -626,6 +797,28 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     flex: 1,
     textAlign: "center",
+  },
+  sourceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+  },
+  sourceLabel: {
+    fontSize: 12,
+    color: "#718096",
+    fontWeight: "500",
+    marginRight: 8,
+  },
+  sourceBadge: {
+    backgroundColor: "#e2e8f0",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  sourceText: {
+    fontSize: 12,
+    color: "#4299e1",
+    fontWeight: "600",
   },
 
 });
