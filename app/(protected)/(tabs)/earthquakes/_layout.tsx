@@ -43,6 +43,7 @@ export default function EarthquakesLayout() {
           headerShown: false,
         }}
       />
+
     </Stack>
   );
 }

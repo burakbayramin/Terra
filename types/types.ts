@@ -95,3 +95,27 @@ export interface UserSubscription {
   isActive: boolean;
   autoRenew: boolean;
 }
+
+export interface NotificationSetting {
+  id: string;
+  name: string;
+  isActive: boolean;
+  sources: string[]; // ['kandilli', 'afad', 'all'] gibi
+  magnitudeRange: {
+    min: number;
+    max: number;
+  };
+  location: {
+    type: 'all' | 'cities';
+    cities?: string[];
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationSource {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+}

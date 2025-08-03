@@ -43,6 +43,18 @@ export default function AppLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="notification-settings"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="create-notification-wizard"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

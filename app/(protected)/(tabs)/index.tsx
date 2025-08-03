@@ -1236,17 +1236,37 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={styles.detailedSettingsButton}
               onPress={() => {
-                // router.push("/(protected)/notification-settings");
+                router.push("/(protected)/notification-settings");
               }}
+              activeOpacity={0.8}
             >
-              <Text style={styles.detailedSettingsText}>
-                Detaylı Bildirim Ayarları
-              </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colors.primary}
-              />
+              <LinearGradient
+                colors={[colors.primary, colors.primaryDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.detailedSettingsGradient}
+              >
+                <View style={styles.detailedSettingsContent}>
+                  <View style={styles.detailedSettingsLeft}>
+                    <View style={styles.detailedSettingsIconContainer}>
+                      <Ionicons name="settings" size={20} color="#fff" />
+                    </View>
+                    <View style={styles.detailedSettingsTextContainer}>
+                      <Text style={styles.detailedSettingsText}>
+                        Akıllı Bildirim Kural Motoru
+                      </Text>
+                      <Text style={styles.detailedSettingsSubtext}>
+                        Özelleştirilebilir deprem bildirimleri
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color="#fff"
+                  />
+                </View>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
 
@@ -1780,20 +1800,53 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   detailedSettingsButton: {
+    marginTop: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  detailedSettingsGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  detailedSettingsContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#f8f9fa",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginTop: 8,
+  },
+  detailedSettingsLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  detailedSettingsIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  detailedSettingsTextContainer: {
+    flex: 1,
   },
   detailedSettingsText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.primary,
-    fontFamily: "NotoSans-Medium",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+    fontFamily: "NotoSans-Bold",
+  },
+  detailedSettingsSubtext: {
+    fontSize: 12,
+    fontWeight: "400",
+    color: "rgba(255, 255, 255, 0.8)",
+    fontFamily: "NotoSans-Regular",
+    marginTop: 2,
   },
   securityScoreChip: {
     flexDirection: "row",
