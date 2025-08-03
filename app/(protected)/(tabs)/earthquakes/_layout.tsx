@@ -15,6 +15,12 @@ export default function EarthquakesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="all-comments"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

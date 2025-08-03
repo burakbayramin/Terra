@@ -17,7 +17,7 @@ import {
   Modal,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import { useLocalSearchParams, Stack } from "expo-router";
+import { useLocalSearchParams, Stack, router } from "expo-router";
 import { Earthquake } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
@@ -203,7 +203,7 @@ export default function EarthquakeDetailScreen() {
     error: feltReportsError,
   } = useEarthquakeFeltReports(id as string);
 
-  // Comments hook'unu kullan
+  // Comments hook'unu kullan - sadece 3 yorum göster
   const {
     comments,
     isLoading: isLoadingComments,
@@ -213,6 +213,11 @@ export default function EarthquakeDetailScreen() {
     isAddingComment,
     isUpdatingComment,
     error: commentsError,
+  } = useEarthquakeComments(id as string, 3);
+
+  // Tüm yorumları al (limit olmadan) - sadece sayı için
+  const {
+    comments: allComments,
   } = useEarthquakeComments(id as string);
 
   // Loading durumu
@@ -331,6 +336,8 @@ export default function EarthquakeDetailScreen() {
       ]
     );
   };
+
+
 
   // Typing effect fonksiyonu
   const typeText = (text: string, speed: number = 50) => {
@@ -897,15 +904,48 @@ export default function EarthquakeDetailScreen() {
                     <Text style={styles.commentsLoadingText}>Yorumlar yükleniyor...</Text>
                   </View>
                 ) : comments && comments.length > 0 ? (
-                  comments.map((comment: any) => (
-                    <CommentItem
-                      key={comment.id}
-                      comment={comment}
-                      onEdit={handleEditComment}
-                      onDelete={handleDeleteComment}
-                      isOwnComment={comment.is_own_comment}
-                    />
-                  ))
+                  <>
+                    {comments.map((comment: any) => (
+                      <CommentItem
+                        key={comment.id}
+                        comment={comment}
+                        onEdit={handleEditComment}
+                        onDelete={handleDeleteComment}
+                        isOwnComment={comment.is_own_comment}
+                      />
+                    ))}
+                    
+                    {/* View All Comments Button - sadece 3'ten fazla yorum varsa göster */}
+                    {allComments && allComments.length > 3 && (
+                      <TouchableOpacity
+                        style={styles.viewAllCommentsButton}
+                        onPress={() => {
+                          console.log('Navigating to all-comments with params:', {
+                            earthquakeId: id,
+                            earthquakeTitle: earthquake.title,
+                          });
+                          try {
+                            router.push({
+                              pathname: "/(protected)/(tabs)/earthquakes/all-comments",
+                              params: {
+                                earthquakeId: id as string,
+                                earthquakeTitle: earthquake.title,
+                              },
+                            });
+                          } catch (error) {
+                            console.error('Navigation error:', error);
+                            Alert.alert('Hata', 'Sayfa açılırken bir hata oluştu.');
+                          }
+                        }}
+                      >
+                        <Text style={styles.viewAllCommentsText}>
+                          Tüm Yorumları Gör ({allComments.length} yorum)
+                        </Text>
+                        <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                      </TouchableOpacity>
+                    )}
+
+                  </>
                 ) : (
                   <View style={styles.noCommentsContainer}>
                     <Ionicons name="chatbubbles-outline" size={48} color="#cbd5e0" />
@@ -1360,6 +1400,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
+    minHeight: 200, // Minimum yükseklik ekle
+    marginBottom: 20, // Alt boşluk ekle
   },
   commentsLoading: {
     padding: 40,
@@ -1439,6 +1481,27 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginLeft: 48,
   },
+  viewAllCommentsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+    backgroundColor: "#f8fafc",
+    marginTop: 8,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  viewAllCommentsText: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: "600",
+    marginRight: 8,
+  },
+
   commentActions: {
     flexDirection: "row",
     marginTop: 8,
