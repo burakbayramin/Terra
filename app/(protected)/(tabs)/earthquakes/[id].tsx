@@ -42,6 +42,83 @@ const getMagnitudeLabel = (magnitude: number) => {
   return "Zayıf";
 };
 
+// Function to format source names for display
+const formatSourceName = (source: string) => {
+  switch (source.toLowerCase()) {
+    case 'kandilli':
+      return 'KANDILLI';
+    case 'afad':
+      return 'AFAD';
+    case 'usgs':
+      return 'USGS';
+    case 'iris':
+      return 'IRIS';
+    case 'emsc':
+      return 'EMSC';
+    default:
+      return source.toUpperCase();
+  }
+};
+
+// Function to calculate felt radius based on magnitude and depth
+const calculateFeltRadius = (magnitude: number, depth: number): number => {
+  // Based on empirical relationships from earthquake studies
+  // Formula: R = 10^(0.5 * M - 1.8) * (1 + depth/100)
+  const baseRadius = Math.pow(10, 0.5 * magnitude - 1.8);
+  const depthFactor = 1 + (depth / 100);
+  const feltRadius = baseRadius * depthFactor;
+  
+  // Apply reasonable limits
+  return Math.min(Math.max(feltRadius, 5), 500); // Between 5-500 km
+};
+
+// Function to calculate Mercalli intensity based on magnitude and depth
+const calculateMercalliIntensity = (magnitude: number, depth: number): number => {
+  // Based on empirical relationships between magnitude and intensity
+  // Shallow earthquakes (depth < 30km) have higher intensity
+  // Deep earthquakes (depth > 100km) have lower intensity
+  
+  let baseIntensity = 0;
+  
+  if (magnitude >= 8.0) baseIntensity = 10;
+  else if (magnitude >= 7.0) baseIntensity = 9;
+  else if (magnitude >= 6.0) baseIntensity = 8;
+  else if (magnitude >= 5.0) baseIntensity = 7;
+  else if (magnitude >= 4.0) baseIntensity = 6;
+  else if (magnitude >= 3.0) baseIntensity = 3; // Çok daha düşük
+  else if (magnitude >= 2.0) baseIntensity = 2; // Çok daha düşük
+  else baseIntensity = 1; // Çok daha düşük
+  
+  // Adjust for depth
+  let depthAdjustment = 0;
+  if (depth < 30) depthAdjustment = 1; // Shallow earthquakes feel stronger
+  else if (depth > 100) depthAdjustment = -1; // Deep earthquakes feel weaker
+  
+  const intensity = baseIntensity + depthAdjustment;
+  
+  // Ensure intensity is between 1-12 (Mercalli scale)
+  return Math.min(Math.max(intensity, 1), 12);
+};
+
+// Function to get Mercalli intensity description
+const getMercalliDescription = (intensity: number): string => {
+  switch (intensity) {
+    case 1: return "Hissedilmez";
+    case 2: return "Çok Hafif";
+    case 3: return "Hafif";
+    case 4: return "Orta";
+    case 5: return "Güçlü";
+    case 6: return "Çok Güçlü";
+    case 7: return "Şiddetli";
+    case 8: return "Çok Şiddetli";
+    case 9: return "Yıkıcı";
+    case 10: return "Çok Yıkıcı";
+    case 11: return "Felaket";
+    case 12: return "Büyük Felaket";
+    default: return "Bilinmiyor";
+  }
+};
+
 function formatDate(dateString: string) {
   const date = new Date(dateString);
   const now = new Date();
@@ -568,7 +645,7 @@ export default function EarthquakeDetailScreen() {
                   size={20}
                   color={getMagnitudeColor(earthquake.mag)}
                 />
-                <Text style={styles.statValue}>{earthquake.provider}</Text>
+                <Text style={styles.statValue}>{formatSourceName(earthquake.provider)}</Text>
                 <Text style={styles.statLabel}>Kaynak</Text>
               </View>
             </View>
@@ -819,24 +896,27 @@ export default function EarthquakeDetailScreen() {
                     Bu deprem {earthquake.mag.toFixed(1)} büyüklüğünde kaydedilmiş
                     olup, {earthquake.depth} km derinliğinde gerçekleşmiştir.
                     {earthquake.mag >= 4.0
-                      ? " Bu şiddetteki depremler genellikle geniş bir alanda hissedilir ve hafif hasarlara neden olabilir."
+                      ? " Bu büyüklükteki depremler genellikle geniş bir alanda hissedilir ve hafif hasarlara neden olabilir."
                       : earthquake.mag >= 3.0
-                      ? " Bu şiddetteki depremler genellikle sadece yakın çevrede hissedilir."
-                      : " Bu şiddetteki depremler genellikle sadece hassas cihazlarla tespit edilir."}
+                      ? " Bu büyüklükteki depremler genellikle sadece yakın çevrede hissedilir."
+                      : " Bu büyüklükteki depremler genellikle sadece hassas cihazlarla tespit edilir."}
+                    {"\n\n"}Mercalli şiddeti, depremin yüzeydeki etkisini gösterir ve büyüklükten farklıdır.
                   </Text>
 
                   <View style={styles.impactMetrics}>
                     <View style={styles.metricItem}>
                       <Text style={styles.metricValue}>
-                        {Math.floor(Math.random() * 50) + 10} km
+                        {calculateFeltRadius(earthquake.mag, earthquake.depth)} km
                       </Text>
                       <Text style={styles.metricLabel}>Hissedilme Yarıçapı</Text>
                     </View>
                     <View style={styles.metricItem}>
                       <Text style={styles.metricValue}>
-                        {Math.floor(Math.random() * 10) + 1}
+                        {calculateMercalliIntensity(earthquake.mag, earthquake.depth)}
                       </Text>
-                      <Text style={styles.metricLabel}>Mercalli Şiddeti</Text>
+                      <Text style={styles.metricLabel}>
+                        Mercalli Şiddeti ({getMercalliDescription(calculateMercalliIntensity(earthquake.mag, earthquake.depth))})
+                      </Text>
                     </View>
                   </View>
                 </View>

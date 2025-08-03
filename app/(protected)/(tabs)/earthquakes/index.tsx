@@ -193,6 +193,24 @@ export default function EarthquakesScreen() {
     return "Zayıf";
   }, []);
 
+  // Function to format source names for display
+  const formatSourceName = useCallback((source: string) => {
+    switch (source.toLowerCase()) {
+      case 'kandilli':
+        return 'KANDILLI';
+      case 'afad':
+        return 'AFAD';
+      case 'usgs':
+        return 'USGS';
+      case 'iris':
+        return 'IRIS';
+      case 'emsc':
+        return 'EMSC';
+      default:
+        return source.toUpperCase();
+    }
+  }, []);
+
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString || typeof dateString !== 'string') return "Bilinmiyor";
 
@@ -575,7 +593,7 @@ export default function EarthquakesScreen() {
                   <View style={styles.sourceContainer}>
                     <Text style={styles.sourceLabel}>Kaynak:</Text>
                     <View style={styles.sourceBadge}>
-                      <Text style={styles.sourceText}>{eq.provider}</Text>
+                      <Text style={styles.sourceText}>{formatSourceName(eq.provider)}</Text>
                     </View>
                   </View>
                 )}

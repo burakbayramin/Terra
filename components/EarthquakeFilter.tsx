@@ -77,6 +77,24 @@ const EarthquakeFilter: React.FC<EarthquakeFilterProps> = ({
     { label: 'Güçlü (5+)', min: 5, max: 10 },
   ];
 
+  // Function to format source names for display
+  const formatSourceName = (source: string) => {
+    switch (source.toLowerCase()) {
+      case 'kandilli':
+        return 'KANDILLI';
+      case 'afad':
+        return 'AFAD';
+      case 'usgs':
+        return 'USGS';
+      case 'iris':
+        return 'IRIS';
+      case 'emsc':
+        return 'EMSC';
+      default:
+        return source.toUpperCase();
+    }
+  };
+
   return (
     <>
       {/* Filter Button */}
@@ -186,7 +204,7 @@ const EarthquakeFilter: React.FC<EarthquakeFilterProps> = ({
                               styles.filterOptionTextSelected,
                           ]}
                         >
-                          {source}
+                          {formatSourceName(source)}
                         </Text>
                         {(selectedSources?.includes(source) || false) && (
                           <Text style={styles.checkmark}>✓</Text>

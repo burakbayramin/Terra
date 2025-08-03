@@ -42,7 +42,7 @@ const EarthquakeCarousel: React.FC<EarthquakeCarouselProps> = ({
   // Filter earthquakes based on provider and limit to last 15
   const filteredData = carouselData.filter(earthquake => {
     if (filter === "afad") return earthquake.provider === "AFAD";
-    if (filter === "kandilli") return earthquake.provider === "Kandilli";
+    if (filter === "kandilli") return earthquake.provider === "KANDILLI";
     if (filter === "usgs") return earthquake.provider === "USGS";
     if (filter === "iris") return earthquake.provider === "IRIS";
     if (filter === "emsc") return earthquake.provider === "EMSC";
