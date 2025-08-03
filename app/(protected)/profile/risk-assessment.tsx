@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -41,6 +41,10 @@ const RiskAssessmentScreen = () => {
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiRecommendations, setAiRecommendations] = useState<string>("");
   const [showAIRecommendations, setShowAIRecommendations] = useState(false);
+  const [displayedAIRecommendations, setDisplayedAIRecommendations] = useState<string>("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [showCursor, setShowCursor] = useState(false);
+  const cursorIntervalRef = useRef<number | null>(null);
 
   // Risk assessment questions data (same as in risk-form.tsx)
   const riskQuestions = [
@@ -152,10 +156,52 @@ const RiskAssessmentScreen = () => {
     return "Acil olarak deprem hazırlığı konusunda önlemler almanız gerekiyor.";
   };
 
+  // Typing effect function
+  const typeText = (text: string, speed: number = 30) => {
+    setIsTyping(true);
+    setDisplayedAIRecommendations("");
+    setShowCursor(true);
+    
+    let index = 0;
+    const timer = setInterval(() => {
+      if (index < text.length) {
+        setDisplayedAIRecommendations(text.substring(0, index + 1));
+        index++;
+      } else {
+        clearInterval(timer);
+        setIsTyping(false);
+        setShowCursor(false);
+      }
+    }, speed);
+  };
+
+  // Blinking cursor effect
+  useEffect(() => {
+    if (isTyping) {
+      cursorIntervalRef.current = setInterval(() => {
+        setShowCursor(prev => !prev);
+      }, 500);
+    } else {
+      if (cursorIntervalRef.current) {
+        clearInterval(cursorIntervalRef.current);
+        cursorIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (cursorIntervalRef.current) {
+        clearInterval(cursorIntervalRef.current);
+      }
+    };
+  }, [isTyping]);
+
   const generateAIRecommendations = async () => {
     if (!user) return;
 
     setIsLoadingAI(true);
+    setShowAIRecommendations(true);
+    setDisplayedAIRecommendations("");
+    
     try {
       const genAI = new GoogleGenerativeAI("AIzaSyA9gguZnXbvAcOmVvDxTm1vNVeIqOYfejA");
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
@@ -180,10 +226,13 @@ const RiskAssessmentScreen = () => {
       const text = response.text();
 
       setAiRecommendations(text);
-      setShowAIRecommendations(true);
+      
+      // Start typing effect immediately
+      typeText(text, 40);
     } catch (error) {
       console.error('AI öneriler oluşturma hatası:', error);
       Alert.alert("Hata", "AI önerileri oluşturulurken bir hata oluştu.");
+      setShowAIRecommendations(false);
     } finally {
       setIsLoadingAI(false);
     }
@@ -331,17 +380,22 @@ const RiskAssessmentScreen = () => {
 
             {/* AI Recommendations Button */}
             <TouchableOpacity
-              style={styles.aiButton}
+              style={[styles.aiButton, isLoadingAI && styles.aiButtonDisabled]}
               onPress={generateAIRecommendations}
               disabled={isLoadingAI}
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={[colors.gradientOne, colors.gradientTwo]}
+                colors={isLoadingAI ? ["#ccc", "#ddd"] : [colors.gradientOne, colors.gradientTwo]}
                 style={styles.aiButtonGradient}
               >
                 {isLoadingAI ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <>
+                    <ActivityIndicator size="small" color="#666" />
+                    <Text style={[styles.aiButtonText, { color: "#666" }]}>
+                      Hazırlanıyor...
+                    </Text>
+                  </>
                 ) : (
                   <>
                     <MaterialCommunityIcons
@@ -358,7 +412,7 @@ const RiskAssessmentScreen = () => {
             </TouchableOpacity>
 
             {/* AI Recommendations Display */}
-            {showAIRecommendations && aiRecommendations && (
+            {showAIRecommendations && (
               <View style={styles.aiRecommendationsCard}>
                 <View style={styles.aiHeader}>
                   <MaterialCommunityIcons
@@ -367,8 +421,16 @@ const RiskAssessmentScreen = () => {
                     color={colors.primary}
                   />
                   <Text style={styles.aiTitle}>AI Önerileri</Text>
+                  {isTyping && !isLoadingAI && (
+                    <View style={styles.typingIndicator}>
+                      <Text style={styles.typingText}>Yazıyor...</Text>
+                    </View>
+                  )}
                 </View>
-                <Text style={styles.aiRecommendationsText}>{aiRecommendations}</Text>
+                <Text style={styles.aiRecommendationsText}>
+                  {displayedAIRecommendations}
+                  {showCursor && <Text style={styles.cursor}>|</Text>}
+                </Text>
               </View>
             )}
 
@@ -620,6 +682,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  aiButtonDisabled: {
+    shadowOpacity: 0.1,
+    elevation: 2,
+  },
   aiButtonGradient: {
     flexDirection: "row",
     alignItems: "center",
@@ -661,6 +727,19 @@ const styles = StyleSheet.create({
     color: "#444",
     lineHeight: 22,
     fontFamily: "NotoSans-Regular",
+  },
+  typingIndicator: {
+    marginLeft: 8,
+  },
+  typingText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontFamily: "NotoSans-Medium",
+    fontStyle: "italic",
+  },
+  cursor: {
+    color: colors.primary,
+    fontWeight: "bold",
   },
   actionButtons: {
     gap: 12,
