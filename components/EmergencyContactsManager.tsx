@@ -9,6 +9,8 @@ import {
   TextInput,
   Alert,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Contacts from "expo-contacts";
@@ -217,26 +219,28 @@ const EmergencyContactsManager: React.FC<EmergencyContactsManagerProps> = ({
             <View style={{ width: 24 }} />
           </View>
 
-          <View style={styles.modalContent}>
-            <Text style={styles.modalLabel}>Telefon Numarası</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="5XX XXX XX XX"
-              value={newPhoneNumber}
-              onChangeText={(text) => setNewPhoneNumber(formatPhoneNumber(text))}
-              keyboardType="phone-pad"
-              maxLength={13}
-              placeholderTextColor={colors.light.textSecondary}
-            />
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalLabel}>Telefon Numarası</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="5XX XXX XX XX"
+                value={newPhoneNumber}
+                onChangeText={(text) => setNewPhoneNumber(formatPhoneNumber(text))}
+                keyboardType="phone-pad"
+                maxLength={13}
+                placeholderTextColor={colors.light.textSecondary}
+              />
 
-            <TouchableOpacity
-              style={styles.modalSaveButton}
-              onPress={handleSaveManualNumber}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.modalSaveButtonText}>Ekle</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={styles.modalSaveButton}
+                onPress={handleSaveManualNumber}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalSaveButtonText}>Ekle</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
       </Modal>
 

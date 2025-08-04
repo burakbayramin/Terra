@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -467,10 +469,11 @@ const ProfileSettingsPage = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
-        showsVerticalScrollIndicator={false}
-      >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Kişisel Bilgiler</Text>
           <View style={styles.inputGroup}>
@@ -648,7 +651,8 @@ const ProfileSettingsPage = () => {
             {isSaving ? "Kaydediliyor..." : "Kaydet"}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
 
       <CityDistrictSelector
         visible={modalVisible}

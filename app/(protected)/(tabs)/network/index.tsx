@@ -9,6 +9,8 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -265,59 +267,61 @@ export default function NetworkScreen() {
         onRequestClose={() => setShowCreateModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Ağ Oluştur</Text>
-              <TouchableOpacity
-                onPress={() => setShowCreateModal(false)}
-                style={styles.closeButton}
-              >
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Ağ Oluştur</Text>
+                <TouchableOpacity
+                  onPress={() => setShowCreateModal(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalSubtitle}>
+                Acil durumlar için güvenlik ağınızı oluşturun
+              </Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Ağ Adı (örn: Aile Ağım)"
+                value={networkName}
+                onChangeText={setNetworkName}
+                maxLength={50}
+              />
+
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Açıklama (opsiyonel)"
+                value={networkDescription}
+                onChangeText={setNetworkDescription}
+                multiline
+                numberOfLines={3}
+                maxLength={200}
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowCreateModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={handleCreateNetwork}
+                  disabled={createNetworkMutation.isPending}
+                >
+                  {createNetworkMutation.isPending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.confirmButtonText}>Oluştur</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
-
-            <Text style={styles.modalSubtitle}>
-              Acil durumlar için güvenlik ağınızı oluşturun
-            </Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Ağ Adı (örn: Aile Ağım)"
-              value={networkName}
-              onChangeText={setNetworkName}
-              maxLength={50}
-            />
-
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Açıklama (opsiyonel)"
-              value={networkDescription}
-              onChangeText={setNetworkDescription}
-              multiline
-              numberOfLines={3}
-              maxLength={200}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowCreateModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>İptal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.confirmButton}
-                onPress={handleCreateNetwork}
-                disabled={createNetworkMutation.isPending}
-              >
-                {createNetworkMutation.isPending ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.confirmButtonText}>Oluştur</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
+          </TouchableWithoutFeedback>
         </View>
       </Modal>
 
@@ -329,57 +333,59 @@ export default function NetworkScreen() {
         onRequestClose={() => setShowJoinModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Ağa Katıl</Text>
-              <TouchableOpacity
-                onPress={() => setShowJoinModal(false)}
-                style={styles.closeButton}
-              >
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Ağa Katıl</Text>
+                <TouchableOpacity
+                  onPress={() => setShowJoinModal(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
 
-            <Text style={styles.modalSubtitle}>
-              Katılmak istediğiniz ağın kodunu girin
-            </Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Ağ Kodu"
-              value={networkCode}
-              onChangeText={setNetworkCode}
-              maxLength={20}
-              autoCapitalize="characters"
-            />
-
-            <View style={styles.infoBox}>
-              <Ionicons name="information-circle" size={20} color={colors.primary} />
-              <Text style={styles.infoText}>
-                Ağ kodu, ağ sahibinden alabileceğiniz benzersiz bir koddur
+              <Text style={styles.modalSubtitle}>
+                Katılmak istediğiniz ağın kodunu girin
               </Text>
-            </View>
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowJoinModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>İptal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.confirmButton}
-                onPress={handleJoinNetwork}
-                disabled={joinNetworkMutation.isPending}
-              >
-                {joinNetworkMutation.isPending ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.confirmButtonText}>Katıl</Text>
-                )}
-              </TouchableOpacity>
+              <TextInput
+                style={styles.input}
+                placeholder="Ağ Kodu"
+                value={networkCode}
+                onChangeText={setNetworkCode}
+                maxLength={20}
+                autoCapitalize="characters"
+              />
+
+              <View style={styles.infoBox}>
+                <Ionicons name="information-circle" size={20} color={colors.primary} />
+                <Text style={styles.infoText}>
+                  Ağ kodu, ağ sahibinden alabileceğiniz benzersiz bir koddur
+                </Text>
+              </View>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowJoinModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={handleJoinNetwork}
+                  disabled={joinNetworkMutation.isPending}
+                >
+                  {joinNetworkMutation.isPending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.confirmButtonText}>Katıl</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
         </View>
       </Modal>
     </View>

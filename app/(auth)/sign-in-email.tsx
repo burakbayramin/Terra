@@ -11,6 +11,8 @@ import {
   Platform,
   Dimensions,
   StatusBar,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -89,6 +91,27 @@ export default function SignInWithEmail() {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  // Keyboard event listeners
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+    };
   }, []);
 
   // Focus effect for session and data loading
@@ -235,14 +258,15 @@ export default function SignInWithEmail() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardAvoidingView}
         >
-          <ScrollView
-            contentContainerStyle={[
-              styles.scrollContent,
-              keyboardVisible && styles.scrollContentKeyboard,
-            ]}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <ScrollView
+              contentContainerStyle={[
+                styles.scrollContent,
+                keyboardVisible && styles.scrollContentKeyboard,
+              ]}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.title}>Hoş Geldiniz</Text>
@@ -456,7 +480,8 @@ export default function SignInWithEmail() {
                 </TouchableOpacity>
               </View>
             </View>
-          </ScrollView>
+            </ScrollView>
+          </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </View>
     </SafeAreaView>

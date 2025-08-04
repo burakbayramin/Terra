@@ -9,6 +9,8 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
@@ -501,13 +503,15 @@ Bu verilere göre bölgenin deprem risk seviyesini, en yakın fay hattının etk
           {/* Address Input */}
           <View style={styles.addressContainer}>
             <Text style={styles.addressLabel}>Detaylı Adres</Text>
-            <TextInput
-              style={styles.addressInput}
-              placeholder="Sokak, cadde, bina numarası..."
-              value={locationData.address}
-              onChangeText={(text) => setLocationData(prev => ({ ...prev, address: text }))}
-              multiline
-            />
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <TextInput
+                style={styles.addressInput}
+                placeholder="Sokak, cadde, bina numarası..."
+                value={locationData.address}
+                onChangeText={(text) => setLocationData(prev => ({ ...prev, address: text }))}
+                multiline
+              />
+            </TouchableWithoutFeedback>
             <TouchableOpacity
               style={styles.searchButton}
               onPress={searchGoogleAddress}
