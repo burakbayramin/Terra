@@ -63,6 +63,8 @@ export interface Profile {
   emergency_contacts: string[] | null;
   safety_score?: number | null;
   has_completed_safety_form: boolean;
+  show_full_name_in_profile?: boolean;
+  show_full_name_in_comments?: boolean;
 }
 
 export interface EarthquakeFeltReport {
