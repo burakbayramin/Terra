@@ -19,7 +19,7 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import Toast from "@/components/Toast";
-import { PanGestureHandler, State } from "react-native-gesture-handler";
+
 
 import MapView, { Marker } from "react-native-maps";
 import { useLocalSearchParams, Stack, router, useFocusEffect } from "expo-router";
@@ -298,7 +298,18 @@ const CommentItem = ({ comment, onEdit, onDelete, isOwnComment }: any) => {
 };
 
 export default function EarthquakeDetailScreen() {
-  const { id, source } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const id = String(params?.id || '');
+  const source = String(params?.source || '');
+
+  // Check if id is valid
+  if (!id || id === 'undefined' || id === 'null') {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Geçersiz deprem ID'si</Text>
+      </View>
+    );
+  }
   const [newComment, setNewComment] = useState("");
   const [editingComment, setEditingComment] = useState<any>(null);
   const [editCommentText, setEditCommentText] = useState("");
@@ -342,20 +353,7 @@ export default function EarthquakeDetailScreen() {
     }
   }, [source, router]);
 
-  // Handle swipe gesture with better configuration
-  const onGestureEvent = useCallback((event: any) => {
-    const { translationX, state } = event.nativeEvent;
-    
-    console.log('Gesture event:', { translationX, state });
-    
-    if (state === State.END) {
-      // If swiped right more than 50px, trigger back navigation
-      if (translationX > 50) {
-        console.log('Triggering back navigation');
-        handleBackNavigation();
-      }
-    }
-  }, [handleBackNavigation]);
+
 
 
 
@@ -365,7 +363,7 @@ export default function EarthquakeDetailScreen() {
     error,
     refetch,
     isFetching,
-  } = useEarthquakeById(id as string);
+  } = useEarthquakeById(id);
 
   // Felt reports hook'unu kullan
   const {
@@ -374,7 +372,7 @@ export default function EarthquakeDetailScreen() {
     toggleFeltReport,
     isUpdating,
     error: feltReportsError,
-  } = useEarthquakeFeltReports(id as string);
+  } = useEarthquakeFeltReports(id);
 
   // Comments hook'unu kullan - sadece 3 yorum göster
   const {
@@ -386,12 +384,12 @@ export default function EarthquakeDetailScreen() {
     isAddingComment,
     isUpdatingComment,
     error: commentsError,
-  } = useEarthquakeComments(id as string, 3);
+  } = useEarthquakeComments(id, 3);
 
   // Tüm yorumları al (limit olmadan) - sadece sayı için
   const {
     comments: allComments,
-  } = useEarthquakeComments(id as string);
+  } = useEarthquakeComments(id);
 
   // Premium hook'u
   const { hasAccessToFeature, getCurrentLevel } = usePremium();
@@ -615,19 +613,14 @@ export default function EarthquakeDetailScreen() {
   };
 
   return (
-    <PanGestureHandler 
-      onGestureEvent={onGestureEvent}
-      activeOffsetX={[-5, 5]}
-      activeOffsetY={[-15, 15]}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.root}>
-          <StatusBar barStyle="light-content" backgroundColor="#1a365d" />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor="#1a365d" />
 
-          <KeyboardAvoidingView 
-            style={styles.keyboardAvoidingView}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-          >
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
           <ScrollView
             style={styles.container}
             showsVerticalScrollIndicator={false}
@@ -1204,7 +1197,6 @@ export default function EarthquakeDetailScreen() {
           </KeyboardAvoidingView>
         </View>
       </TouchableWithoutFeedback>
-    </PanGestureHandler>
   );
 }
 
