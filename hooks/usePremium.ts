@@ -33,8 +33,7 @@ export const usePremium = () => {
       return;
     }
 
-    // Şimdilik statik olarak Sponsor paket ayarla
-    // Daha sonra bu değer profil ekranından güncellenebilir
+    // Kullanıcıları 3. seviye premium pakete ayarla
     setPremiumInfo({
       isPremium: true,
       premiumPackageType: PremiumPackageType.SPONSOR, // Sponsor (Premium 3)
