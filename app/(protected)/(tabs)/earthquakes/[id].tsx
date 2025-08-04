@@ -207,7 +207,15 @@ const CommentItem = ({ comment, onEdit, onDelete, isOwnComment }: any) => {
     return "Anonim Kullanıcı";
   };
 
+  // Premium seviyesini belirle
+  const getPremiumLevel = () => {
+    // Bu kısım backend'den gelecek premium bilgisi ile güncellenecek
+    // Şimdilik statik olarak test ediyoruz
+    return comment.profiles?.premium_level || 'free';
+  };
+
   const displayName = getUserDisplayName();
+  const premiumLevel = getPremiumLevel();
 
   return (
     <View style={styles.commentItem}>
@@ -219,9 +227,26 @@ const CommentItem = ({ comment, onEdit, onDelete, isOwnComment }: any) => {
             </Text>
           </View>
           <View>
-            <Text style={styles.commentUserName}>
-              {displayName}
-            </Text>
+            <View style={styles.commentUserNameContainer}>
+              <Text style={styles.commentUserName}>
+                {displayName}
+              </Text>
+              {/* Premium Badge */}
+              {premiumLevel !== 'free' && (
+                <View style={[
+                  styles.commentPremiumBadge,
+                  premiumLevel === 'supporter' && styles.commentSupporterBadge,
+                  premiumLevel === 'protector' && styles.commentProtectorBadge,
+                  premiumLevel === 'sponsor' && styles.commentSponsorBadge,
+                ]}>
+                  <Text style={styles.commentPremiumBadgeText}>
+                    {premiumLevel === 'supporter' && "S"}
+                    {premiumLevel === 'protector' && "P"}
+                    {premiumLevel === 'sponsor' && "SP"}
+                  </Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.commentDate}>
               {formatDate(comment.created_at)}
               {comment.is_edited && (
@@ -1628,6 +1653,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#2d3748",
+  },
+  commentUserNameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  commentPremiumBadge: {
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  commentSupporterBadge: {
+    backgroundColor: "#FFD700",
+  },
+  commentProtectorBadge: {
+    backgroundColor: "#FF5700",
+  },
+  commentSponsorBadge: {
+    backgroundColor: "#8A2BE2",
+  },
+  commentPremiumBadgeText: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#fff",
+    fontFamily: "NotoSans-Bold",
   },
   commentDate: {
     fontSize: 12,
