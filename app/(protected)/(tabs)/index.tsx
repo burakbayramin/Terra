@@ -1,7 +1,6 @@
 import {
   View,
   Text,
-  SafeAreaView,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
@@ -11,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Divider } from "react-native-paper";
 import {
   AntDesign,
@@ -25,17 +25,22 @@ import { ICarouselInstance } from "react-native-reanimated-carousel";
 import { colors } from "@/constants/colors";
 import EarthquakeCarousel from "@/components/EarthquakeCarousel";
 import { Earthquake } from "@/types/types";
-import { news } from "data";
 import EarthquakeStats from "@/components/EarthquakeStats";
 import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
 import EmergencyButton from "@/components/EmergencyButton";
+import EarthquakeRiskAnalyzer from "@/components/EarthquakeRiskAnalyzer";
+import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useEarthquakes } from "@/hooks/useEarthquakes";
 import { useLocation } from "@/hooks/useLocation";
 import { useSafetyScore, useProfile } from "@/hooks/useProfile";
+import { useNews } from "@/hooks/useNews";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
+import { usePremium } from "@/hooks/usePremium";
+import { eventEmitter } from "@/lib/eventEmitter";
 
 // Yeni düzenlenmiş görev verisi (sabit)
 const taskData = [
@@ -93,6 +98,8 @@ const CARD_HEIGHT = width * 0.6; // Adjust height based on width for better resp
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { scrollViewRef, scrollToTop } = useScrollToTop();
   const {
     getAndSaveLocation,
     hasPermission,
@@ -100,7 +107,7 @@ export default function HomeScreen() {
     authLoading,
   } = useLocation();
   const [activeSegment, setActiveSegment] = useState<
-    "afad" | "kandilli" | "usgs"
+    "afad" | "kandilli" | "usgs" | "iris" | "emsc"
   >("kandilli");
   const carouselRef = useRef<ICarouselInstance | null>(null);
   const progress = useSharedValue(0);
@@ -113,7 +120,22 @@ export default function HomeScreen() {
   const { data: profileData } = useProfile(user?.id || "");
 
   // Deprem verileri
-  const { data: earthquakeData = [] } = useEarthquakes();
+  const { data: earthquakes = [], isLoading: isLoadingEarthquakes } = useEarthquakes();
+
+  // Debug: Log available providers (only in development)
+  useEffect(() => {
+    if (__DEV__ && earthquakes.length > 0) {
+      const providers = [...new Set(earthquakes.map(eq => eq.provider))];
+      console.log('Available providers:', providers);
+      console.log('Provider counts:', providers.map(provider => ({
+        provider,
+        count: earthquakes.filter(eq => eq.provider === provider).length
+      })));
+    }
+  }, [earthquakes]);
+
+  // Haber verileri
+  const { data: news = [], isLoading: isLoadingNews } = useNews();
 
   // Kullanıcının hissettiği depremler
   const { data: userFeltEarthquakes, isLoading: isLoadingFeltEarthquakes } =
@@ -136,9 +158,9 @@ export default function HomeScreen() {
 
         // Earthquake ID'leri ile gerçek deprem verilerini eşleştir
         const earthquakeIds = data?.map((report) => report.earthquake_id) || [];
-        const filteredEarthquakes = earthquakeData
-          .filter((eq) => earthquakeIds.includes(eq.id))
-          .map((eq) => {
+        const filteredEarthquakes = earthquakes
+          .filter((eq: Earthquake) => earthquakeIds.includes(eq.id))
+          .map((eq: Earthquake) => {
             const report = data?.find((r) => r.earthquake_id === eq.id);
             return {
               ...eq,
@@ -148,7 +170,7 @@ export default function HomeScreen() {
 
         return filteredEarthquakes;
       },
-      enabled: !!user?.id && earthquakeData.length > 0,
+      enabled: !!user?.id && earthquakes.length > 0,
       staleTime: 5 * 60 * 1000, // 5 dakika fresh
     });
 
@@ -182,9 +204,9 @@ export default function HomeScreen() {
       // Manually fetch earthquake details for each comment
       const commentsWithEarthquakes = await Promise.all(
         (data || []).map(async (comment) => {
-          // Find earthquake data from the existing earthquakeData
-          const earthquake = earthquakeData.find(
-            (eq) => eq.id === comment.earthquake_id
+          // Find earthquake data from the existing earthquakes
+          const earthquake = earthquakes.find(
+            (eq: Earthquake) => eq.id === comment.earthquake_id
           );
 
           return {
@@ -196,7 +218,7 @@ export default function HomeScreen() {
 
       return commentsWithEarthquakes;
     },
-    enabled: !!user?.id && earthquakeData.length > 0,
+    enabled: !!user?.id && earthquakes.length > 0,
     staleTime: 5 * 60 * 1000, // 5 dakika fresh
   });
 
@@ -227,9 +249,12 @@ export default function HomeScreen() {
     });
   };
 
-  const { earthquakes }: { earthquakes: Earthquake[] } = require("@/data");
+
 
   const { sendEmergencySMS, loading } = EmergencyButton();
+
+  // Premium hook'u
+  const { hasAccessToFeature, getCurrentLevel, isPremium } = usePremium();
 
   // AI sorulari için örnek veriler
   const aiQuestions = [
@@ -280,20 +305,6 @@ export default function HomeScreen() {
   const [selectedDistance, setSelectedDistance] = useState("50");
   const [criticalNotification, setCriticalNotification] = useState(true);
 
-//   useEffect(() => {
-//   const getToken = async () => {
-//     const { data: { session } } = await supabase.auth.getSession();
-//     if (session) {
-//       console.log('🔑 SUPABASE TOKEN:');
-//       console.log(session.access_token);
-//       console.log('📋 Kopyalayıp Postman\'e yapıştırın!');
-//     } else {
-//       console.log('❌ Kullanıcı oturum açmamış');
-//     }
-//   };
-  
-//   getToken();
-// }, []);
   // Sayfa yüklendiğinde kullanıcının konumunu al ve kaydet
   useEffect(() => {
     const handleLocationOnLoad = async () => {
@@ -348,11 +359,27 @@ export default function HomeScreen() {
     handleLocationOnLoad();
   }, [user, authLoading]); // authLoading'i de dependency'e ekle
 
+  // Handle double-tap to scroll to top
+  useEffect(() => {
+    const handleHomeDoubleTap = () => {
+      scrollToTop();
+    };
+
+    // Listen for home double-tap event
+    eventEmitter.on('homeDoubleTap', handleHomeDoubleTap);
+
+    return () => {
+      eventEmitter.off('homeDoubleTap', handleHomeDoubleTap);
+    };
+  }, [scrollToTop]);
+
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
       >
         <View style={styles.mainHeader}>
           <View style={styles.headerLeft}>
@@ -448,7 +475,7 @@ export default function HomeScreen() {
                 activeSegment === "kandilli" && styles.activeSegmentText,
               ]}
             >
-              Kandilli
+              KANDILLI
             </Text>
           </TouchableOpacity>
 
@@ -468,6 +495,40 @@ export default function HomeScreen() {
               USGS
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              activeSegment === "iris" && styles.activeSegmentButton,
+            ]}
+            onPress={() => setActiveSegment("iris")}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                activeSegment === "iris" && styles.activeSegmentText,
+              ]}
+            >
+              IRIS
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              activeSegment === "emsc" && styles.activeSegmentButton,
+            ]}
+            onPress={() => setActiveSegment("emsc")}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                activeSegment === "emsc" && styles.activeSegmentText,
+              ]}
+            >
+              EMSC
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.content}>
@@ -481,6 +542,7 @@ export default function HomeScreen() {
               progress={progress}
               styles={carouselStyles}
               formatDate={formatDate}
+              isLoading={isLoadingEarthquakes}
             />
           </View>
 
@@ -541,6 +603,56 @@ export default function HomeScreen() {
               <Text style={styles.quickAccessText}>İlk Yardım</Text>
             </TouchableOpacity>
           </View>
+          <Divider style={styles.divider} />
+          
+          {/* Deprem Risk Analizi Modülü - Premium Özellik */}
+          <PremiumFeatureGate featureId="earthquake-risk-analysis">
+            <View style={styles.riskAnalysisContainer}>
+              <Text style={styles.sectionTitle}>Konumuna Göre Deprem Riskini Öğren</Text>
+              <View style={styles.riskAnalysisCard}>
+                <LinearGradient
+                  colors={[colors.gradientOne, colors.gradientTwo]}
+                  style={styles.riskAnalysisGradient}
+                >
+                  <View style={styles.riskAnalysisContent}>
+                    <View style={styles.riskAnalysisHeader}>
+                      <MaterialCommunityIcons name="map-marker-alert" size={32} color="#fff" />
+                      <Text style={styles.riskAnalysisTitle}>Deprem Risk Analizi</Text>
+                    </View>
+                    <Text style={styles.riskAnalysisDescription}>
+                      İl, ilçe ve mahalle seçerek konumunuza özel deprem risk değerlendirmesi yapın
+                    </Text>
+                    <View style={styles.riskAnalysisFeatures}>
+                      <View style={styles.riskAnalysisFeature}>
+                        <Ionicons name="location" size={16} color="#fff" />
+                        <Text style={styles.riskAnalysisFeatureText}>İl, İlçe, Mahalle Seçimi</Text>
+                      </View>
+                      <View style={styles.riskAnalysisFeature}>
+                        <Ionicons name="search" size={16} color="#fff" />
+                        <Text style={styles.riskAnalysisFeatureText}>Google Maps Entegrasyonu</Text>
+                      </View>
+                      <View style={styles.riskAnalysisFeature}>
+                        <Ionicons name="analytics" size={16} color="#fff" />
+                        <Text style={styles.riskAnalysisFeatureText}>Detaylı Risk Analizi</Text>
+                      </View>
+                    </View>
+                  </View>
+                </LinearGradient>
+                <TouchableOpacity
+                  style={styles.riskAnalysisButton}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    // Navigate to risk analyzer screen
+                    router.push('/(protected)/earthquake-risk-analyzer');
+                  }}
+                >
+                  <Text style={styles.riskAnalysisButtonText}>Risk Analizi Yap</Text>
+                  <Ionicons name="arrow-forward" size={20} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </PremiumFeatureGate>
+
           <Divider style={styles.divider} />
           <View style={styles.aiQuestionsSection}>
             <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>
@@ -1089,21 +1201,43 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.detailedSettingsButton}
-              onPress={() => {
-                // router.push("/(protected)/notification-settings");
-              }}
-            >
-              <Text style={styles.detailedSettingsText}>
-                Detaylı Bildirim Ayarları
-              </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colors.primary}
-              />
-            </TouchableOpacity>
+            <PremiumFeatureGate featureId="smart-notification-engine" compact={true}>
+              <TouchableOpacity
+                style={styles.detailedSettingsButton}
+                onPress={() => {
+                  router.push("/(protected)/notification-settings");
+                }}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[colors.primary, colors.primaryDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.detailedSettingsGradient}
+                >
+                  <View style={styles.detailedSettingsContent}>
+                    <View style={styles.detailedSettingsLeft}>
+                      <View style={styles.detailedSettingsIconContainer}>
+                        <Ionicons name="settings" size={20} color="#fff" />
+                      </View>
+                      <View style={styles.detailedSettingsTextContainer}>
+                        <Text style={styles.detailedSettingsText}>
+                          Akıllı Bildirim Kural Motoru
+                        </Text>
+                        <Text style={styles.detailedSettingsSubtext}>
+                          Özelleştirilebilir deprem bildirimleri
+                        </Text>
+                      </View>
+                    </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color="#fff"
+                    />
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </PremiumFeatureGate>
           </View>
 
           <Divider style={styles.divider} />
@@ -1252,114 +1386,267 @@ export default function HomeScreen() {
             </View>
           </View>
 
+          {/* Premium CTA Button - Coming Soon Features */}
+          <View style={styles.premiumCTAContainer}>
+            <TouchableOpacity
+              style={styles.premiumCTAButton}
+              activeOpacity={0.8}
+              onPress={() => router.push('/(protected)/premium-packages')}
+            >
+              <View style={styles.premiumCTAContent}>
+                <View style={styles.premiumCTAHeader}>
+                  <Ionicons name="rocket" size={24} color="#FFD700" />
+                  <Text style={styles.premiumCTATitle}>Önce Deneyimle</Text>
+                  <View style={styles.premiumCTABadge}>
+                    <Text style={styles.premiumCTABadgeText}>Beta Erişim</Text>
+                  </View>
+                </View>
+                <Text style={styles.premiumCTASubtitle}>
+                  Yakında çıkacak özellikleri premium üyelerimizle birlikte ilk siz deneyimleyin
+                </Text>
+                <View style={styles.premiumCTAFeatures}>
+                  <View style={styles.premiumCTAFeature}>
+                    <Ionicons name="flash" size={16} color="#4CAF50" />
+                    <Text style={styles.premiumCTAFeatureText}>Erken Uyarı Sistemi</Text>
+                  </View>
+                  <View style={styles.premiumCTAFeature}>
+                    <Ionicons name="people" size={16} color="#4CAF50" />
+                    <Text style={styles.premiumCTAFeatureText}>Topluluk Özellikleri</Text>
+                  </View>
+                  <View style={styles.premiumCTAFeature}>
+                    <Ionicons name="trending-up" size={16} color="#4CAF50" />
+                    <Text style={styles.premiumCTAFeatureText}>Gelişmiş Raporlar</Text>
+                  </View>
+                </View>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+
           <Divider style={styles.divider} />
 
           {/* haberler */}
           <View style={styles.newsSection}>
             <Text style={styles.sectionTitle}>Haberler</Text>
-            <FlashList
-              data={news}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              estimatedItemSize={200}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingHorizontal: 12 }}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.newsCard} activeOpacity={0.8}>
-                  <Image
-                    source={{ uri: item.image }}
-                    style={styles.newsImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.newsOverlay}>
-                    <Text style={styles.newsSnippet} numberOfLines={2}>
-                      {item.snippet}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            />
+            {isLoadingNews ? (
+              <View style={styles.newsLoading}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.newsLoadingText}>Haberler yükleniyor...</Text>
+              </View>
+            ) : news.length > 0 ? (
+              <FlashList
+                data={news}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                estimatedItemSize={200}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ paddingHorizontal: 12 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.newsCard} activeOpacity={0.8}>
+                    <Image
+                      source={{ uri: item.image }}
+                      style={styles.newsImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.newsOverlay}>
+                      <Text style={styles.newsSnippet} numberOfLines={2}>
+                        {item.snippet}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              />
+            ) : (
+              <View style={styles.newsEmpty}>
+                <Text style={styles.newsEmptyText}>Henüz haber bulunmuyor</Text>
+              </View>
+            )}
           </View>
 
           <Divider style={styles.divider} />
-
-          {/* Minimal Destek Bölümü */}
-          <View style={styles.minimalSupportContainer}>
-            <Text style={styles.sectionTitle}>Destek & İletişim</Text>
-
-            {/* Depremzedelere Destek */}
-            <TouchableOpacity
-              style={[styles.minimalSupportCard, styles.supportCardPrimary]}
-              activeOpacity={0.8}
-              onPress={() => {
-                Linking.openURL("https://www.afad.gov.tr/depremkampanyasi2");
-              }}
+          {/* Depremzedelere Destek Ol */}
+          <View style={styles.supportContainer}>
+            <LinearGradient
+              colors={["#ff6b6b", "#ff8e8e", "#ffb3b3"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.supportGradientContainer}
             >
-              <View style={styles.minimalSupportIconContainer}>
+              <View style={styles.supportHeader}>
                 <Ionicons
-                  name="heart-outline"
-                  size={18}
-                  color={colors.primary}
+                  name="heart"
+                  size={32}
+                  color="#fff"
+                  style={styles.supportIcon}
                 />
+                <Text style={styles.supportTitle}>
+                  Depremzedelere Destek Ol
+                </Text>
+                <Text style={styles.supportSubtitle}>
+                  Birlikte daha güçlüyüz
+                </Text>
               </View>
-              <Text style={styles.minimalSupportText}>
-                Depremzedelere Destek Ol
-              </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={colors.light.textSecondary}
-              />
-            </TouchableOpacity>
 
-            {/* Geliştiricilere Destek */}
-            <TouchableOpacity
-              style={[styles.minimalSupportCard, styles.supportCardSecondary]}
-              activeOpacity={0.8}
-            >
-              <View style={styles.minimalSupportIconContainer}>
-                <Ionicons
-                  name="code-slash-outline"
-                  size={18}
-                  color={colors.light.secondary}
-                />
-              </View>
-              <Text style={styles.minimalSupportText}>
-                Geliştiricilere Destek Ol
-              </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={colors.light.textSecondary}
-              />
-            </TouchableOpacity>
+              <View style={styles.supportContentNew}>
+                <Text style={styles.supportTextNew}>
+                  Depremden etkilenenlere yardım etmek için çeşitli kuruluşlara
+                  bağışta bulunabilir veya gönüllü olabilirsiniz. Küçük bir
+                  destek bile büyük bir fark yaratabilir.
+                </Text>
 
-            {/* İletişime Geç */}
-            <TouchableOpacity
-              style={[styles.minimalSupportCard, styles.supportCardNeutral]}
-              activeOpacity={0.8}
-              onPress={() => {
-                // İletişim formuna yönlendirme veya mail açma işlemi
-              }}
-            >
-              <View style={styles.minimalSupportIconContainer}>
-                <Ionicons
-                  name="mail-outline"
-                  size={18}
-                  color={colors.light.textPrimary}
-                />
+                <View style={styles.supportButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.fullWidthSupportButton}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      Linking.openURL(
+                        "https://www.afad.gov.tr/depremkampanyasi2"
+                      );
+                    }}
+                  >
+                    <LinearGradient
+                      colors={["#fff", "#f8f9fa"]}
+                      style={styles.supportButtonGradient}
+                    >
+                      <Ionicons
+                        name="heart"
+                        size={20}
+                        color="#ff6b6b"
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text style={styles.primarySupportButtonText}>
+                        Bağış Yap
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <Text style={styles.minimalSupportText}>İletişime Geç</Text>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={colors.light.textSecondary}
-              />
-            </TouchableOpacity>
+            </LinearGradient>
+          </View>
+
+          <View style={styles.supportContainer}>
+            <LinearGradient
+              colors={["#4a90e2", "#5ba3f5", "#7bb8ff"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.supportGradientContainer}
+            >
+              <View style={styles.supportHeader}>
+                <Ionicons
+                  name="code-slash"
+                  size={32}
+                  color="#fff"
+                  style={styles.supportIcon}
+                />
+                <Text style={styles.supportTitle}>
+                  Geliştiricilere Destek Ol
+                </Text>
+                <Text style={styles.supportSubtitle}>
+                  Açık kaynak projeye katkı
+                </Text>
+              </View>
+
+              <View style={styles.supportContentNew}>
+                <Text style={styles.supportTextNew}>
+                  Terra uygulaması topluluk katkılarıyla geliştirilmektedir.
+                  Deprem bilinci ve güvenliği için daha iyi özellikler
+                  geliştirmemize yardımcı olabilirsiniz.
+                </Text>
+
+                <View style={styles.supportButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.fullWidthSupportButton}
+                    activeOpacity={0.7}
+                    onPress={() => router.push('/(protected)/developer-support')}
+                  >
+                    <LinearGradient
+                      colors={["#fff", "#f8f9fa"]}
+                      style={styles.supportButtonGradient}
+                    >
+                      <Ionicons
+                        name="cafe"
+                        size={20}
+                        color="#4a90e2"
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text
+                        style={[
+                          styles.primarySupportButtonText,
+                          { color: "#4a90e2" },
+                        ]}
+                      >
+                        Destek Ol
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* İletişime Geç */}
+          <View style={styles.supportContainer}>
+            <LinearGradient
+              colors={["#10b981", "#34d399", "#6ee7b7"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.supportGradientContainer}
+            >
+              <View style={styles.supportHeader}>
+                <Ionicons
+                  name="mail"
+                  size={32}
+                  color="#fff"
+                  style={styles.supportIcon}
+                />
+                <Text style={styles.supportTitle}>İletişime Geç</Text>
+                <Text style={styles.supportSubtitle}>
+                  Bizimle iletişime geçin
+                </Text>
+              </View>
+
+              <View style={styles.supportContentNew}>
+                <Text style={styles.supportTextNew}>
+                  Sorularınız, önerileriniz veya geri bildirimleriniz için
+                  bizimle iletişime geçebilirsiniz. Size yardımcı olmaktan
+                  mutluluk duyarız.
+                </Text>
+
+                <View style={styles.supportButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.fullWidthSupportButton}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      Linking.openURL('mailto:info@terraapp.io');
+                    }}
+                  >
+                    <LinearGradient
+                      colors={["#fff", "#f8f9fa"]}
+                      style={styles.supportButtonGradient}
+                    >
+                      <Ionicons
+                        name="send"
+                        size={20}
+                        color="#10b981"
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text
+                        style={[
+                          styles.primarySupportButtonText,
+                          { color: "#10b981" },
+                        ]}
+                      >
+                        İletişime Geç
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </LinearGradient>
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -1483,20 +1770,53 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   detailedSettingsButton: {
+    marginTop: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  detailedSettingsGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  detailedSettingsContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#f8f9fa",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginTop: 8,
+  },
+  detailedSettingsLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  detailedSettingsIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  detailedSettingsTextContainer: {
+    flex: 1,
   },
   detailedSettingsText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.primary,
-    fontFamily: "NotoSans-Medium",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+    fontFamily: "NotoSans-Bold",
+  },
+  detailedSettingsSubtext: {
+    fontSize: 12,
+    fontWeight: "400",
+    color: "rgba(255, 255, 255, 0.8)",
+    fontFamily: "NotoSans-Regular",
+    marginTop: 2,
   },
   securityScoreChip: {
     flexDirection: "row",
@@ -1570,7 +1890,13 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontFamily: "NotoSans-Bold",
     textAlign: "center",
+    color: colors.primary,
+    letterSpacing: 3,
+    textShadowColor: colors.light.textPrimary,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 1,
   },
+
   headerLeft: {
     flex: 1,
     alignItems: "flex-start",
@@ -1589,12 +1915,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
     marginBottom: 10,
-    paddingHorizontal: 15,
+    paddingHorizontal: 5,
   },
   segmentButton: {
     flex: 1,
     alignItems: "center",
     paddingVertical: 10,
+    paddingHorizontal: 2,
     position: "relative",
   },
   activeSegmentButton: {
@@ -1602,7 +1929,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.primary,
   },
   segmentText: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#808080",
     fontWeight: "500",
   },
@@ -1727,6 +2054,27 @@ const styles = StyleSheet.create({
     // paddingVertical: 1,
     backgroundColor: colors.light.background,
   },
+  newsLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 20,
+  },
+  newsLoadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  newsEmpty: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  newsEmptyText: {
+    fontSize: 16,
+    color: "#6b7280",
+    textAlign: "center",
+  },
   newsCard: {
     width: 180,
     height: 120,
@@ -1817,7 +2165,7 @@ const styles = StyleSheet.create({
   },
   supportContainer: {
     paddingHorizontal: 12,
-    paddingBottom: 20,
+    paddingBottom: 8,
   },
   supportGradientContainer: {
     borderRadius: 20,
@@ -1830,28 +2178,28 @@ const styles = StyleSheet.create({
   },
   supportHeader: {
     alignItems: "center",
-    paddingTop: 24,
-    paddingBottom: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   supportIcon: {
-    marginBottom: 12,
+    marginBottom: 2,
     textShadowColor: "rgba(255, 255, 255, 0.3)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   supportTitle: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: "800",
     color: "#fff",
     fontFamily: "NotoSans-Bold",
     textAlign: "center",
-    marginBottom: 4,
+    marginBottom: 1,
     textShadowColor: "rgba(0, 0, 0, 0.1)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   supportSubtitle: {
-    fontSize: 14,
+    fontSize: 11,
     color: "rgba(255, 255, 255, 0.9)",
     fontFamily: "NotoSans-Medium",
     textAlign: "center",
@@ -1861,7 +2209,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 16,
-    padding: 20,
+    padding: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -1869,11 +2217,11 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   supportTextNew: {
-    fontSize: 15,
+    fontSize: 12,
     color: "#444",
-    lineHeight: 22,
+    lineHeight: 16,
     textAlign: "center",
-    marginBottom: 32,
+    marginBottom: 8,
     fontFamily: "NotoSans-Regular",
   },
   supportStatsRow: {
@@ -1933,7 +2281,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   supportButtonGradient: {
-    paddingVertical: 16,
+    paddingVertical: 8,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
@@ -1942,7 +2290,7 @@ const styles = StyleSheet.create({
   primarySupportButtonText: {
     color: "#ff6b6b",
     fontWeight: "700",
-    fontSize: 16,
+    fontSize: 13,
     fontFamily: "NotoSans-Bold",
   },
   secondarySupportButton: {
@@ -2407,118 +2755,146 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
-
-  // Kompakt Destek Bölümü Stilleri
-  compactSupportContainer: {
-    paddingHorizontal: 12,
-    paddingBottom: 20,
-    backgroundColor: colors.light.background,
-  },
-  supportGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  compactSupportCard: {
-    flex: 1,
-    height: 80,
-    borderRadius: 12,
+  // Premium CTA Button Styles
+  premiumCTAContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  compactSupportGradient: {
-    flex: 1,
-    justifyContent: "center",
+  premiumCTAButton: {
+    flexDirection: "row",
     alignItems: "center",
-    padding: 12,
+    justifyContent: "space-between",
+    padding: 20,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
-  compactSupportTitle: {
+  premiumCTAContent: {
+    flex: 1,
+    marginRight: 10,
+  },
+  premiumCTAHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  premiumCTATitle: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
+  premiumCTABadge: {
+    backgroundColor: "#FFD700",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 8,
+  },
+  premiumCTABadgeText: {
+    color: "#2d3748",
     fontSize: 12,
     fontWeight: "600",
-    color: "#fff",
-    textAlign: "center",
-    marginTop: 4,
-    lineHeight: 16,
-    fontFamily: "NotoSans-Medium",
   },
-
-  // Sadeleştirilmiş Destek Bölümü Stilleri
-  simpleSupportContainer: {
-    paddingHorizontal: 12,
-    paddingBottom: 20,
-    backgroundColor: colors.light.background,
-  },
-  simpleSupportCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  simpleSupportText: {
+  premiumCTASubtitle: {
+    color: "#666666",
     fontSize: 14,
-    fontWeight: "600",
-    color: "#fff",
-    marginLeft: 12,
-    fontFamily: "NotoSans-Medium",
+    marginBottom: 12,
+    lineHeight: 20,
   },
-
-  // Minimal Destek Bölümü Stilleri
-  minimalSupportContainer: {
-    paddingHorizontal: 12,
-    paddingBottom: 20,
-    backgroundColor: colors.light.background,
+  premiumCTAFeatures: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
   },
-  minimalSupportCard: {
+  premiumCTAFeature: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    marginRight: 15,
     marginBottom: 8,
-    borderRadius: 12,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: colors.light.surface,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
-  supportCardPrimary: {
-    // Sol kenardaki border kaldırıldı
-  },
-  supportCardSecondary: {
-    // Sol kenardaki border kaldırıldı
-  },
-  supportCardNeutral: {
-    // Sol kenardaki border kaldırıldı
-  },
-  minimalSupportIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: colors.light.surface,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  minimalSupportText: {
-    flex: 1,
-    fontSize: 15,
+  premiumCTAFeatureText: {
+    color: "#666666",
+    fontSize: 13,
+    marginLeft: 8,
     fontWeight: "500",
-    color: colors.light.textPrimary,
-    fontFamily: "NotoSans-Medium",
+  },
+  // Risk Analysis Module Styles
+  riskAnalysisContainer: {
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    backgroundColor: colors.light.background,
+  },
+  riskAnalysisCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  riskAnalysisGradient: {
+    padding: 20,
+  },
+  riskAnalysisContent: {
+    alignItems: "center",
+  },
+  riskAnalysisHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  riskAnalysisTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#fff",
+    marginLeft: 10,
+  },
+  riskAnalysisDescription: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 15,
+  },
+  riskAnalysisFeatures: {
+    width: "100%",
+  },
+  riskAnalysisFeature: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  riskAnalysisFeatureText: {
+    fontSize: 13,
+    color: "#fff",
+    marginLeft: 8,
+    fontWeight: "500",
+  },
+  riskAnalysisButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.2)",
+  },
+  riskAnalysisButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: colors.primary,
   },
 });
 
@@ -2536,6 +2912,7 @@ const carouselStyles = StyleSheet.create({
     borderTopRightRadius: 16,
     overflow: "hidden",
   },
+
   badge: {
     position: "absolute",
     top: 12,

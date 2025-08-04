@@ -25,6 +25,36 @@ export default function AppLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="earthquake-risk-analyzer"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="developer-support"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="premium-packages"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="notification-settings"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="create-notification-wizard"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

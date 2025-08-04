@@ -3,15 +3,18 @@ import {
   Text,
   StyleSheet,
   Button,
-  SafeAreaView,
   Image,
   TouchableOpacity,
   Switch,
   ScrollView,
+  Linking,
+  Animated,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import React, { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "expo-router";
+import { useAuth } from "@/hooks/useAuth";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Ionicons,
@@ -20,12 +23,70 @@ import {
 } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 import { Divider } from "react-native-paper";
+import { useSafetyScore, useSafetyFormCompletion, useProfile, useProfileCompletion } from "@/hooks/useProfile";
+import { useQueryClient } from "@tanstack/react-query";
+import { usePremium } from "@/hooks/usePremium";
+import { PremiumPackageType } from "@/types/types";
+
+// Animated Progress Bar Component
+const AnimatedProgressBar = ({ percentage }: { percentage: number }) => {
+  const animatedWidth = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(animatedWidth, {
+      toValue: percentage,
+      duration: 800,
+      useNativeDriver: false,
+    }).start();
+  }, [percentage, animatedWidth]);
+
+  return (
+    <View style={styles.miniProgressBar}>
+      <Animated.View
+        style={[
+          styles.miniProgressFill,
+          { 
+            width: animatedWidth.interpolate({
+              inputRange: [0, 100],
+              outputRange: ['0%', '100%'],
+            }),
+            backgroundColor: percentage === 100 ? '#27ae60' : 'white',
+          },
+        ]}
+      />
+    </View>
+  );
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const profileCompletionPercentage = 75;
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: safetyScore = 0 } = useSafetyScore(user?.id || "");
+  const { data: hasCompletedForm = false, isLoading: isLoadingFormCompletion } = useSafetyFormCompletion(user?.id || "");
+  const { data: profileCompletion = { percentage: 0, completedFields: 0, totalFields: 6 } } = useProfileCompletion(user?.id || "");
+  const { getCurrentLevel } = usePremium();
+  
+  // Premium seviye adını getir
+  const getPremiumLevelName = (level: PremiumPackageType): string => {
+    switch (level) {
+      case PremiumPackageType.FREE:
+        return 'Katılımcı (Ücretsiz)';
+      case PremiumPackageType.SUPPORTER:
+        return 'Destekleyici (Premium 1)';
+      case PremiumPackageType.PROTECTOR:
+        return 'Koruyucu (Premium 2)';
+      case PremiumPackageType.SPONSOR:
+        return 'Sponsor (Premium 3)';
+      default:
+        return 'Katılımcı (Ücretsiz)';
+    }
+  };
+  
+  // Check if form is completed (even if score is 0, it means assessment was done)
+  const isFormCompleted = hasCompletedForm;
   const missionCompletionPercentage = 15;
-  const [securityScore] = useState(78);
+  const insets = useSafeAreaInsets();
 
   // Güvenlik skoru renk fonksiyonu
   const getScoreColor = (score: number): string => {
@@ -38,12 +99,26 @@ export default function ProfileScreen() {
     return "#c0392b"; // Koyu Kırmızı
   };
 
+  // Risk değerlendirme buton rengi fonksiyonu
+  const getRiskButtonColors = (isCompleted: boolean, score: number): [string, string] => {
+    if (!isCompleted) {
+      return ["#f8f9fa", "#e9ecef"]; // Gri gradient - değerlendirme yapılmamış
+    }
+    
+    // Değerlendirme tamamlanmış, skora göre renk belirle
+    if (score >= 80) return ["#27ae60", "#2ecc71"]; // Yeşil gradient
+    if (score >= 60) return ["#f39c12", "#f1c40f"]; // Sarı gradient
+    if (score >= 40) return ["#e67e22", "#f39c12"]; // Turuncu gradient
+    return ["#e74c3c", "#c0392b"]; // Kırmızı gradient (0-39 arası)
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
         bounces={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
       >
         {/* Profile Section with Gradient */}
         <LinearGradient
@@ -58,57 +133,79 @@ export default function ProfileScreen() {
           </View>
           <Text style={styles.userName}>Burak Bayramin</Text>
 
-          {/* Security Score Chip */}
-          <View style={styles.securityScoreContainer}>
+          {/* Premium Status */}
+          <View style={styles.premiumStatusContainer}>
             <TouchableOpacity
-              style={[
-                styles.securityScoreChip,
-                { borderColor: getScoreColor(securityScore) },
-              ]}
+              style={styles.premiumStatusChip}
               activeOpacity={0.7}
-              onPress={() => {
-                // router.push("/(protected)/security-score");
-              }}
+              onPress={() => router.push("/(protected)/premium-packages")}
             >
-              <MaterialCommunityIcons
-                name="shield-check"
+              <Ionicons
+                name="star"
                 size={16}
-                color={getScoreColor(securityScore)}
+                color="#FFD700"
               />
-              <Text
-                style={[
-                  styles.securityScoreText,
-                  { color: getScoreColor(securityScore) },
-                ]}
-              >
-                % {securityScore}
+              <Text style={styles.premiumStatusText}>
+                Üyelik Seviyesi: {getPremiumLevelName(getCurrentLevel())}
               </Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.chipContainer}>
-            <View style={styles.profileCompletionChip}>
-              <View style={styles.miniProgressBar}>
-                <View
-                  style={[
-                    styles.miniProgressFill,
-                    { width: `${profileCompletionPercentage}%` },
-                  ]}
+          {/* Security Score Chip - Only show if assessment is completed and has a score > 0 */}
+          {isFormCompleted && safetyScore > 0 && (
+            <View style={styles.securityScoreContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.securityScoreChip,
+                  { borderColor: getScoreColor(safetyScore) },
+                ]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  // router.push("/(protected)/security-score");
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="shield-check"
+                  size={16}
+                  color={getScoreColor(safetyScore)}
                 />
-              </View>
-              <Text style={styles.profileCompletionText}>
-                Profili tamamla %{profileCompletionPercentage}
-              </Text>
+                <Text
+                  style={[
+                    styles.securityScoreText,
+                    { color: getScoreColor(safetyScore) },
+                  ]}
+                >
+                  % {safetyScore}
+                </Text>
+              </TouchableOpacity>
             </View>
+          )}
+
+          <View style={styles.chipContainer}>
+            <TouchableOpacity 
+              style={styles.profileCompletionChip}
+              onPress={() => {
+                // Invalidate profile completion cache before navigating
+                queryClient.invalidateQueries({
+                  queryKey: ["profileCompletion", user?.id],
+                });
+                router.push("/profile/profile-settings");
+              }}
+              activeOpacity={0.7}
+            >
+              <AnimatedProgressBar percentage={profileCompletion.percentage} />
+              <Text style={[
+                styles.profileCompletionText,
+                profileCompletion.percentage === 100 && { color: '#27ae60', fontWeight: 'bold' }
+              ]}>
+                {profileCompletion.percentage === 100 
+                  ? 'Profil Tamamlandı!' 
+                  : `Profili tamamla %${profileCompletion.percentage}`
+                }
+              </Text>
+            </TouchableOpacity>
             <View style={styles.profileCompletionChip}>
-              <View style={styles.miniProgressBar}>
-                <View
-                  style={[
-                    styles.miniProgressFill,
-                    { width: `${missionCompletionPercentage}%` },
-                  ]}
-                />
-              </View>
+              <AnimatedProgressBar percentage={missionCompletionPercentage} />
               <Text style={styles.profileCompletionText}>
                 Görevleri tamamla %{missionCompletionPercentage}
               </Text>
@@ -162,6 +259,89 @@ export default function ProfileScreen() {
                 <Text style={styles.menuItemText}>Bildirimler</Text>
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem}>
+              <View style={styles.menuItemLeft}>
+                <View style={styles.iconContainer}>
+                  <Ionicons
+                    name="diamond-outline"
+                    size={20}
+                    color="#666"
+                  />
+                </View>
+                <Text style={styles.menuItemText}>Premium Paketler</Text>
+              </View>
+              <TouchableOpacity
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                }}
+                onPress={() => router.push("/(protected)/premium-packages")}
+              ></TouchableOpacity>
+            </TouchableOpacity>
+
+            <View style={styles.riskAssessmentContainer}>
+              <TouchableOpacity
+                style={styles.riskAssessmentButton}
+                onPress={() => {
+                  // Invalidate cache before navigating
+                  queryClient.invalidateQueries({
+                    queryKey: ["safetyScore", user?.id],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["safetyFormCompletion", user?.id],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["profile", user?.id],
+                  });
+                  router.push("/profile/risk-assessment");
+                }}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={getRiskButtonColors(isFormCompleted, safetyScore)}
+                  style={styles.riskAssessmentGradient}
+                >
+                  <View style={styles.riskAssessmentContent}>
+                    <View style={styles.riskAssessmentLeft}>
+                      <View style={[
+                        styles.riskAssessmentIconContainer,
+                        { backgroundColor: isFormCompleted ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.05)" }
+                      ]}>
+                        <MaterialCommunityIcons
+                          name={isFormCompleted ? "shield-check" : "clipboard-check-outline"}
+                          size={24}
+                          color={isFormCompleted ? "#fff" : "#666"}
+                        />
+                      </View>
+                      <View style={styles.riskAssessmentTextContainer}>
+                        <Text style={[
+                          styles.riskAssessmentTitle,
+                          { color: isFormCompleted ? "#fff" : "#1a1a1a" }
+                        ]}>
+                          Risk Değerlendirme
+                        </Text>
+                        <Text style={[
+                          styles.riskAssessmentSubtitle,
+                          { color: isFormCompleted ? "rgba(255, 255, 255, 0.8)" : "#666" }
+                        ]}>
+                          {isFormCompleted ? `Güvenlik Skoru: %${safetyScore}` : "Değerlendirme bekleniyor"}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={24}
+                      color={isFormCompleted ? "#fff" : "#666"}
+                    />
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* <View style={styles.sectionContainer}>
@@ -253,6 +433,73 @@ export default function ProfileScreen() {
         </View>
         <Divider style={styles.divider} />
 
+        {/* <View style={styles.supportContainer}>
+          <Text style={styles.statsTitle}>Geliştiricilere Destek Ol</Text>
+          <View style={styles.supportContentImproved}>
+            <Text style={styles.supportTextImproved}>
+              Terra uygulaması topluluk katkılarıyla geliştirilmektedir. Deprem
+              bilinci ve güvenliği için daha iyi özellikler geliştirmemize
+              yardımcı olabilirsiniz.
+            </Text>
+            <View style={styles.supportButtonsRowImproved}>
+              <TouchableOpacity
+                style={styles.supportButtonImproved}
+                activeOpacity={0.8}
+              >
+                <View style={styles.supportButtonInner}>
+                  <Ionicons
+                    name="heart"
+                    size={18}
+                    color="#fff"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.supportButtonTextImproved}>
+                    Bağış Yap
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.supportButtonImproved,
+                  styles.secondarySupportButtonImproved,
+                ]}
+                activeOpacity={0.8}
+              >
+                <View style={styles.supportButtonInner}>
+                  <Ionicons
+                    name="code-slash"
+                    size={18}
+                    color={colors.gradientTwo}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.secondarySupportButtonTextImproved}>
+                    Katkıda Bulun
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.contactContainer}>
+          <Text style={styles.statsTitle}>İletişime Geç</Text>
+          <View style={styles.contactContent}>
+            <Text style={styles.contactText}>
+              Sorularınız, önerileriniz veya geri bildirimleriniz için bizimle
+              iletişime geçebilirsiniz.
+            </Text>
+            <TouchableOpacity
+              style={styles.contactMainButton}
+              activeOpacity={0.7}
+              onPress={() => {
+                Linking.openURL('mailto:info@terraapp.io');
+              }}
+            >
+              <Text style={styles.contactButtonText}>İletişime Geç</Text>
+            </TouchableOpacity>
+          </View>
+        </View> */}
+
         <View style={styles.signOutContainer}>
           <TouchableOpacity
             style={styles.signOutButton}
@@ -312,6 +559,25 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: "NotoSans-Bold",
     marginBottom: 5,
+  },
+  premiumStatusContainer: {
+    marginBottom: 10,
+  },
+  premiumStatusChip: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  premiumStatusText: {
+    color: "white",
+    fontSize: 14,
+    fontFamily: "NotoSans-Medium",
+    marginLeft: 8,
   },
   chipContainer: {
     flexDirection: "row",
@@ -596,5 +862,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     fontFamily: "NotoSans-Bold",
+  },
+  riskAssessmentContainer: {
+    marginBottom: 15,
+  },
+  riskAssessmentButton: {
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: colors.gradientTwo,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  riskAssessmentGradient: {
+    padding: 20,
+  },
+  riskAssessmentContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  riskAssessmentLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  riskAssessmentIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  riskAssessmentTextContainer: {
+    flex: 1,
+  },
+  riskAssessmentTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    fontFamily: "NotoSans-Bold",
+    marginBottom: 4,
+  },
+  riskAssessmentSubtitle: {
+    fontSize: 14,
+    fontFamily: "NotoSans-Regular",
   },
 });

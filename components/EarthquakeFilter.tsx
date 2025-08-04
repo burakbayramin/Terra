@@ -27,14 +27,28 @@ interface EarthquakeFilterProps {
   // Magnitude filters
   selectedMagnitudeRanges: MagnitudeRange[];
   
+  // Source filters
+  selectedSources: string[];
+  availableSources: string[];
+  
   // Filter actions
   toggleRegion: (region: string) => void;
   toggleMagnitudeRange: (range: MagnitudeRange) => void;
+  toggleSource: (source: string) => void;
   clearFilters: () => void;
   
   // Helper functions
   isMagnitudeRangeSelected: (range: MagnitudeRange) => boolean;
   hasActiveFilters: boolean;
+  
+  // Apply function
+  onApply: () => void;
+  
+  // Open modal function
+  onOpenModal: () => void;
+  
+  // Close modal function
+  onClose: () => void;
 }
 
 const EarthquakeFilter: React.FC<EarthquakeFilterProps> = ({
@@ -43,11 +57,17 @@ const EarthquakeFilter: React.FC<EarthquakeFilterProps> = ({
   selectedRegions,
   availableRegions,
   selectedMagnitudeRanges,
+  selectedSources,
+  availableSources,
   toggleRegion,
   toggleMagnitudeRange,
+  toggleSource,
   clearFilters,
   isMagnitudeRangeSelected,
   hasActiveFilters,
+  onApply,
+  onOpenModal,
+  onClose,
 }) => {
   // Magnitude ranges for filtering
   const magnitudeRanges: MagnitudeRange[] = [
@@ -57,6 +77,24 @@ const EarthquakeFilter: React.FC<EarthquakeFilterProps> = ({
     { label: 'Güçlü (5+)', min: 5, max: 10 },
   ];
 
+  // Function to format source names for display
+  const formatSourceName = (source: string) => {
+    switch (source.toLowerCase()) {
+      case 'kandilli':
+        return 'KANDILLI';
+      case 'afad':
+        return 'AFAD';
+      case 'usgs':
+        return 'USGS';
+      case 'iris':
+        return 'IRIS';
+      case 'emsc':
+        return 'EMSC';
+      default:
+        return source.toUpperCase();
+    }
+  };
+
   return (
     <>
       {/* Filter Button */}
@@ -65,7 +103,7 @@ const EarthquakeFilter: React.FC<EarthquakeFilterProps> = ({
           styles.filterButton,
           hasActiveFilters && styles.filterButtonActive,
         ]}
-        onPress={() => setShowFilterModal(true)}
+        onPress={onOpenModal}
         activeOpacity={0.7}
       >
         <Text
@@ -79,7 +117,7 @@ const EarthquakeFilter: React.FC<EarthquakeFilterProps> = ({
         {hasActiveFilters && (
           <View style={styles.filterBadge}>
             <Text style={styles.filterBadgeText}>
-              {(selectedRegions.length + selectedMagnitudeRanges.length).toString()}
+              {selectedRegions.length + selectedMagnitudeRanges.length}
             </Text>
           </View>
         )}
@@ -128,7 +166,7 @@ const EarthquakeFilter: React.FC<EarthquakeFilterProps> = ({
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Filtrele</Text>
               <TouchableOpacity
-                onPress={() => setShowFilterModal(false)}
+                onPress={onClose}
                 style={styles.modalCloseButton}
               >
                 <Text style={styles.modalCloseText}>×</Text>
@@ -139,6 +177,50 @@ const EarthquakeFilter: React.FC<EarthquakeFilterProps> = ({
               style={styles.modalScrollView}
               showsVerticalScrollIndicator={false}
             >
+              {/* Source Filter */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>📡 Kaynak</Text>
+                <Text style={styles.filterSectionSubtitle}>
+                  {(selectedSources?.length || 0)} / {(availableSources?.length || 0)} kaynak seçili
+                </Text>
+                
+                {(availableSources && availableSources.length > 0) ? (
+                  availableSources.map((source) => (
+                    <TouchableOpacity
+                      key={`source-${source}`}
+                      style={[
+                        styles.filterOption,
+                        (selectedSources?.includes(source) || false) &&
+                          styles.filterOptionSelected,
+                      ]}
+                      onPress={() => toggleSource(source)}
+                      activeOpacity={0.6}
+                    >
+                      <View style={styles.filterOptionContent}>
+                        <Text
+                          style={[
+                            styles.filterOptionText,
+                            (selectedSources?.includes(source) || false) &&
+                              styles.filterOptionTextSelected,
+                          ]}
+                        >
+                          {formatSourceName(source)}
+                        </Text>
+                        {(selectedSources?.includes(source) || false) && (
+                          <Text style={styles.checkmark}>✓</Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.noOptionsContainer}>
+                    <Text style={styles.noOptionsText}>
+                      Henüz kaynak verisi yüklenmemiş
+                    </Text>
+                  </View>
+                )}
+              </View>
+
               {/* Magnitude Filter */}
               <View style={styles.filterSection}>
                 <Text style={styles.filterSectionTitle}>🔢 Büyüklük</Text>
@@ -221,7 +303,7 @@ const EarthquakeFilter: React.FC<EarthquakeFilterProps> = ({
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalApplyButton}
-                onPress={() => setShowFilterModal(false)}
+                onPress={onApply}
               >
                 <Text style={styles.modalApplyButtonText}>Uygula</Text>
               </TouchableOpacity>
@@ -377,6 +459,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#2d3748',
+    marginBottom: 12,
+  },
+  filterSectionSubtitle: {
+    fontSize: 12,
+    color: '#718096',
     marginBottom: 12,
   },
   filterOption: {

@@ -1,702 +1,377 @@
-import { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
-import {
-  Network,
-  NetworkMember,
-  NetworkInvitation,
-  NetworkRequest,
-} from "../types/types";
-import { useAuth } from "./useAuth";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase'; // Supabase client'ınızın path'i
 
-// Networks Hook - Ana ağ yönetimi
-export const useNetworks = () => {
-  const [networks, setNetworks] = useState<Network[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// Types
+export interface Network {
+  id: string;
+  network_code: string;
+  name: string;
+  description?: string;
+  creator_id: string;
+  max_members: number;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
 
-  const fetchNetworks = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+export interface NetworkMember {
+  id: string;
+  network_id: string;
+  user_id: string;
+  role: 'creator' | 'member';
+  joined_at: string;
+  is_active: boolean;
+  // Profile bilgileri join edilmiş olarak gelecek
+  profiles?: {
+    name?: string;
+    surname?: string;
+    city?: string;
+    district?: string;
+    emergency_phone?: string;
+    safety_score?: number;
+  };
+}
+
+export interface NetworkInvitation {
+  id: string;
+  network_id: string;
+  inviter_id: string;
+  invited_phone?: string;
+  invited_user_id?: string;
+  invitation_code: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  expires_at: string;
+  created_at: string;
+  accepted_at?: string;
+}
+
+export interface CreateNetworkData {
+  name: string;
+  description?: string;
+  max_members?: number;
+}
+
+export interface CreateInvitationData {
+  network_id: string;
+  invited_phone?: string;
+  invited_user_id?: string;
+}
+
+// Query Keys
+export const networkKeys = {
+  all: ['networks'] as const,
+  lists: () => [...networkKeys.all, 'list'] as const,
+  list: (filters: string) => [...networkKeys.lists(), { filters }] as const,
+  details: () => [...networkKeys.all, 'detail'] as const,
+  detail: (id: string) => [...networkKeys.details(), id] as const,
+  members: (networkId: string) => [...networkKeys.all, 'members', networkId] as const,
+  invitations: (networkId: string) => [...networkKeys.all, 'invitations', networkId] as const,
+  myNetworks: () => [...networkKeys.all, 'my-networks'] as const,
+};
+
+// Hooks
+
+// 1. Kullanıcının ağlarını getir
+export const useMyNetworks = () => {
+  return useQuery({
+    queryKey: networkKeys.myNetworks(),
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Kullanıcı girişi yapılmamış');
 
       const { data, error } = await supabase
-        .from("networks")
-        .select(
-          `
+        .from('network_members')
+        .select(`
           *,
-          creator_profile:profiles!networks_created_by_fkey(*)
-        `
-        )
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
+          networks (
+            id,
+            network_code,
+            name,
+            description,
+            creator_id,
+            max_members,
+            created_at,
+            updated_at,
+            is_active
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('is_active', true);
 
       if (error) throw error;
+      return data;
+    },
+  });
+};
 
-      setNetworks(data || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createNetwork = async (networkData: {
-    name: string;
-    description?: string;
-    is_private?: boolean;
-    max_members?: number;
-    join_code?: string;
-  }) => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Kullanıcı kimlik doğrulaması gerekli");
-
+// 2. Ağ detayları getir
+export const useNetwork = (networkId: string) => {
+  return useQuery({
+    queryKey: networkKeys.detail(networkId),
+    queryFn: async () => {
       const { data, error } = await supabase
-        .from("networks")
-        .insert({
-          ...networkData,
-          created_by: user.id,
-        })
-        .select()
+        .from('networks')
+        .select('*')
+        .eq('id', networkId)
         .single();
 
       if (error) throw error;
-
-      await fetchNetworks();
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  const updateNetwork = async (
-    networkId: string,
-    updates: Partial<Network>
-  ) => {
-    try {
-      const { data, error } = await supabase
-        .from("networks")
-        .update(updates)
-        .eq("id", networkId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await fetchNetworks();
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  // Database fonksiyonunu kullanarak ağı sil
-  const deleteNetwork = async (networkId: string) => {
-    try {
-      const { data, error } = await supabase.rpc("delete_network", {
-        network_id_param: networkId,
-      });
-
-      if (error) throw error;
-
-      await fetchNetworks();
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  useEffect(() => {
-    fetchNetworks();
-  }, []);
-
-  return {
-    networks,
-    loading,
-    error,
-    fetchNetworks,
-    createNetwork,
-    updateNetwork,
-    deleteNetwork,
-  };
+      return data as Network;
+    },
+    enabled: !!networkId,
+  });
 };
 
-// User Networks Hook - Kullanıcının ağları (user_networks view kullanarak)
-export const useUserNetworks = () => {
-  const { user } = useAuth();
-  const [userNetworks, setUserNetworks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchUserNetworks = async () => {
-    try {
-      if (!user) return;
-
-      setLoading(true);
-      setError(null);
-
-      const { data, error } = await supabase
-        .from("user_networks")
-        .select("*")
-        .order("joined_at", { ascending: false });
-
-      if (error) throw error;
-
-      setUserNetworks(data || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Database fonksiyonunu kullanarak ağdan çık
-  const leaveNetwork = async (networkId: string) => {
-    try {
-      const { data, error } = await supabase.rpc("leave_network", {
-        network_id_param: networkId,
-      });
-
-      if (error) throw error;
-
-      await fetchUserNetworks();
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  useEffect(() => {
-    fetchUserNetworks();
-  }, [user]);
-
-  return {
-    userNetworks,
-    loading,
-    error,
-    fetchUserNetworks,
-    leaveNetwork,
-  };
-};
-
-// Network Members Hook - Ağ üyeleri yönetimi
+// 3. Ağ üyelerini getir
 export const useNetworkMembers = (networkId: string) => {
-  const [members, setMembers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchMembers = async () => {
-    try {
-      if (!networkId) return;
-
-      setLoading(true);
-      setError(null);
-
+  return useQuery({
+    queryKey: networkKeys.members(networkId),
+    queryFn: async () => {
       const { data, error } = await supabase
-        .from("network_members_detail")
-        .select("*")
-        .eq("network_id", networkId)
-        .order("joined_at", { ascending: true });
+        .from('network_members')
+        .select(`
+          *,
+          profiles (
+            name,
+            surname,
+            city,
+            district,
+            emergency_phone,
+            safety_score
+          )
+        `)
+        .eq('network_id', networkId)
+        .eq('is_active', true)
+        .order('joined_at', { ascending: true });
 
       if (error) throw error;
-
-      setMembers(data || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Database fonksiyonunu kullanarak üye çıkar (sadece creator)
-  const removeMember = async (userId: string) => {
-    try {
-      const { data, error } = await supabase.rpc("remove_member_from_network", {
-        network_id_param: networkId,
-        user_id_param: userId,
-      });
-
-      if (error) throw error;
-
-      await fetchMembers();
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  // Katılım kodu ile ağa katıl
-  const joinNetworkByCode = async (joinCode: string) => {
-    try {
-      const { data, error } = await supabase.rpc("join_network_with_code", {
-        join_code_param: joinCode,
-      });
-
-      if (error) throw error;
-
-      if (data === networkId) {
-        await fetchMembers();
-      }
-
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  useEffect(() => {
-    fetchMembers();
-  }, [networkId]);
-
-  return {
-    members,
-    loading,
-    error,
-    fetchMembers,
-    removeMember,
-    joinNetworkByCode,
-  };
+      return data as NetworkMember[];
+    },
+    enabled: !!networkId,
+  });
 };
 
-// Network Invitations Hook - Davet sistemi
-export const useNetworkInvitations = () => {
-  const { user } = useAuth();
-  const [sentInvitations, setSentInvitations] = useState<NetworkInvitation[]>(
-    []
-  );
-  const [receivedInvitations, setReceivedInvitations] = useState<
-    NetworkInvitation[]
-  >([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// 4. Ağ davetlerini getir
+export const useNetworkInvitations = (networkId: string) => {
+  return useQuery({
+    queryKey: networkKeys.invitations(networkId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('network_invitations')
+        .select('*')
+        .eq('network_id', networkId)
+        .order('created_at', { ascending: false });
 
-  const fetchInvitations = async () => {
-    try {
-      if (!user) return;
+      if (error) throw error;
+      return data as NetworkInvitation[];
+    },
+    enabled: !!networkId,
+  });
+};
 
-      setLoading(true);
-      setError(null);
+// 5. Ağ oluştur (Database function kullanarak)
+export const useCreateNetwork = () => {
+  const queryClient = useQueryClient();
 
-      // Gönderilen davetler
-      const { data: sent, error: sentError } = await supabase
-        .from("network_invitations")
-        .select(
-          `
-          *,
-          network:networks(*),
-          invitee_profile:profiles!network_invitations_invitee_id_fkey(*)
-        `
-        )
-        .eq("inviter_id", user.id)
-        .order("created_at", { ascending: false });
+  return useMutation({
+    mutationFn: async (networkData: CreateNetworkData) => {
+      const { data, error } = await supabase.rpc('create_network_with_creator', {
+        network_name: networkData.name,
+        network_description: networkData.description || null,
+        max_members_count: networkData.max_members || 50,
+      });
 
-      if (sentError) throw sentError;
+      if (error) throw error;
+      return data as Network;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: networkKeys.myNetworks() });
+    },
+  });
+};
 
-      // Alınan davetler
-      const { data: received, error: receivedError } = await supabase
-        .from("network_invitations")
-        .select(
-          `
-          *,
-          network:networks(*),
-          inviter_profile:profiles!network_invitations_inviter_id_fkey(*)
-        `
-        )
-        .eq("invitee_id", user.id)
-        .order("created_at", { ascending: false });
+// 6. Ağa katıl (Database function kullanarak)
+export const useJoinNetwork = () => {
+  const queryClient = useQueryClient();
 
-      if (receivedError) throw receivedError;
+  return useMutation({
+    mutationFn: async (networkCode: string) => {
+      const { data, error } = await supabase.rpc('join_network_by_code', {
+        network_code_param: networkCode,
+      });
 
-      setSentInvitations(sent || []);
-      setReceivedInvitations(received || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: networkKeys.myNetworks() });
+    },
+  });
+};
 
-  const sendInvitation = async (
-    networkId: string,
-    inviteeId: string,
-    message?: string
-  ) => {
-    try {
-      if (!user) throw new Error("Kullanıcı kimlik doğrulaması gerekli");
+// 7. Davet gönder
+export const useCreateInvitation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (invitationData: CreateInvitationData) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Kullanıcı girişi yapılmamış');
 
       const { data, error } = await supabase
-        .from("network_invitations")
+        .from('network_invitations')
         .insert({
-          network_id: networkId,
+          ...invitationData,
           inviter_id: user.id,
-          invitee_id: inviteeId,
-          message: message || null,
         })
         .select()
         .single();
 
       if (error) throw error;
-
-      await fetchInvitations();
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  const respondToInvitation = async (invitationId: string, accept: boolean) => {
-    try {
-      const status = accept ? "accepted" : "rejected";
-
-      const { data, error } = await supabase
-        .from("network_invitations")
-        .update({ status })
-        .eq("id", invitationId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await fetchInvitations();
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  const cancelInvitation = async (invitationId: string) => {
-    try {
-      const { error } = await supabase
-        .from("network_invitations")
-        .update({ status: "cancelled" })
-        .eq("id", invitationId);
-
-      if (error) throw error;
-
-      await fetchInvitations();
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  useEffect(() => {
-    fetchInvitations();
-  }, [user]);
-
-  return {
-    sentInvitations,
-    receivedInvitations,
-    loading,
-    error,
-    fetchInvitations,
-    sendInvitation,
-    respondToInvitation,
-    cancelInvitation,
-  };
-};
-
-// Network Requests Hook - Katılma istekleri
-export const useNetworkRequests = (networkId?: string) => {
-  const { user } = useAuth();
-  const [requests, setRequests] = useState<NetworkRequest[]>([]);
-  const [userRequests, setUserRequests] = useState<NetworkRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchRequests = async () => {
-    try {
-      if (!user) return;
-
-      setLoading(true);
-      setError(null);
-
-      // Belirli bir ağın isteklerini getir (networkId verilmişse)
-      if (networkId) {
-        const { data, error } = await supabase
-          .from("network_requests")
-          .select(
-            `
-            *,
-            requester_profile:profiles!network_requests_requester_id_fkey(*),
-            reviewer_profile:profiles!network_requests_reviewed_by_fkey(*)
-          `
-          )
-          .eq("network_id", networkId)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setRequests(data || []);
-      }
-
-      // Kullanıcının gönderdiği istekler
-      const { data: userRequestsData, error: userRequestsError } =
-        await supabase
-          .from("network_requests")
-          .select(
-            `
-          *,
-          network:networks(*)
-        `
-          )
-          .eq("requester_id", user.id)
-          .order("created_at", { ascending: false });
-
-      if (userRequestsError) throw userRequestsError;
-      setUserRequests(userRequestsData || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const sendJoinRequest = async (networkId: string, message?: string) => {
-    try {
-      if (!user) throw new Error("Kullanıcı kimlik doğrulaması gerekli");
-
-      const { data, error } = await supabase
-        .from("network_requests")
-        .insert({
-          network_id: networkId,
-          requester_id: user.id,
-          message: message || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await fetchRequests();
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  // Database fonksiyonunu kullanarak isteği yanıtla
-  const reviewRequest = async (requestId: string, approve: boolean) => {
-    try {
-      const responseStatus = approve ? "approved" : "rejected";
-
-      const { data, error } = await supabase.rpc("respond_to_join_request", {
-        request_id_param: requestId,
-        response_status: responseStatus,
+      return data as NetworkInvitation;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: networkKeys.invitations(variables.network_id) 
       });
-
-      if (error) throw error;
-
-      await fetchRequests();
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  const cancelRequest = async (requestId: string) => {
-    try {
-      const { error } = await supabase
-        .from("network_requests")
-        .delete()
-        .eq("id", requestId);
-
-      if (error) throw error;
-
-      await fetchRequests();
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  useEffect(() => {
-    fetchRequests();
-  }, [user, networkId]);
-
-  return {
-    requests,
-    userRequests,
-    loading,
-    error,
-    fetchRequests,
-    sendJoinRequest,
-    reviewRequest,
-    cancelRequest,
-  };
+    },
+  });
 };
 
-// Search Networks Hook - Ağ arama
-export const useSearchNetworks = () => {
-  const [searchResults, setSearchResults] = useState<Network[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// 8. Daveti kabul et
+export const useAcceptInvitation = () => {
+  const queryClient = useQueryClient();
 
-  const searchNetworks = async (query: string) => {
-    try {
-      setLoading(true);
-      setError(null);
+  return useMutation({
+    mutationFn: async (invitationCode: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Kullanıcı girişi yapılmamış');
 
-      if (!query.trim()) {
-        setSearchResults([]);
-        return;
-      }
+      // Daveti bul ve güncelle
+      const { data: invitation, error: inviteError } = await supabase
+        .from('network_invitations')
+        .update({
+          status: 'accepted',
+          accepted_at: new Date().toISOString(),
+        })
+        .eq('invitation_code', invitationCode)
+        .eq('status', 'pending')
+        .select()
+        .single();
 
-      const { data, error } = await supabase
-        .from("networks")
-        .select(
-          `
-          *,
-          creator_profile:profiles!networks_created_by_fkey(*)
-        `
-        )
-        .eq("is_active", true)
-        .eq("is_private", false)
-        .or(`name.ilike.%${query}%, description.ilike.%${query}%`)
-        .order("created_at", { ascending: false });
+      if (inviteError) throw new Error('Davet bulunamadı veya süresi dolmuş');
 
-      if (error) throw error;
-
-      setSearchResults(data || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const clearSearch = () => {
-    setSearchResults([]);
-    setError(null);
-  };
-
-  return {
-    searchResults,
-    loading,
-    error,
-    searchNetworks,
-    clearSearch,
-  };
-};
-
-// Network Statistics Hook - Ağ istatistikleri
-export const useNetworkStats = (networkId?: string) => {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchStats = async () => {
-    try {
-      if (!networkId) return;
-
-      setLoading(true);
-      setError(null);
-
-      // Üye sayısı
-      const { count: memberCount, error: memberError } = await supabase
-        .from("network_members")
-        .select("*", { count: "exact", head: true })
-        .eq("network_id", networkId)
-        .eq("is_active", true);
+      // Üye olarak ekle
+      const { error: memberError } = await supabase
+        .from('network_members')
+        .insert({
+          network_id: invitation.network_id,
+          user_id: user.id,
+          role: 'member',
+        });
 
       if (memberError) throw memberError;
 
-      // Bekleyen davetler
-      const { count: pendingInvitations, error: invitationError } =
-        await supabase
-          .from("network_invitations")
-          .select("*", { count: "exact", head: true })
-          .eq("network_id", networkId)
-          .eq("status", "pending");
-
-      if (invitationError) throw invitationError;
-
-      // Bekleyen istekler
-      const { count: pendingRequests, error: requestError } = await supabase
-        .from("network_requests")
-        .select("*", { count: "exact", head: true })
-        .eq("network_id", networkId)
-        .eq("status", "pending");
-
-      if (requestError) throw requestError;
-
-      setStats({
-        memberCount: memberCount || 0,
-        pendingInvitations: pendingInvitations || 0,
-        pendingRequests: pendingRequests || 0,
-      });
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStats();
-  }, [networkId]);
-
-  return {
-    stats,
-    loading,
-    error,
-    fetchStats,
-  };
+      return invitation;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: networkKeys.myNetworks() });
+    },
+  });
 };
 
-// Public Networks Hook - Herkese açık ağlar
-export const usePublicNetworks = () => {
-  const [publicNetworks, setPublicNetworks] = useState<Network[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// 9. Ağdan çık
+export const useLeaveNetwork = () => {
+  const queryClient = useQueryClient();
 
-  const fetchPublicNetworks = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  return useMutation({
+    mutationFn: async (networkId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Kullanıcı girişi yapılmamış');
 
-      const { data, error } = await supabase
-        .from("networks")
-        .select(
-          `
-          *,
-          creator_profile:profiles!networks_created_by_fkey(*)
-        `
-        )
-        .eq("is_active", true)
-        .eq("is_private", false)
-        .order("created_at", { ascending: false })
-        .limit(20);
+      const { error } = await supabase
+        .from('network_members')
+        .delete()
+        .eq('network_id', networkId)
+        .eq('user_id', user.id);
 
       if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: networkKeys.myNetworks() });
+    },
+  });
+};
 
-      setPublicNetworks(data || []);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+// 10. Üyeyi çıkar (sadece creator)
+export const useRemoveMember = () => {
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchPublicNetworks();
-  }, []);
+  return useMutation({
+    mutationFn: async ({ networkId, userId }: { networkId: string; userId: string }) => {
+      const { error } = await supabase
+        .from('network_members')
+        .delete()
+        .eq('network_id', networkId)
+        .eq('user_id', userId);
 
-  return {
-    publicNetworks,
-    loading,
-    error,
-    fetchPublicNetworks,
-  };
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: networkKeys.members(variables.networkId) 
+      });
+    },
+  });
+};
+
+// 11. Ağı güncelle
+export const useUpdateNetwork = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      networkId, 
+      updates 
+    }: { 
+      networkId: string; 
+      updates: Partial<Pick<Network, 'name' | 'description' | 'max_members'>>
+    }) => {
+      const { data, error } = await supabase
+        .from('networks')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', networkId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Network;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: networkKeys.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: networkKeys.myNetworks() });
+    },
+  });
+};
+
+// 12. Ağı sil
+export const useDeleteNetwork = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (networkId: string) => {
+      const { error } = await supabase
+        .from('networks')
+        .delete()
+        .eq('id', networkId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: networkKeys.myNetworks() });
+    },
+  });
 };

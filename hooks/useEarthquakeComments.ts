@@ -12,6 +12,8 @@ export interface EarthquakeComment {
   edited_at: string | null;
   created_at: string;
   is_own_comment?: boolean;
+  upvotes_count?: number;
+  user_has_upvoted?: boolean;
   profiles?: {
     id: string;
     full_name: string;
@@ -19,10 +21,10 @@ export interface EarthquakeComment {
 }
 
 // Query key
-const getCommentsKey = (earthquakeId: string) => ['earthquake-comments', earthquakeId];
+const getCommentsKey = (earthquakeId: string, limit?: number) => ['earthquake-comments', earthquakeId, limit];
 
 // API Functions - Join yapmadan
-const fetchComments = async (earthquakeId: string, userId?: string) => {
+const fetchComments = async (earthquakeId: string, userId?: string, limit?: number) => {
   // Önce yorumları al
   const { data: comments, error: commentsError } = await supabase
     .from('earthquake_comments')
@@ -41,8 +43,37 @@ const fetchComments = async (earthquakeId: string, userId?: string) => {
   if (commentsError) throw commentsError;
   if (!comments) return [];
 
+  // Upvote sayılarını al
+  const upvoteCountPromises = comments.map(async (comment) => {
+    const { count } = await supabase
+      .from('comment_upvotes')
+      .select('*', { count: 'exact', head: true })
+      .eq('comment_id', comment.id);
+    
+    return { commentId: comment.id, count: count || 0 };
+  });
+
+  const upvoteCounts = await Promise.all(upvoteCountPromises);
+  const upvoteCountMap = new Map(upvoteCounts.map(item => [item.commentId, item.count]));
+
+  // Yorumları upvote sayısına göre sırala
+  const sortedComments = comments.sort((a, b) => {
+    const aUpvotes = upvoteCountMap.get(a.id) || 0;
+    const bUpvotes = upvoteCountMap.get(b.id) || 0;
+    
+    if (aUpvotes !== bUpvotes) {
+      return bUpvotes - aUpvotes; // En çok upvote alan önce
+    }
+    
+    // Upvote sayısı aynıysa tarihe göre sırala
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  // Limit uygula
+  const limitedComments = limit ? sortedComments.slice(0, limit) : sortedComments;
+
   // Benzersiz profile ID'leri al
-  const profileIds = [...new Set(comments.map(c => c.profile_id))];
+  const profileIds = [...new Set(limitedComments.map(c => c.profile_id))];
   
   // Profilleri ayrı sorguda al
   const { data: profiles, error: profilesError } = await supabase
@@ -53,9 +84,10 @@ const fetchComments = async (earthquakeId: string, userId?: string) => {
   if (profilesError) {
     console.warn('Profiles fetch error:', profilesError);
     // Profil hatası olursa sadece yorumları döndür
-    return comments.map((comment: any) => ({
+    return limitedComments.map((comment: any) => ({
       ...comment,
       is_own_comment: userId === comment.profile_id,
+      upvotes_count: upvoteCountMap.get(comment.id) || 0,
       profiles: {
         id: comment.profile_id,
         full_name: 'Kullanıcı'
@@ -63,12 +95,30 @@ const fetchComments = async (earthquakeId: string, userId?: string) => {
     }));
   }
 
+  // Upvote durumlarını kontrol et
+  const upvotePromises = limitedComments.map(async (comment) => {
+    if (!userId) return false;
+    
+    const { data: upvote } = await supabase
+      .from('comment_upvotes')
+      .select('id')
+      .eq('comment_id', comment.id)
+      .eq('profile_id', userId)
+      .single();
+    
+    return !!upvote;
+  });
+
+  const upvoteResults = await Promise.all(upvotePromises);
+
   // Yorumları profil bilgileriyle birleştir
-  return comments.map((comment: any) => {
+  return limitedComments.map((comment: any, index: number) => {
     const profile = profiles?.find(p => p.id === comment.profile_id);
     return {
       ...comment,
       is_own_comment: userId === comment.profile_id,
+      user_has_upvoted: upvoteResults[index],
+      upvotes_count: upvoteCountMap.get(comment.id) || 0,
       profiles: {
         id: comment.profile_id,
         full_name: profile?.name || 'Kullanıcı'
@@ -114,6 +164,8 @@ const addCommentApi = async (earthquakeId: string, userId: string, commentText: 
   
   return {
     ...data,
+    user_has_upvoted: false,
+    upvotes_count: 0,
     profiles: {
       id: userId,
       full_name: profile?.name || 'Kullanıcı'
@@ -153,6 +205,8 @@ const updateCommentApi = async (commentId: string, userId: string, newText: stri
   
   return {
     ...data,
+    user_has_upvoted: false,
+    upvotes_count: 0,
     profiles: {
       id: userId,
       full_name: profile?.name || 'Kullanıcı'
@@ -171,8 +225,51 @@ const deleteCommentApi = async (commentId: string, userId: string) => {
   return commentId;
 };
 
+const upvoteCommentApi = async (commentId: string, userId: string) => {
+  console.log('upvoteCommentApi called with:', { commentId, userId });
+  
+  // Önce mevcut upvote'u kontrol et
+  const { data: existingUpvote, error: checkError } = await supabase
+    .from('comment_upvotes')
+    .select('id')
+    .eq('comment_id', commentId)
+    .eq('profile_id', userId)
+    .single();
+
+  console.log('Existing upvote check:', { existingUpvote, checkError });
+
+  if (existingUpvote) {
+    // Upvote'u kaldır
+    console.log('Removing existing upvote');
+    const { error: deleteError } = await supabase
+      .from('comment_upvotes')
+      .delete()
+      .eq('comment_id', commentId)
+      .eq('profile_id', userId);
+
+    console.log('Delete result:', { deleteError });
+    if (deleteError) throw deleteError;
+
+    return { action: 'removed' };
+  } else {
+    // Yeni upvote ekle
+    console.log('Adding new upvote');
+    const { error: insertError } = await supabase
+      .from('comment_upvotes')
+      .insert({
+        comment_id: commentId,
+        profile_id: userId,
+      });
+
+    console.log('Insert result:', { insertError });
+    if (insertError) throw insertError;
+
+    return { action: 'added' };
+  }
+};
+
 // Main Hook
-export const useEarthquakeComments = (earthquakeId: string) => {
+export const useEarthquakeComments = (earthquakeId: string, limit?: number) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -183,8 +280,8 @@ export const useEarthquakeComments = (earthquakeId: string) => {
     error,
     refetch
   } = useQuery({
-    queryKey: getCommentsKey(earthquakeId),
-    queryFn: () => fetchComments(earthquakeId, user?.id),
+    queryKey: getCommentsKey(earthquakeId, limit),
+    queryFn: () => fetchComments(earthquakeId, user?.id, limit),
     enabled: !!earthquakeId,
   });
 
@@ -202,7 +299,7 @@ export const useEarthquakeComments = (earthquakeId: string) => {
     },
     onSuccess: (data) => {
       console.log('Mutation success:', data);
-      queryClient.invalidateQueries({ queryKey: getCommentsKey(earthquakeId) });
+      queryClient.invalidateQueries({ queryKey: ['earthquake-comments', earthquakeId] });
     },
     onError: (error) => {
       console.error('Mutation error:', error);
@@ -216,7 +313,7 @@ export const useEarthquakeComments = (earthquakeId: string) => {
       return updateCommentApi(commentId, user.id, newText);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: getCommentsKey(earthquakeId) });
+      queryClient.invalidateQueries({ queryKey: ['earthquake-comments', earthquakeId] });
     },
   });
 
@@ -227,7 +324,23 @@ export const useEarthquakeComments = (earthquakeId: string) => {
       return deleteCommentApi(commentId, user.id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: getCommentsKey(earthquakeId) });
+      queryClient.invalidateQueries({ queryKey: ['earthquake-comments', earthquakeId] });
+    },
+  });
+
+  // Upvote Comment
+  const upvoteCommentMutation = useMutation({
+    mutationFn: (commentId: string) => {
+      console.log('Upvote mutation started:', { commentId, userId: user?.id });
+      if (!user) throw new Error('Upvote yapmak için giriş yapmalısınız');
+      return upvoteCommentApi(commentId, user.id);
+    },
+    onSuccess: (data) => {
+      console.log('Upvote mutation success:', data);
+      queryClient.invalidateQueries({ queryKey: ['earthquake-comments', earthquakeId] });
+    },
+    onError: (error) => {
+      console.error('Upvote mutation error:', error);
     },
   });
 
@@ -266,24 +379,30 @@ export const useEarthquakeComments = (earthquakeId: string) => {
     return deleteCommentMutation.mutateAsync(commentId);
   };
 
+  const upvoteComment = async (commentId: string) => {
+    return upvoteCommentMutation.mutateAsync(commentId);
+  };
+
   return {
     // Data
     comments,
     
     // Loading states
     isLoading,
-    isSubmitting: addCommentMutation.isPending || updateCommentMutation.isPending || deleteCommentMutation.isPending,
+    isSubmitting: addCommentMutation.isPending || updateCommentMutation.isPending || deleteCommentMutation.isPending || upvoteCommentMutation.isPending,
     isAddingComment: addCommentMutation.isPending,
     isUpdatingComment: updateCommentMutation.isPending,
     isDeletingComment: deleteCommentMutation.isPending,
+    isUpvotingComment: upvoteCommentMutation.isPending,
     
     // Error
-    error: error?.message || addCommentMutation.error?.message || updateCommentMutation.error?.message || deleteCommentMutation.error?.message,
+    error: error?.message || addCommentMutation.error?.message || updateCommentMutation.error?.message || deleteCommentMutation.error?.message || upvoteCommentMutation.error?.message,
     
     // Actions
     addComment,
     updateComment,
     deleteComment,
+    upvoteComment,
     refetch,
   };
 };

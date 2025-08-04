@@ -59,7 +59,8 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
-  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  // const [keyboardVisible, setKeyboardVisible] = useState(false);
+  // const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const router = useRouter();
 
@@ -94,15 +95,16 @@ export default function SignUp() {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (registrationSuccess) {
-      const timer = setTimeout(() => {
-        setRegistrationSuccess(false);
-      }, 3500);
+  // useEffect(() => {
+  //   if (registrationSuccess) {
+  //     const timer = setTimeout(() => {
+  //       //TODO burada bir ayarlama gerekebilir
+  //       setRegistrationSuccess(false);
+  //     }, 3500);
 
-      return () => clearTimeout(timer);
-    }
-  }, [registrationSuccess]);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [registrationSuccess]);
 
   // Get localized error message
   const getLocalizedErrorMessage = (error: any): string => {
@@ -116,12 +118,6 @@ export default function SignUp() {
         "Çok fazla deneme yapıldı. Lütfen daha sonra tekrar deneyin.",
       "Network error":
         "İnternet bağlantısı hatası. Lütfen bağlantınızı kontrol edin.",
-      "Database error saving new user": 
-        "Veritabanı hatası. Lütfen daha sonra tekrar deneyin veya farklı bir e-posta adresi kullanın.",
-      "Invalid login credentials":
-        "Geçersiz giriş bilgileri",
-      "Email rate limit exceeded":
-        "E-posta gönderme limiti aşıldı. Lütfen daha sonra tekrar deneyin."
     };
 
     // Handle network errors
@@ -154,23 +150,16 @@ export default function SignUp() {
         email: data.email.trim().toLowerCase(),
         password: data.password,
         options: {
-          emailRedirectTo: undefined,
-        }
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
 
-      console.log("Auth response:", { authData, error });
-      console.log("Error details:", error?.message, error?.status);
-
       if (error) {
-        console.error("Supabase auth error:", error);
         setErrorMsg(getLocalizedErrorMessage(error));
-      } else if (authData?.user) {
-        // Success - show verification message
-        setRegistrationSuccess(true);
-        reset();
       } else {
-        console.log("No error but no user created");
-        setErrorMsg("Kayıt işlemi tamamlanamadı. Lütfen tekrar deneyin.");
+        // Success - show verification message
+        // setRegistrationSuccess(true);
+        reset();
       }
     } catch (err: any) {
       console.error("Sign up error:", err);
@@ -195,40 +184,35 @@ export default function SignUp() {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
-  // Handle privacy policy navigation
-  const handlePrivacyPolicyPress = () => {
-    router.push("/(auth)/privacy-policy");
-  };
-
   // Success message display
-  if (registrationSuccess) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
-        <View style={styles.gradient}>
-          <View style={styles.successContainer}>
-            <Ionicons
-              name="checkmark-circle"
-              size={80}
-              color={colors.primary}
-            />
-            <Text style={styles.successTitle}>Kayıt Başarılı!</Text>
-            <Text style={styles.successMessage}>
-              E-posta adresinize bir doğrulama bağlantısı gönderdik. Lütfen
-              hesabınızı doğrulamak için e-postanızı kontrol edin.
-            </Text>
-            <TouchableOpacity
-              style={styles.signInButton}
-              onPress={handleSignIn}
-            >
-              <Text style={styles.signInButtonText}>Giriş Sayfasına Dön</Text>
-              <Ionicons name="arrow-forward" size={20} color="white" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // if (registrationSuccess) {
+  //   return (
+  //     <SafeAreaView style={styles.container}>
+  //       <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
+  //       <View style={styles.gradient}>
+  //         <View style={styles.successContainer}>
+  //           <Ionicons
+  //             name="checkmark-circle"
+  //             size={80}
+  //             color={colors.primary}
+  //           />
+  //           <Text style={styles.successTitle}>Kayıt Başarılı!</Text>
+  //           <Text style={styles.successMessage}>
+  //             E-posta adresinize bir doğrulama bağlantısı gönderdik. Lütfen
+  //             hesabınızı doğrulamak için e-postanızı kontrol edin.
+  //           </Text>
+  //           {/* <TouchableOpacity
+  //             style={styles.signInButton}
+  //             onPress={handleSignIn}
+  //           >
+  //             <Text style={styles.signInButtonText}>Giriş Sayfasına Dön</Text>
+  //             <Ionicons name="arrow-forward" size={20} color="white" />
+  //           </TouchableOpacity> */}
+  //         </View>
+  //       </View>
+  //     </SafeAreaView>
+  //   );
+  // }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -435,39 +419,38 @@ export default function SignUp() {
                     control={control}
                     name="termsAccepted"
                     render={({ field: { onChange, value } }) => (
-                      <View>
-                        <TouchableOpacity
-                          style={styles.termsRow}
-                          onPress={() => onChange(!value)}
-                          disabled={loading}
+                      <TouchableOpacity
+                        style={styles.termsRow}
+                        onPress={() => onChange(!value)}
+                        disabled={loading}
+                      >
+                        <View
+                          style={[
+                            styles.checkbox,
+                            value && styles.checkboxChecked,
+                          ]}
                         >
-                          <View
-                            style={[
-                              styles.checkbox,
-                              value && styles.checkboxChecked,
-                            ]}
+                          {value && (
+                            <Ionicons
+                              name="checkmark"
+                              size={16}
+                              color="white"
+                            />
+                          )}
+                        </View>
+                        <Text style={styles.termsText}>
+                          <Text>Kullanım şartlarını ve </Text>
+                          <Text
+                            style={styles.termsLink}
+                            onPress={() =>
+                              router.push("/(auth)/privacy-policy")
+                            }
                           >
-                            {value && (
-                              <Ionicons
-                                name="checkmark"
-                                size={16}
-                                color="white"
-                              />
-                            )}
-                          </View>
-                          <Text style={styles.termsText}>
-                            Kullanım şartlarını ve gizlilik politikasını kabul ediyorum
+                            gizlilik politikasını{" "}
                           </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.privacyLinkContainer}
-                          onPress={handlePrivacyPolicyPress}
-                        >
-                          <Text style={styles.privacyLinkText}>
-                            Gizlilik Politikasını Görüntüle
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
+                          <Text>kabul ediyorum</Text>
+                        </Text>
+                      </TouchableOpacity>
                     )}
                   />
                   {errors.termsAccepted && (
@@ -496,7 +479,7 @@ export default function SignUp() {
                   disabled={!isValid || loading || !isConnected}
                 >
                   {loading ? (
-                    <ActivityIndicator color="white" size="small" />
+                    <ActivityIndicator color="black" size="small" />
                   ) : (
                     <>
                       <Text style={styles.signInButtonText}>Kayıt Ol</Text>
@@ -661,13 +644,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flex: 1,
   },
-  privacyLinkContainer: {
-    marginTop: 8,
-    paddingLeft: 28,
-  },
-  privacyLinkText: {
+  termsLink: {
     color: colors.primary,
-    fontSize: 14,
     textDecorationLine: "underline",
   },
   errorContainer: {

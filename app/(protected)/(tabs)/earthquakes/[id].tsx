@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,14 +16,20 @@ import {
   KeyboardAvoidingView,
   Modal,
 } from "react-native";
+import Toast from "@/components/Toast";
+import { PanGestureHandler, State } from "react-native-gesture-handler";
+
 import MapView, { Marker } from "react-native-maps";
-import { useLocalSearchParams, Stack } from "expo-router";
+import { useLocalSearchParams, Stack, router, useFocusEffect } from "expo-router";
 import { Earthquake } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 import { useEarthquakeById } from "@/hooks/useEarthquakes";
 import { useEarthquakeFeltReports } from "@/hooks/useEarthquakeFeltReports";
 import { useEarthquakeComments } from "@/hooks/useEarthquakeComments";
+import { usePremium } from "@/hooks/usePremium";
+import PremiumFeatureGate from "@/components/PremiumFeatureGate";
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const getMagnitudeColor = (magnitude: number) => {
   if (magnitude >= 5.0) return "#FF4444";
@@ -37,6 +43,83 @@ const getMagnitudeLabel = (magnitude: number) => {
   if (magnitude >= 4.0) return "Orta";
   if (magnitude >= 3.0) return "Hafif";
   return "Zayıf";
+};
+
+// Function to format source names for display
+const formatSourceName = (source: string) => {
+  switch (source.toLowerCase()) {
+    case 'kandilli':
+      return 'KANDILLI';
+    case 'afad':
+      return 'AFAD';
+    case 'usgs':
+      return 'USGS';
+    case 'iris':
+      return 'IRIS';
+    case 'emsc':
+      return 'EMSC';
+    default:
+      return source.toUpperCase();
+  }
+};
+
+// Function to calculate felt radius based on magnitude and depth
+const calculateFeltRadius = (magnitude: number, depth: number): number => {
+  // Based on empirical relationships from earthquake studies
+  // Formula: R = 10^(0.5 * M - 1.8) * (1 + depth/100)
+  const baseRadius = Math.pow(10, 0.5 * magnitude - 1.8);
+  const depthFactor = 1 + (depth / 100);
+  const feltRadius = baseRadius * depthFactor;
+  
+  // Apply reasonable limits
+  return Math.min(Math.max(feltRadius, 5), 500); // Between 5-500 km
+};
+
+// Function to calculate Mercalli intensity based on magnitude and depth
+const calculateMercalliIntensity = (magnitude: number, depth: number): number => {
+  // Based on empirical relationships between magnitude and intensity
+  // Shallow earthquakes (depth < 30km) have higher intensity
+  // Deep earthquakes (depth > 100km) have lower intensity
+  
+  let baseIntensity = 0;
+  
+  if (magnitude >= 8.0) baseIntensity = 10;
+  else if (magnitude >= 7.0) baseIntensity = 9;
+  else if (magnitude >= 6.0) baseIntensity = 8;
+  else if (magnitude >= 5.0) baseIntensity = 7;
+  else if (magnitude >= 4.0) baseIntensity = 6;
+  else if (magnitude >= 3.0) baseIntensity = 3; // Çok daha düşük
+  else if (magnitude >= 2.0) baseIntensity = 2; // Çok daha düşük
+  else baseIntensity = 1; // Çok daha düşük
+  
+  // Adjust for depth
+  let depthAdjustment = 0;
+  if (depth < 30) depthAdjustment = 1; // Shallow earthquakes feel stronger
+  else if (depth > 100) depthAdjustment = -1; // Deep earthquakes feel weaker
+  
+  const intensity = baseIntensity + depthAdjustment;
+  
+  // Ensure intensity is between 1-12 (Mercalli scale)
+  return Math.min(Math.max(intensity, 1), 12);
+};
+
+// Function to get Mercalli intensity description
+const getMercalliDescription = (intensity: number): string => {
+  switch (intensity) {
+    case 1: return "Hissedilmez";
+    case 2: return "Çok Hafif";
+    case 3: return "Hafif";
+    case 4: return "Orta";
+    case 5: return "Güçlü";
+    case 6: return "Çok Güçlü";
+    case 7: return "Şiddetli";
+    case 8: return "Çok Şiddetli";
+    case 9: return "Yıkıcı";
+    case 10: return "Çok Yıkıcı";
+    case 11: return "Felaket";
+    case 12: return "Büyük Felaket";
+    default: return "Bilinmiyor";
+  }
 };
 
 function formatDate(dateString: string) {
@@ -172,11 +255,66 @@ const CommentItem = ({ comment, onEdit, onDelete, isOwnComment }: any) => {
 };
 
 export default function EarthquakeDetailScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, source } = useLocalSearchParams();
   const [newComment, setNewComment] = useState("");
   const [editingComment, setEditingComment] = useState<any>(null);
   const [editCommentText, setEditCommentText] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
+  
+  // Toast states
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
+  
+  // AI Comment states
+  const [showAIComment, setShowAIComment] = useState(false);
+  const [aiCommentText, setAiCommentText] = useState('');
+  const [displayedAIComment, setDisplayedAIComment] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isTypingAI, setIsTypingAI] = useState(false);
+
+  // Toast function
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
+
+  // Custom back navigation based on source
+  const handleBackNavigation = useCallback(() => {
+    console.log('handleBackNavigation called with source:', source);
+    
+    if (source === 'carousel') {
+      // If came from carousel (Ana Sayfa), go back to Ana Sayfa
+      console.log('Navigating to Ana Sayfa');
+      router.push("/(protected)/(tabs)/");
+    } else if (source === 'list') {
+      // If came from earthquakes list, go back to earthquakes list
+      console.log('Navigating to earthquakes list');
+      router.push("/(protected)/(tabs)/earthquakes");
+    } else {
+      // Default fallback - go back in navigation stack
+      console.log('Using default back navigation');
+      router.back();
+    }
+  }, [source, router]);
+
+  // Handle swipe gesture with better configuration
+  const onGestureEvent = useCallback((event: any) => {
+    const { translationX, state } = event.nativeEvent;
+    
+    console.log('Gesture event:', { translationX, state });
+    
+    if (state === State.END) {
+      // If swiped right more than 50px, trigger back navigation
+      if (translationX > 50) {
+        console.log('Triggering back navigation');
+        handleBackNavigation();
+      }
+    }
+  }, [handleBackNavigation]);
+
+
 
   const {
     data: earthquake,
@@ -195,7 +333,7 @@ export default function EarthquakeDetailScreen() {
     error: feltReportsError,
   } = useEarthquakeFeltReports(id as string);
 
-  // Comments hook'unu kullan
+  // Comments hook'unu kullan - sadece 3 yorum göster
   const {
     comments,
     isLoading: isLoadingComments,
@@ -205,7 +343,15 @@ export default function EarthquakeDetailScreen() {
     isAddingComment,
     isUpdatingComment,
     error: commentsError,
+  } = useEarthquakeComments(id as string, 3);
+
+  // Tüm yorumları al (limit olmadan) - sadece sayı için
+  const {
+    comments: allComments,
   } = useEarthquakeComments(id as string);
+
+  // Premium hook'u
+  const { hasAccessToFeature, getCurrentLevel } = usePremium();
 
   // Loading durumu
   if (isLoading) {
@@ -252,7 +398,7 @@ export default function EarthquakeDetailScreen() {
 
   const handleAddComment = async () => {
     if (!newComment.trim()) {
-      Alert.alert("Uyarı", "Lütfen bir yorum yazın.");
+      showToast("Lütfen bir yorum yazın.", "error");
       return;
     }
 
@@ -260,16 +406,16 @@ export default function EarthquakeDetailScreen() {
       console.log('Starting to add comment...');
       await addComment(newComment.trim());
       setNewComment("");
-      Alert.alert("Başarılı", "Yorumunuz eklendi.");
+      showToast("Yorumunuz eklendi.", "success");
     } catch (error) {
       console.error('handleAddComment error:', error);
       
       // Detaylı hata mesajı
       const errorMessage = error instanceof Error 
-        ? `Hata: ${error.message}` 
+        ? error.message 
         : "Yorum eklenirken bilinmeyen hata oluştu.";
         
-      Alert.alert("Hata", errorMessage);
+      showToast(errorMessage, "error");
     }
   };
 
@@ -281,7 +427,7 @@ export default function EarthquakeDetailScreen() {
 
   const handleUpdateComment = async () => {
     if (!editCommentText.trim()) {
-      Alert.alert("Uyarı", "Lütfen bir yorum yazın.");
+      showToast("Lütfen bir yorum yazın.", "error");
       return;
     }
 
@@ -290,11 +436,11 @@ export default function EarthquakeDetailScreen() {
       setShowEditModal(false);
       setEditingComment(null);
       setEditCommentText("");
-      Alert.alert("Başarılı", "Yorumunuz güncellendi.");
+      showToast("Yorumunuz güncellendi.", "success");
     } catch (error) {
-      Alert.alert(
-        "Hata",
-        error instanceof Error ? error.message : "Yorum güncellenirken hata oluştu."
+      showToast(
+        error instanceof Error ? error.message : "Yorum güncellenirken hata oluştu.",
+        "error"
       );
     }
   };
@@ -311,11 +457,11 @@ export default function EarthquakeDetailScreen() {
           onPress: async () => {
             try {
               await deleteComment(commentId);
-              Alert.alert("Başarılı", "Yorum silindi.");
+              showToast("Yorum silindi.", "success");
             } catch (error) {
-              Alert.alert(
-                "Hata",
-                error instanceof Error ? error.message : "Yorum silinirken hata oluştu."
+              showToast(
+                error instanceof Error ? error.message : "Yorum silinirken hata oluştu.",
+                "error"
               );
             }
           },
@@ -324,14 +470,120 @@ export default function EarthquakeDetailScreen() {
     );
   };
 
-  return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a365d" />
 
-      <KeyboardAvoidingView 
-        style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
+
+  // Typing effect fonksiyonu
+  const typeText = (text: string, speed: number = 50) => {
+    setIsTypingAI(true);
+    setDisplayedAIComment('');
+    let index = 0;
+    
+    const typeInterval = setInterval(() => {
+      if (index < text.length) {
+        setDisplayedAIComment(text.substring(0, index + 1));
+        index++;
+      } else {
+        clearInterval(typeInterval);
+        setIsTypingAI(false);
+      }
+    }, speed);
+  };
+
+  // Gemini AI ile deprem yorumu oluşturma fonksiyonu
+  const generateAIComment = async () => {
+    if (!earthquake) return;
+    
+    try {
+      setIsGeneratingAI(true);
+      
+      const genAI = new GoogleGenerativeAI("AIzaSyA9gguZnXbvAcOmVvDxTm1vNVeIqOYfejA");
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      
+      // Deprem verilerini hazırla
+      const earthquakeData = {
+        title: earthquake.title,
+        magnitude: earthquake.mag,
+        depth: earthquake.depth,
+        date: earthquake.date,
+        region: earthquake.region,
+        faultline: earthquake.faultline,
+        latitude: earthquake.latitude,
+        longitude: earthquake.longitude,
+        provider: earthquake.provider
+      };
+      
+      const prompt = `
+        Aşağıdaki deprem verilerini analiz ederek, tam olarak 4-5 cümlelik kısa bir yorum oluştur:
+        
+        Deprem Bilgileri:
+        - Başlık: ${earthquakeData.title}
+        - Büyüklük: ${earthquakeData.magnitude}
+        - Derinlik: ${earthquakeData.depth} km
+        - Tarih: ${earthquakeData.date}
+        - Bölge: ${earthquakeData.region}
+        - Fay Hattı: ${earthquakeData.faultline || 'Belirtilmemiş'}
+        - Koordinatlar: ${earthquakeData.latitude}, ${earthquakeData.longitude}
+        - Kaynak: ${earthquakeData.provider}
+        
+        ÖNEMLİ: Yanıtını tam olarak 4-5 cümle ile sınırla. Daha uzun yanıt verme.
+        
+        Bu deprem verilerini analiz ederek kısa bir yorum yap:
+        1. Depremin genel karakteristiği
+        2. Büyüklük ve derinlik değerlendirmesi
+        3. Bölgesel etki potansiyeli
+        4. Kısa bir güvenlik önerisi
+        
+        Yanıtı Türkçe olarak, tam olarak 4-5 cümlelik bir paragraf halinde ver. Daha uzun yanıt verme.
+      `;
+      
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let text = response.text();
+      
+      // Metni temizle ve formatla
+      text = text.trim()
+        .replace(/\s+/g, ' ') // Birden fazla boşluğu tek boşluğa çevir
+        .replace(/\n+/g, ' ') // Satır sonlarını boşluğa çevir
+        .replace(/\s+([.!?])(?!\d)/g, '$1') // Noktalama işaretlerinden önceki boşlukları kaldır (sayı değilse)
+        .replace(/([.!?])(?!\d)\s*/g, '$1 ') // Noktalama işaretlerinden sonra tek boşluk bırak (sayı değilse)
+        .trim();
+      
+      // Cümle sayısını kontrol et ve sınırla
+      const sentences = text.split(/[.!?]+/).filter(sentence => sentence.trim().length > 0);
+      if (sentences.length > 5) {
+        text = sentences.slice(0, 5).join('. ') + '.';
+      }
+      
+      setAiCommentText(text);
+      setShowAIComment(true);
+      
+      // Typing effect başlat
+      setTimeout(() => {
+        typeText(text, 40);
+      }, 200);
+      
+    } catch (error) {
+      console.error('AI yorum oluşturma hatası:', error);
+      setAiCommentText('AI yorumu oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+      setShowAIComment(true);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  return (
+    <PanGestureHandler 
+      onGestureEvent={onGestureEvent}
+      activeOffsetX={[-5, 5]}
+      activeOffsetY={[-15, 15]}
+    >
+      <View style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor="#1a365d" />
+
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <ScrollView
           style={styles.container}
           showsVerticalScrollIndicator={false}
@@ -411,7 +663,7 @@ export default function EarthquakeDetailScreen() {
                   size={20}
                   color={getMagnitudeColor(earthquake.mag)}
                 />
-                <Text style={styles.statValue}>{earthquake.provider}</Text>
+                <Text style={styles.statValue}>{formatSourceName(earthquake.provider)}</Text>
                 <Text style={styles.statLabel}>Kaynak</Text>
               </View>
             </View>
@@ -426,10 +678,9 @@ export default function EarthquakeDetailScreen() {
                 try {
                   await toggleFeltReport();
                 } catch (error) {
-                  Alert.alert(
-                    "Hata",
+                  showToast(
                     error instanceof Error ? error.message : "Bir hata oluştu",
-                    [{ text: "Tamam" }]
+                    "error"
                   );
                 }
               }}
@@ -446,7 +697,7 @@ export default function EarthquakeDetailScreen() {
                 >
                   {stats?.user_has_reported
                     ? "Depremi Hissettim ✓"
-                    : "Depremi Hissetin Mi?"}
+                    : "Depremi Hissettin Mi?"}
                 </Text>
               )}
             </TouchableOpacity>
@@ -662,29 +913,85 @@ export default function EarthquakeDetailScreen() {
                     Bu deprem {earthquake.mag.toFixed(1)} büyüklüğünde kaydedilmiş
                     olup, {earthquake.depth} km derinliğinde gerçekleşmiştir.
                     {earthquake.mag >= 4.0
-                      ? " Bu şiddetteki depremler genellikle geniş bir alanda hissedilir ve hafif hasarlara neden olabilir."
+                      ? " Bu büyüklükteki depremler genellikle geniş bir alanda hissedilir ve hafif hasarlara neden olabilir."
                       : earthquake.mag >= 3.0
-                      ? " Bu şiddetteki depremler genellikle sadece yakın çevrede hissedilir."
-                      : " Bu şiddetteki depremler genellikle sadece hassas cihazlarla tespit edilir."}
+                      ? " Bu büyüklükteki depremler genellikle sadece yakın çevrede hissedilir."
+                      : " Bu büyüklükteki depremler genellikle sadece hassas cihazlarla tespit edilir."}
+                    {"\n\n"}Mercalli şiddeti, depremin yüzeydeki etkisini gösterir ve büyüklükten farklıdır.
                   </Text>
 
                   <View style={styles.impactMetrics}>
                     <View style={styles.metricItem}>
                       <Text style={styles.metricValue}>
-                        {Math.floor(Math.random() * 50) + 10} km
+                        {calculateFeltRadius(earthquake.mag, earthquake.depth)} km
                       </Text>
                       <Text style={styles.metricLabel}>Hissedilme Yarıçapı</Text>
                     </View>
                     <View style={styles.metricItem}>
                       <Text style={styles.metricValue}>
-                        {Math.floor(Math.random() * 10) + 1}
+                        {calculateMercalliIntensity(earthquake.mag, earthquake.depth)}
                       </Text>
-                      <Text style={styles.metricLabel}>Mercalli Şiddeti</Text>
+                      <Text style={styles.metricLabel}>
+                        Mercalli Şiddeti ({getMercalliDescription(calculateMercalliIntensity(earthquake.mag, earthquake.depth))})
+                      </Text>
                     </View>
                   </View>
                 </View>
               </View>
             </View>
+
+            {/* AI Comment Section - Premium Özellik */}
+            <PremiumFeatureGate featureId="terra-ai-comment">
+              <View style={styles.aiCommentSection}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="sparkles-outline" size={22} color="#2d3748" />
+                  <Text style={styles.sectionTitle} numberOfLines={2} ellipsizeMode="tail">Terra AI Deprem Yorumu</Text>
+                </View>
+
+                {!showAIComment ? (
+                  <TouchableOpacity
+                    style={styles.aiCommentButton}
+                    onPress={generateAIComment}
+                    disabled={isGeneratingAI}
+                  >
+                    {isGeneratingAI ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <>
+                        <Ionicons name="sparkles" size={20} color="#ffffff" />
+                        <Text style={styles.aiCommentButtonText}>
+                          Yorumu Gör
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.aiCommentContent}>
+                    <View style={styles.aiCommentHeader}>
+                      <Ionicons name="sparkles" size={20} color={colors.primary} />
+                      <Text style={styles.aiCommentTitle}>Terra AI Analizi</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setShowAIComment(false);
+                          setDisplayedAIComment('');
+                          setAiCommentText('');
+                          setIsTypingAI(false);
+                        }}
+                        style={styles.closeAICommentButton}
+                      >
+                        <Ionicons name="close" size={18} color="#6b7280" />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.aiCommentTextContainer}>
+                      <Text style={styles.aiCommentText}>
+                        {displayedAIComment}
+                        {isTypingAI && <Text style={styles.typingCursor}>|</Text>}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </PremiumFeatureGate>
 
             {/* Comments Section */}
             <View style={styles.commentsSection}>
@@ -709,7 +1016,7 @@ export default function EarthquakeDetailScreen() {
                 />
                 <View style={styles.commentInputFooter}>
                   <Text style={styles.characterCount}>
-                    {`${newComment.length}/500`}
+                    {newComment.length}/500
                   </Text>
                   <TouchableOpacity
                     style={[
@@ -739,15 +1046,43 @@ export default function EarthquakeDetailScreen() {
                     <Text style={styles.commentsLoadingText}>Yorumlar yükleniyor...</Text>
                   </View>
                 ) : comments && comments.length > 0 ? (
-                  comments.map((comment: any) => (
-                    <CommentItem
-                      key={comment.id}
-                      comment={comment}
-                      onEdit={handleEditComment}
-                      onDelete={handleDeleteComment}
-                      isOwnComment={comment.is_own_comment}
-                    />
-                  ))
+                  <>
+                    {comments.map((comment: any) => (
+                      <CommentItem
+                        key={comment.id}
+                        comment={comment}
+                        onEdit={handleEditComment}
+                        onDelete={handleDeleteComment}
+                        isOwnComment={comment.is_own_comment}
+                      />
+                    ))}
+                    
+                    {/* View All Comments Button - sadece 3'ten fazla yorum varsa göster */}
+                    {allComments && allComments.length > 3 && (
+                      <PremiumFeatureGate featureId="all-comments" compact>
+                        <TouchableOpacity
+                          style={styles.viewAllCommentsButton}
+                          onPress={() => {
+                            router.push({
+                              pathname: "/(protected)/(tabs)/earthquakes/all-comments",
+                              params: {
+                                earthquakeId: id as string,
+                                earthquakeTitle: earthquake.title,
+                              },
+                            });
+                          }}
+                        >
+                          <View style={styles.viewAllCommentsContent}>
+                            <Text style={styles.viewAllCommentsText}>
+                              Tüm Yorumları Gör ({allComments.length} yorum)
+                            </Text>
+                            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                          </View>
+                        </TouchableOpacity>
+                      </PremiumFeatureGate>
+                    )}
+
+                  </>
                 ) : (
                   <View style={styles.noCommentsContainer}>
                     <Ionicons name="chatbubbles-outline" size={48} color="#cbd5e0" />
@@ -808,13 +1143,23 @@ export default function EarthquakeDetailScreen() {
                 textAlignVertical="top"
               />
               <Text style={styles.editCharacterCount}>
-                {`${editCommentText.length}/500`}
+                {editCommentText.length}/500
               </Text>
             </View>
           </View>
         </Modal>
-      </KeyboardAvoidingView>
-    </View>
+        
+        {/* Toast Component */}
+        <Toast
+          visible={toastVisible}
+          message={toastMessage}
+          type={toastType}
+          onHide={() => setToastVisible(false)}
+          duration={3000}
+        />
+        </KeyboardAvoidingView>
+      </View>
+    </PanGestureHandler>
   );
 }
 
@@ -942,12 +1287,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
+    paddingRight: 10,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#2d3748",
     marginLeft: 8,
+    flex: 1,
+    flexShrink: 1,
   },
   mapContainer: {
     backgroundColor: "#ffffff",
@@ -1123,6 +1471,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
+    minHeight: 60,
   },
   feelButtonPressed: {
     backgroundColor: colors.primary,
@@ -1201,6 +1550,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
+    minHeight: 200, // Minimum yükseklik ekle
+    marginBottom: 20, // Alt boşluk ekle
   },
   commentsLoading: {
     padding: 40,
@@ -1280,6 +1631,32 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginLeft: 48,
   },
+  viewAllCommentsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+    backgroundColor: "#f8fafc",
+    marginTop: 8,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  viewAllCommentsContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewAllCommentsText: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: "600",
+    marginRight: 8,
+  },
+
   commentActions: {
     flexDirection: "row",
     marginTop: 8,
@@ -1354,5 +1731,74 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     textAlign: "right",
     marginTop: 8,
+  },
+  // AI Comment Section Styles
+  aiCommentSection: {
+    marginBottom: 24,
+  },
+  aiCommentButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+    minHeight: 60,
+  },
+  aiCommentButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: "NotoSans-Bold",
+    marginLeft: 8,
+  },
+  aiCommentContent: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  aiCommentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  aiCommentTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#2d3748",
+    flex: 1,
+    marginLeft: 8,
+  },
+  closeAICommentButton: {
+    padding: 4,
+  },
+  aiCommentTextContainer: {
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  aiCommentText: {
+    fontSize: 15,
+    color: "#374151",
+    lineHeight: 22,
+    textAlign: "left",
+    fontFamily: "NotoSans-Regular",
+  },
+  typingCursor: {
+    color: colors.primary,
+    fontWeight: 'bold',
   },
 });

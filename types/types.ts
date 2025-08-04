@@ -55,8 +55,12 @@ export interface Profile {
   surname: string | null;
   city: string | null;
   district: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string | null;
   emergency_phone: string | null;
+  emergency_contacts: string[] | null;
   safety_score?: number | null;
   has_completed_safety_form: boolean;
 }
@@ -73,59 +77,132 @@ export interface FeltReportStats {
   user_has_reported: boolean;
 }
 
-// Network types based on the SQL schema
-export interface Network {
+export interface PremiumPackage {
   id: string;
   name: string;
-  description: string | null;
-  created_by: string;
+  price: number;
+  currency: string;
+  period: 'monthly' | 'yearly';
+  features: string[];
+  isPopular?: boolean;
+  isCurrent?: boolean;
+}
+
+export interface UserSubscription {
+  packageId: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  autoRenew: boolean;
+}
+
+export interface NotificationSetting {
+  id: string;
+  name: string;
+  isActive: boolean;
+  sources: string[]; // ['kandilli', 'afad', 'all'] gibi
+  magnitudeRange: {
+    min: number;
+    max: number;
+  };
+  location: {
+    type: 'all' | 'cities';
+    cities?: string[];
+  };
   created_at: string;
   updated_at: string;
-  is_active: boolean;
-  max_members: number;
-  is_private: boolean;
-  join_code: string | null;
-  member_count?: number;
-  creator_profile?: Profile;
 }
 
-export interface NetworkMember {
+export interface NotificationSource {
   id: string;
-  network_id: string;
-  user_id: string;
-  role: "creator" | "member";
-  joined_at: string;
-  updated_at: string;
-  is_active: boolean;
-  invited_by: string | null;
-  profile?: Profile;
-  network?: Network;
+  name: string;
+  code: string;
+  description: string;
 }
 
-export interface NetworkInvitation {
-  id: string;
-  network_id: string;
-  inviter_id: string;
-  invitee_id: string;
-  status: "pending" | "accepted" | "rejected" | "cancelled";
-  created_at: string;
-  responded_at: string | null;
-  message: string | null;
-  network?: Network;
-  inviter_profile?: Profile;
-  invitee_profile?: Profile;
+// Premium Package Types
+export enum PremiumPackageType {
+  FREE = 'free',
+  SUPPORTER = 'supporter', // Seviye 1
+  PROTECTOR = 'protector',  // Seviye 2
+  SPONSOR = 'sponsor'       // Seviye 3
 }
 
-export interface NetworkRequest {
-  id: string;
-  network_id: string;
-  requester_id: string;
-  status: "pending" | "approved" | "rejected";
-  created_at: string;
-  reviewed_at: string | null;
-  reviewed_by: string | null;
-  message: string | null;
-  network?: Network;
-  requester_profile?: Profile;
-  reviewer_profile?: Profile;
+export enum PaymentPeriod {
+  MONTHLY = 'monthly',
+  YEARLY = 'yearly'
 }
+
+export interface UserPremiumInfo {
+  isPremium: boolean;
+  premiumPackageType: PremiumPackageType;
+  paymentPeriod: PaymentPeriod;
+  firstPaymentDate: string;
+  nextPaymentDate: string;
+  subscriptionStartDate: string;
+  subscriptionEndDate: string;
+  isActive: boolean;
+  autoRenew: boolean;
+}
+
+// Premium Feature Requirements
+export interface PremiumFeature {
+  id: string;
+  name: string;
+  description: string;
+  requiredLevel: PremiumPackageType;
+  location: string; // Screen/component where this feature is used
+}
+
+// Premium Features Configuration
+export const PREMIUM_FEATURES: PremiumFeature[] = [
+  {
+    id: 'all-comments',
+    name: 'Tüm Yorumları Gör',
+    description: 'Deprem detay sayfasında tüm kullanıcı deneyimlerini ve yorumlarını görüntüleyerek topluluk bilgilerine erişim sağlayın',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'earthquake-detail'
+  },
+  {
+    id: 'terra-ai-comment',
+    name: 'Terra AI Yorumu',
+    description: 'Deprem hakkında AI tarafından oluşturulan detaylı teknik analiz, etki alanı hesaplaması ve güvenlik önerilerini görün',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'earthquake-detail'
+  },
+  {
+    id: 'earthquake-risk-analysis',
+    name: 'Deprem Risk Analizi',
+    description: 'İl, ilçe, mahalle ve konum bazlı zemin analizi, altyapı sistemleri ve fay hatlarına göre kişiselleştirilmiş risk değerlendirmesi yapın',
+    requiredLevel: PremiumPackageType.PROTECTOR,
+    location: 'home'
+  },
+  {
+    id: 'detailed-statistics',
+    name: 'Detaylı İstatistikler',
+    description: 'Gelişmiş deprem istatistikleri, trend analizleri, bölgesel karşılaştırmalar ve gelecek tahmin modellerine erişim',
+    requiredLevel: PremiumPackageType.PROTECTOR,
+    location: 'home'
+  },
+  {
+    id: 'smart-notification-engine',
+    name: 'Akıllı Bildirim Kural Motoru',
+    description: 'Kişiselleştirilmiş bildirim kuralları, otomatik filtreleme, öncelik sıralaması ve gelişmiş uyarı sistemleri',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'home'
+  },
+  {
+    id: 'risk-assessment-ai',
+    name: 'Risk Değerlendirme AI Yorumu',
+    description: 'Risk formu sonuçlarında AI tarafından oluşturulan detaylı analiz, iyileştirme önerileri ve kişiselleştirilmiş güvenlik planları',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'risk-form'
+  },
+  {
+    id: 'terra-ai-daily-questions',
+    name: 'Terra AI Günlük 3+ Soru Kullanımı',
+    description: 'Günlük AI soru limitini aşın, sınırsız AI desteği alın ve deprem güvenliği konusunda uzman seviyesinde bilgi edinin',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'ai-menu'
+  }
+];

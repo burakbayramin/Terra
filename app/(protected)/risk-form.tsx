@@ -15,6 +15,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/constants/colors";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafetyScore, useUpdateProfile } from "@/hooks/useProfile";
+import { usePremium } from "@/hooks/usePremium";
+import PremiumFeatureGate from "@/components/PremiumFeatureGate";
+import { supabase } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Option {
   label: string;
@@ -35,9 +39,13 @@ const RiskForm = () => {
   const router = useRouter();
   const { showResults } = useLocalSearchParams();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: currentSafetyScore = 0, isLoading: isLoadingSafetyScore } =
     useSafetyScore(user?.id || "");
   const updateProfileMutation = useUpdateProfile();
+  
+  // Premium hook'u
+  const { hasAccessToFeature } = usePremium();
 
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -389,12 +397,29 @@ const RiskForm = () => {
       // Calculate final score: current safety score + form result
       const finalScore = Math.max(0, Math.min(100, formScore));
 
-      await updateProfileMutation.mutateAsync({
-        userId: user.id,
-        profileData: {
+      // First, try to upsert the profile to ensure it exists
+      const { error: upsertError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: user.id,
           safety_score: finalScore,
           has_completed_safety_form: true,
-        },
+          updated_at: new Date().toISOString(),
+        });
+
+      if (upsertError) {
+        throw upsertError;
+      }
+
+      // Invalidate and refetch all related queries
+      await queryClient.invalidateQueries({
+        queryKey: ["safetyScore", user.id],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["safetyFormCompletion", user.id],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["profile", user.id],
       });
 
       Alert.alert("Başarılı", `Güvenlik skorunuz güncellendi: %${finalScore}`, [
@@ -550,6 +575,29 @@ const RiskForm = () => {
                 {getRiskMessage(currentScore)}
               </Text>
             </View>
+
+            {/* AI Risk Assessment Comment - Premium Özellik */}
+            <PremiumFeatureGate featureId="risk-assessment-ai">
+              <View style={styles.aiCommentContainer}>
+                <View style={styles.aiCommentHeader}>
+                  <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
+                  <Text style={styles.aiCommentTitle}>Terra AI Risk Analizi</Text>
+                </View>
+                <View style={styles.aiCommentContent}>
+                  <Text style={styles.aiCommentText}>
+                    Skorunuz {currentScore} olarak hesaplandı. Bu skor, deprem güvenliği konusundaki hazırlık seviyenizi gösteriyor. 
+                    {currentScore >= 80 
+                      ? " Mükemmel! Deprem güvenliği konusunda çok iyi hazırlıklısınız. Bu seviyeyi korumaya devam edin."
+                      : currentScore >= 60
+                      ? " İyi! Ancak bazı alanlarda iyileştirme yapabilirsiniz. Özellikle eğitim ve hazırlık konularına odaklanın."
+                      : currentScore >= 40
+                      ? " Orta seviyede hazırlıklısınız. Deprem güvenliği konusunda daha fazla bilgi edinmeniz ve hazırlık yapmanız önerilir."
+                      : " Düşük seviyede hazırlıklısınız. Acil olarak deprem güvenliği konusunda eğitim almanız ve hazırlık yapmanız kritik önem taşıyor."
+                    }
+                  </Text>
+                </View>
+              </View>
+            </PremiumFeatureGate>
 
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
@@ -978,6 +1026,39 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
     fontFamily: "NotoSans-Bold",
+  },
+  // AI Comment Styles
+  aiCommentContainer: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  aiCommentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  aiCommentTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: colors.light.textPrimary,
+    marginLeft: 8,
+  },
+  aiCommentContent: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 16,
+  },
+  aiCommentText: {
+    fontSize: 14,
+    color: colors.light.textSecondary,
+    lineHeight: 20,
   },
 });
 
