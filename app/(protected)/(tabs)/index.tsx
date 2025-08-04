@@ -280,6 +280,20 @@ export default function HomeScreen() {
   const [selectedDistance, setSelectedDistance] = useState("50");
   const [criticalNotification, setCriticalNotification] = useState(true);
 
+//   useEffect(() => {
+//   const getToken = async () => {
+//     const { data: { session } } = await supabase.auth.getSession();
+//     if (session) {
+//       console.log('🔑 SUPABASE TOKEN:');
+//       console.log(session.access_token);
+//       console.log('📋 Kopyalayıp Postman\'e yapıştırın!');
+//     } else {
+//       console.log('❌ Kullanıcı oturum açmamış');
+//     }
+//   };
+  
+//   getToken();
+// }, []);
   // Sayfa yüklendiğinde kullanıcının konumunu al ve kaydet
   useEffect(() => {
     const handleLocationOnLoad = async () => {

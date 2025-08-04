@@ -33,7 +33,7 @@ export const useEarthquakeById = (id: string) => {
         )
         .eq("id", id)
         .single();
-
+        
       if (error) {
         throw new Error("Deprem detayı alınamadı.");
       }

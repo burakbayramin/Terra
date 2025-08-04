@@ -16,16 +16,31 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar."
-      }
+        "NSLocationWhenInUseUsageDescription": "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.terrradev.Terra"
     },
     "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDBfkAR2quzpD-ugNFL3ov8vipUNOJlK3o"
+        }
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.terrradev.Terra"
     },
     "web": {
       "favicon": "./assets/images/favicon.ico"
@@ -39,6 +54,13 @@
           "locationAlwaysAndWhenInUsePermission": "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "41423a93-ac0e-497c-b4bf-80555dbbfa4a"
+      }
+    },
+    "owner": "terrradev"
   }
 }
