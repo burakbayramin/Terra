@@ -17,7 +17,7 @@ export default function NetworkLayout() {
         name="[id]"
         options={{
           title: "Ağ Detayı",
-          headerShown: true,
+          headerShown: false,
           headerBackTitle: "Geri",
         }}
       />

@@ -25,10 +25,13 @@ export interface NetworkMember {
   profiles?: {
     name?: string;
     surname?: string;
+    username?: string;
     city?: string;
     district?: string;
     emergency_phone?: string;
     safety_score?: number;
+    phone?: string;
+    premium_status?: string;
   };
 }
 
@@ -134,10 +137,13 @@ export const useNetworkMembers = (networkId: string) => {
           profiles (
             name,
             surname,
+            username,
             city,
             district,
             emergency_phone,
-            safety_score
+            safety_score,
+            phone,
+            premium_status
           )
         `)
         .eq('network_id', networkId)
@@ -169,20 +175,89 @@ export const useNetworkInvitations = (networkId: string) => {
   });
 };
 
-// 5. Ağ oluştur (Database function kullanarak)
+// 5. Ağ oluştur (Manuel olarak)
 export const useCreateNetwork = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (networkData: CreateNetworkData) => {
-      const { data, error } = await supabase.rpc('create_network_with_creator', {
-        network_name: networkData.name,
-        network_description: networkData.description || null,
-        max_members_count: networkData.max_members || 50,
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Kullanıcı girişi yapılmamış');
 
-      if (error) throw error;
-      return data as Network;
+      // Benzersiz network code oluştur
+      const generateUniqueNetworkCode = (): string => {
+        // 6 karakterlik benzersiz kod oluştur
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < 6; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+      };
+
+      // Ağı oluştur (network code çakışması durumunda tekrar dene)
+      let network;
+      let attempts = 0;
+      const maxAttempts = 5;
+      
+      while (attempts < maxAttempts) {
+        const networkCode = generateUniqueNetworkCode();
+        
+        try {
+          const { data, error } = await supabase
+            .from('networks')
+            .insert({
+              name: networkData.name,
+              description: networkData.description || null,
+              creator_id: user.id,
+              max_members: networkData.max_members || 50,
+              network_code: networkCode,
+              is_active: true,
+            })
+            .select()
+            .single();
+          
+          if (error) {
+            // Network code çakışması durumunda tekrar dene
+            if (error.code === '23505' && error.message.includes('network_code')) {
+              attempts++;
+              continue;
+            }
+            throw error;
+          }
+          
+          network = data;
+          break;
+        } catch (error: any) {
+          if (error.code === '23505' && error.message.includes('network_code')) {
+            attempts++;
+            continue;
+          }
+          throw error;
+        }
+      }
+      
+      if (!network) {
+        throw new Error('Ağ oluşturulamadı, lütfen tekrar deneyin');
+      }
+
+      // 2. Kullanıcıyı ağa creator olarak ekle (RLS bypass)
+      const { error: memberError } = await supabase
+        .from('network_members')
+        .insert({
+          network_id: network.id,
+          user_id: user.id,
+          role: 'creator',
+          is_active: true,
+        })
+        .select();
+
+      if (memberError) {
+        console.error('Member insert error:', memberError);
+        throw new Error('Ağ üyesi eklenemedi: ' + memberError.message);
+      }
+
+      return network as Network;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: networkKeys.myNetworks() });
