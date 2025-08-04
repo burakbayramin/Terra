@@ -275,55 +275,9 @@ export default function ProfileScreen() {
             }
           </Text>
 
-          {/* Premium Status - Sadece ücretsiz kullanıcılar için */}
-          {getCurrentLevel() === PremiumPackageType.FREE && (
-            <View style={styles.premiumStatusContainer}>
-              <TouchableOpacity
-                style={styles.premiumStatusChip}
-                activeOpacity={0.7}
-                onPress={() => router.push("/(protected)/premium-packages")}
-              >
-                <Ionicons
-                  name="star"
-                  size={16}
-                  color="#FFD700"
-                />
-                <Text style={styles.premiumStatusText}>
-                  Üyelik Seviyesi: {getPremiumLevelName(getCurrentLevel())}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
 
-          {/* Security Score Chip - Only show if assessment is completed and has a score > 0 */}
-          {isFormCompleted && safetyScore > 0 && (
-            <View style={styles.securityScoreContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.securityScoreChip,
-                  { borderColor: getScoreColor(safetyScore) },
-                ]}
-                activeOpacity={0.7}
-                onPress={() => {
-                  // router.push("/(protected)/security-score");
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="shield-check"
-                  size={16}
-                  color={getScoreColor(safetyScore)}
-                />
-                <Text
-                  style={[
-                    styles.securityScoreText,
-                    { color: getScoreColor(safetyScore) },
-                  ]}
-                >
-                  % {safetyScore}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+
+
 
           <View style={styles.chipContainer}>
             <TouchableOpacity 
@@ -433,11 +387,16 @@ export default function ProfileScreen() {
                   <Ionicons
                     name="diamond-outline"
                     size={20}
-                    color="#666"
+                    color={getCurrentLevel() === PremiumPackageType.FREE ? "#FFD700" : "#666"}
                   />
                 </View>
                 <Text style={styles.menuItemText}>Premium Paketler</Text>
               </View>
+              {getCurrentLevel() === PremiumPackageType.FREE && (
+                <View style={styles.premiumUpgradeChip}>
+                  <Text style={styles.premiumUpgradeText}>Yükselt</Text>
+                </View>
+              )}
               <TouchableOpacity
                 style={{
                   position: "absolute",
@@ -1364,5 +1323,43 @@ const styles = StyleSheet.create({
   riskAssessmentSubtitle: {
     fontSize: 14,
     fontFamily: "NotoSans-Regular",
+  },
+  premiumUpgradeChip: {
+    backgroundColor: "#FFD700",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    shadowColor: "#FFD700",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  premiumUpgradeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "bold",
+    fontFamily: "NotoSans-Bold",
+  },
+  completedProfileChip: {
+    backgroundColor: "rgba(39, 174, 96, 0.3)",
+    borderWidth: 1,
+    borderColor: "rgba(39, 174, 96, 0.5)",
+  },
+  missionChip: {
+    backgroundColor: "rgba(255, 215, 0, 0.3)",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 215, 0, 0.5)",
+  },
+  missionChipText: {
+    color: "white",
+    fontSize: 12,
+    fontFamily: "NotoSans-Medium",
+    marginLeft: 5,
   },
 });
