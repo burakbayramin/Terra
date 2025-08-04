@@ -193,18 +193,34 @@ const openInExternalMap = async (
 const CommentItem = ({ comment, onEdit, onDelete, isOwnComment }: any) => {
   const [showActions, setShowActions] = useState(false);
 
+  // Kullanıcı adını belirle
+  const getUserDisplayName = () => {
+    if (comment.profiles?.show_full_name_in_comments && comment.profiles?.name && comment.profiles?.surname) {
+      return `${comment.profiles.name} ${comment.profiles.surname}`;
+    }
+    // Email'den kullanıcı ID'si oluştur
+    if (comment.profiles?.email) {
+      const emailPart = comment.profiles.email.split('@')[0];
+      const cleanEmail = emailPart.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      return `@${cleanEmail}`;
+    }
+    return "Anonim Kullanıcı";
+  };
+
+  const displayName = getUserDisplayName();
+
   return (
     <View style={styles.commentItem}>
       <View style={styles.commentHeader}>
         <View style={styles.commentUserInfo}>
           <View style={styles.commentAvatar}>
             <Text style={styles.commentAvatarText}>
-              {comment.profiles?.full_name?.charAt(0)?.toUpperCase() || "U"}
+              {displayName.charAt(0)?.toUpperCase() || "U"}
             </Text>
           </View>
           <View>
             <Text style={styles.commentUserName}>
-              {comment.profiles?.full_name || "Anonim Kullanıcı"}
+              {displayName}
             </Text>
             <Text style={styles.commentDate}>
               {formatDate(comment.created_at)}

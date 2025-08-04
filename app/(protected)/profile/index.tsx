@@ -23,7 +23,8 @@ import {
 } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 import { Divider } from "react-native-paper";
-import { useSafetyScore, useSafetyFormCompletion, useProfile, useProfileCompletion } from "@/hooks/useProfile";
+import { useSafetyScore, useSafetyFormCompletion, useProfileCompletion } from "@/hooks/useProfile";
+import { useProfile as useProfileData } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePremium } from "@/hooks/usePremium";
 import { PremiumPackageType } from "@/types/types";
@@ -60,12 +61,13 @@ const AnimatedProgressBar = ({ percentage }: { percentage: number }) => {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, getUserId } = useAuth();
   const queryClient = useQueryClient();
   const { data: safetyScore = 0 } = useSafetyScore(user?.id || "");
   const { data: hasCompletedForm = false, isLoading: isLoadingFormCompletion } = useSafetyFormCompletion(user?.id || "");
   const { data: profileCompletion = { percentage: 0, completedFields: 0, totalFields: 6 } } = useProfileCompletion(user?.id || "");
   const { getCurrentLevel } = usePremium();
+  const { profile } = useProfileData();
   
   // Premium seviye adını getir
   const getPremiumLevelName = (level: PremiumPackageType): string => {
@@ -131,7 +133,12 @@ export default function ProfileScreen() {
               style={styles.profileImage}
             />
           </View>
-          <Text style={styles.userName}>Burak Bayramin</Text>
+          <Text style={styles.userName}>
+            {profile?.show_full_name_in_profile && profile?.name && profile?.surname 
+              ? `${profile.name} ${profile.surname}`
+              : getUserId() || 'Kullanıcı'
+            }
+          </Text>
 
           {/* Premium Status */}
           <View style={styles.premiumStatusContainer}>
