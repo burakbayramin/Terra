@@ -9,6 +9,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -254,56 +256,58 @@ export default function RouteDetailScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-              <LinearGradient
-          colors={[typeInfo.color + '10', typeInfo.color + '05']}
-          style={[styles.headerGradient, { paddingTop: safeInsets.top + 20 }]}
-        >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={typeInfo.color} />
-          </TouchableOpacity>
-          
-          <View style={styles.headerContent}>
-            <View style={styles.headerTitleRow}>
-              <MaterialCommunityIcons
-                name={typeInfo.icon as any}
-                size={24}
-                color={typeInfo.color}
-                style={styles.headerIcon}
-              />
-              <Text style={styles.headerTitle}>{route.name}</Text>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={{ flex: 1 }}>
+          {/* Header */}
+          <LinearGradient
+            colors={[typeInfo.color + '10', typeInfo.color + '05']}
+            style={[styles.headerGradient, { paddingTop: safeInsets.top + 20 }]}
+          >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={typeInfo.color} />
+            </TouchableOpacity>
+            
+            <View style={styles.headerContent}>
+              <View style={styles.headerTitleRow}>
+                <MaterialCommunityIcons
+                  name={typeInfo.icon as any}
+                  size={24}
+                  color={typeInfo.color}
+                  style={styles.headerIcon}
+                />
+                <Text style={styles.headerTitle}>{route.name}</Text>
+              </View>
+              
+              <Text style={styles.headerSubtitle}>
+                {route.description || `${typeInfo.name} - ${waypoints?.length || 0} nokta`}
+              </Text>
             </View>
             
-            <Text style={styles.headerSubtitle}>
-              {route.description || `${typeInfo.name} - ${waypoints?.length || 0} nokta`}
-            </Text>
+            {isNetworkAdmin && (
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => setShowEditModal(true)}
+                >
+                  <Ionicons name="create-outline" size={20} color={typeInfo.color} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => setShowDeleteModal(true)}
+                >
+                  <Ionicons name="trash-outline" size={20} color={typeInfo.color} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
-          
-          {isNetworkAdmin && (
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => setShowEditModal(true)}
-              >
-                <Ionicons name="create-outline" size={20} color={typeInfo.color} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => setShowDeleteModal(true)}
-              >
-                <Ionicons name="trash-outline" size={20} color={typeInfo.color} />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </LinearGradient>
+        </LinearGradient>
 
-      <ScrollView 
-        style={[styles.content, { paddingBottom: safeInsets.bottom }]} 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
-      >
+        <ScrollView 
+          style={[styles.content, { paddingBottom: safeInsets.bottom }]} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
+        >
         {/* Route Info */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -439,8 +443,9 @@ export default function RouteDetailScreen() {
             </View>
           </View>
         )}
-      </ScrollView>
-
+        </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
       {/* Edit Route Modal */}
       <Modal
         visible={showEditModal}
@@ -448,56 +453,54 @@ export default function RouteDetailScreen() {
         transparent={true}
         onRequestClose={() => setShowEditModal(false)}
       >
-        <View style={[styles.modalOverlay, { 
-          paddingTop: safeInsets.top, 
-          paddingBottom: safeInsets.bottom 
-        }]}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Rotayı Düzenle</Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={[styles.modalOverlay, { 
+            paddingTop: safeInsets.top, 
+            paddingBottom: safeInsets.bottom 
+          }]}> 
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Rotayı Düzenle</Text>
+                <TouchableOpacity
+                  onPress={() => setShowEditModal(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Rota adı"
+                placeholderTextColor="#999"
+                value={editName}
+                onChangeText={setEditName}
+                maxLength={50}
+              />
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Rota açıklaması (opsiyonel)"
+                placeholderTextColor="#999"
+                value={editDescription}
+                onChangeText={setEditDescription}
+                multiline
+                numberOfLines={3}
+                maxLength={200}
+              />
               <TouchableOpacity
-                onPress={() => setShowEditModal(false)}
-                style={styles.closeButton}
+                style={styles.modalButton}
+                onPress={handleUpdateRoute}
+                disabled={updateRouteMutation.isPending}
               >
-                <Ionicons name="close" size={24} color="#666" />
+                {updateRouteMutation.isPending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalButtonText}>Güncelle</Text>
+                )}
               </TouchableOpacity>
             </View>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Rota adı"
-              placeholderTextColor="#999"
-              value={editName}
-              onChangeText={setEditName}
-              maxLength={50}
-            />
-
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Rota açıklaması (opsiyonel)"
-              placeholderTextColor="#999"
-              value={editDescription}
-              onChangeText={setEditDescription}
-              multiline
-              numberOfLines={3}
-              maxLength={200}
-            />
-
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleUpdateRoute}
-              disabled={updateRouteMutation.isPending}
-            >
-              {updateRouteMutation.isPending ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.modalButtonText}>Güncelle</Text>
-              )}
-            </TouchableOpacity>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
-
       {/* Add Waypoint Modal */}
       <Modal
         visible={showAddWaypointModal}
@@ -505,105 +508,101 @@ export default function RouteDetailScreen() {
         transparent={true}
         onRequestClose={() => setShowAddWaypointModal(false)}
       >
-        <View style={[styles.modalOverlay, { 
-          paddingTop: safeInsets.top, 
-          paddingBottom: safeInsets.bottom 
-        }]}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nokta Ekle</Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={[styles.modalOverlay, { 
+            paddingTop: safeInsets.top, 
+            paddingBottom: safeInsets.bottom 
+          }]}> 
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Nokta Ekle</Text>
+                <TouchableOpacity
+                  onPress={() => setShowAddWaypointModal(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Nokta adı"
+                placeholderTextColor="#999"
+                value={waypointName}
+                onChangeText={setWaypointName}
+                maxLength={50}
+              />
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Açıklama (opsiyonel)"
+                placeholderTextColor="#999"
+                value={waypointDescription}
+                onChangeText={setWaypointDescription}
+                multiline
+                numberOfLines={2}
+                maxLength={100}
+              />
+              <Text style={styles.modalSubtitle}>Nokta Türü</Text>
+              <View style={styles.waypointTypeOptions}>
+                {[
+                  { type: 'gathering_point', name: 'Toplanma Noktası', icon: 'account-group' },
+                  { type: 'safe_zone', name: 'Güvenli Alan', icon: 'shield-check' },
+                  { type: 'checkpoint', name: 'Kontrol Noktası', icon: 'map-marker-check' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.type}
+                    style={[
+                      styles.waypointTypeOption,
+                      waypointType === option.type && styles.waypointTypeOptionSelected
+                    ]}
+                    onPress={() => setWaypointType(option.type as any)}
+                  >
+                    <MaterialCommunityIcons
+                      name={option.icon as any}
+                      size={20}
+                      color={waypointType === option.type ? '#fff' : '#666'}
+                    />
+                    <Text style={[
+                      styles.waypointTypeOptionText,
+                      waypointType === option.type && styles.waypointTypeOptionTextSelected
+                    ]}>
+                      {option.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.coordinatesContainer}>
+                <TextInput
+                  style={[styles.input, styles.coordinateInput]}
+                  placeholder="Enlem"
+                  placeholderTextColor="#999"
+                  value={waypointLatitude}
+                  onChangeText={setWaypointLatitude}
+                  keyboardType="numeric"
+                />
+                <TextInput
+                  style={[styles.input, styles.coordinateInput]}
+                  placeholder="Boylam"
+                  placeholderTextColor="#999"
+                  value={waypointLongitude}
+                  onChangeText={setWaypointLongitude}
+                  keyboardType="numeric"
+                />
+              </View>
               <TouchableOpacity
-                onPress={() => setShowAddWaypointModal(false)}
-                style={styles.closeButton}
+                style={styles.modalButton}
+                onPress={handleAddWaypoint}
+                disabled={createWaypointMutation.isPending}
               >
-                <Ionicons name="close" size={24} color="#666" />
+                {createWaypointMutation.isPending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalButtonText}>Ekle</Text>
+                )}
               </TouchableOpacity>
             </View>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Nokta adı"
-              placeholderTextColor="#999"
-              value={waypointName}
-              onChangeText={setWaypointName}
-              maxLength={50}
-            />
-
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Açıklama (opsiyonel)"
-              placeholderTextColor="#999"
-              value={waypointDescription}
-              onChangeText={setWaypointDescription}
-              multiline
-              numberOfLines={2}
-              maxLength={100}
-            />
-
-            <Text style={styles.modalSubtitle}>Nokta Türü</Text>
-            <View style={styles.waypointTypeOptions}>
-              {[
-                { type: 'gathering_point', name: 'Toplanma Noktası', icon: 'account-group' },
-                { type: 'safe_zone', name: 'Güvenli Alan', icon: 'shield-check' },
-                { type: 'checkpoint', name: 'Kontrol Noktası', icon: 'map-marker-check' },
-              ].map((option) => (
-                <TouchableOpacity
-                  key={option.type}
-                  style={[
-                    styles.waypointTypeOption,
-                    waypointType === option.type && styles.waypointTypeOptionSelected
-                  ]}
-                  onPress={() => setWaypointType(option.type as any)}
-                >
-                  <MaterialCommunityIcons
-                    name={option.icon as any}
-                    size={20}
-                    color={waypointType === option.type ? '#fff' : '#666'}
-                  />
-                  <Text style={[
-                    styles.waypointTypeOptionText,
-                    waypointType === option.type && styles.waypointTypeOptionTextSelected
-                  ]}>
-                    {option.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={styles.coordinatesContainer}>
-              <TextInput
-                style={[styles.input, styles.coordinateInput]}
-                placeholder="Enlem"
-                placeholderTextColor="#999"
-                value={waypointLatitude}
-                onChangeText={setWaypointLatitude}
-                keyboardType="numeric"
-              />
-              <TextInput
-                style={[styles.input, styles.coordinateInput]}
-                placeholder="Boylam"
-                placeholderTextColor="#999"
-                value={waypointLongitude}
-                onChangeText={setWaypointLongitude}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleAddWaypoint}
-              disabled={createWaypointMutation.isPending}
-            >
-              {createWaypointMutation.isPending ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.modalButtonText}>Ekle</Text>
-              )}
-            </TouchableOpacity>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
-
       {/* Delete Confirmation Modal */}
       <Modal
         visible={showDeleteModal}
@@ -614,14 +613,13 @@ export default function RouteDetailScreen() {
         <View style={[styles.modalOverlay, { 
           paddingTop: safeInsets.top, 
           paddingBottom: safeInsets.bottom 
-        }]}>
+        }]}> 
           <View style={styles.deleteModalContent}>
             <MaterialCommunityIcons name="alert-circle" size={48} color="#FF6B6B" />
             <Text style={styles.deleteModalTitle}>Rotayı Sil</Text>
             <Text style={styles.deleteModalDescription}>
               Bu rotayı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
             </Text>
-            
             <View style={styles.deleteModalButtons}>
               <TouchableOpacity
                 style={styles.deleteModalButtonCancel}
@@ -644,7 +642,6 @@ export default function RouteDetailScreen() {
           </View>
         </View>
       </Modal>
-
       <Toast
         visible={toast.visible}
         message={toast.message}
