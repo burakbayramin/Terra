@@ -206,5 +206,95 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     description: 'Günlük AI soru limitini aşın, sınırsız AI desteği alın ve deprem güvenliği konusunda uzman seviyesinde bilgi edinin',
     requiredLevel: PremiumPackageType.SUPPORTER,
     location: 'ai-menu'
+  },
+  {
+    id: 'smart-emergency-route',
+    name: 'Akıllı Acil Durum Rotası',
+    description: 'Ağ grubunuz için özelleştirilmiş acil durum rotaları oluşturun, kullanıcıların rota seçimi yapmasını sağlayın ve kriz anında otomatik yönlendirme alın',
+    requiredLevel: PremiumPackageType.PROTECTOR,
+    location: 'network'
   }
 ];
+
+// Smart Emergency Route Types
+export interface SmartRouteSettings {
+  id: string;
+  network_id: string;
+  is_enabled: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SmartRoute {
+  id: string;
+  network_id: string;
+  name: string;
+  description?: string;
+  route_type: 'default' | 'family' | 'disabled_friendly' | 'elderly_friendly' | 'custom';
+  is_default: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  waypoints?: RouteWaypoint[];
+  statistics?: RouteStatistics;
+}
+
+export interface RouteWaypoint {
+  id: string;
+  route_id: string;
+  waypoint_type: 'gathering_point' | 'safe_zone' | 'checkpoint';
+  name: string;
+  description?: string;
+  latitude: number;
+  longitude: number;
+  order_index: number;
+  estimated_time_minutes?: number;
+  distance_meters?: number;
+  created_at: string;
+}
+
+export interface UserRouteSelection {
+  id: string;
+  user_id: string;
+  network_id: string;
+  route_id: string;
+  selected_at: string;
+  is_active: boolean;
+  route?: SmartRoute;
+}
+
+export interface UserRouteProgress {
+  id: string;
+  user_id: string;
+  network_id: string;
+  route_id: string;
+  current_waypoint_id?: string;
+  status: 'not_started' | 'in_progress' | 'at_gathering_point' | 'at_safe_zone' | 'completed';
+  started_at?: string;
+  completed_at?: string;
+  current_latitude?: number;
+  current_longitude?: number;
+  last_updated: string;
+  route?: SmartRoute;
+  current_waypoint?: RouteWaypoint;
+}
+
+export interface RouteStatistics {
+  id: string;
+  route_id: string;
+  network_id: string;
+  total_users_selected: number;
+  total_completions: number;
+  average_completion_time_minutes?: number;
+  last_used?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RouteWithDetails extends SmartRoute {
+  waypoints: RouteWaypoint[];
+  statistics: RouteStatistics;
+  user_selection?: UserRouteSelection;
+  user_progress?: UserRouteProgress;
+}

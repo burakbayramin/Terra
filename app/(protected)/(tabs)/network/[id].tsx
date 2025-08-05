@@ -34,7 +34,7 @@ export default function NetworkDetailScreen() {
   // State
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isNetworkAdmin, setIsNetworkAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState(0); // 0: Üyeler, 1: Bildirimler, 2: Özellikler
+  const [activeTab, setActiveTab] = useState(2); // 0: Üyeler, 1: Bildirimler, 2: Özellikler
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRemoveMemberModal, setShowRemoveMemberModal] = useState(false);
@@ -539,6 +539,22 @@ export default function NetworkDetailScreen() {
       }
     ];
 
+    const handleFeaturePress = (featureId: string) => {
+      switch (featureId) {
+        case 'safe-zones':
+          router.push(`/network/safe-zones?networkId=${id}`);
+          break;
+        case 'emergency-plan':
+          router.push(`/network/emergency-plan?networkId=${id}`);
+          break;
+        case 'smart-route':
+          router.push(`/network/smart-route?networkId=${id}`);
+          break;
+        default:
+          break;
+      }
+    };
+
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionTitle}>Gelişmiş Özellikler</Text>
@@ -546,7 +562,11 @@ export default function NetworkDetailScreen() {
           Ağınızın güvenliğini artırmak için gelişmiş özellikleri kullanın
         </Text>
         {advancedFeatures.map((feature) => (
-          <TouchableOpacity key={feature.id} style={styles.featureCard}>
+          <TouchableOpacity 
+            key={feature.id} 
+            style={styles.featureCard}
+            onPress={() => handleFeaturePress(feature.id)}
+          >
             <View style={[styles.featureIcon, { backgroundColor: feature.color + '20' }]}>
               <MaterialCommunityIcons
                 name={feature.icon as any}
