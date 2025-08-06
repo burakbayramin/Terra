@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
-import { Earthquake } from "@/types/types";
+import { Earthquake, MagnitudeRange } from "@/types/types";
 import MapView, { Marker } from "react-native-maps";
 import {
   ScrollView,
@@ -12,16 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { useEarthquakes } from "@/hooks/useEarthquakes";
-import EarthquakeFilter from "@/components/EarthquakeFilter"; // Import the new component
-import { Ionicons } from '@expo/vector-icons';
-import { useScrollToTop } from "@/hooks/useScrollToTop";
-import { eventEmitter } from "@/lib/eventEmitter";
-
-interface MagnitudeRange {
-  min: number;
-  max: number;
-  label: string;
-}
+import EarthquakeFilter from "@/components/EarthquakeFilter";
 
 export default function EarthquakesScreen() {
   const { width } = Dimensions.get("window");
@@ -30,7 +21,6 @@ export default function EarthquakesScreen() {
   const insets = useSafeAreaInsets();
   const sourcesInitialized = useRef(false);
 
-  // Filter states
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [selectedMagnitudeRanges, setSelectedMagnitudeRanges] = useState<
@@ -38,19 +28,11 @@ export default function EarthquakesScreen() {
   >([]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
 
-  // Temporary filter states (for modal)
   const [tempSelectedRegions, setTempSelectedRegions] = useState<string[]>([]);
   const [tempSelectedMagnitudeRanges, setTempSelectedMagnitudeRanges] = useState<
     MagnitudeRange[]
   >([]);
   const [tempSelectedSources, setTempSelectedSources] = useState<string[]>([]);
-
-  const region = {
-    latitude: 39.0,
-    longitude: 35.0,
-    latitudeDelta: 12.5,
-    longitudeDelta: 17.5,
-  };
 
   const {
     data: earthquakes = [],
@@ -60,9 +42,6 @@ export default function EarthquakesScreen() {
     isFetching,
   } = useEarthquakes();
 
-  const { scrollViewRef, scrollToTop } = useScrollToTop();
-
-  // Get unique sources from earthquakes
   const availableSources = useMemo(() => {
     if (!earthquakes || earthquakes.length === 0) return [];
 
@@ -75,7 +54,6 @@ export default function EarthquakesScreen() {
     return Array.from(sources).sort();
   }, [earthquakes]);
 
-  // Initialize selectedSources with all available sources when they change
   useEffect(() => {
     if (availableSources && availableSources.length > 0 && !sourcesInitialized.current) {
       setSelectedSources([...availableSources]);
@@ -83,23 +61,8 @@ export default function EarthquakesScreen() {
     }
   }, [availableSources]);
 
-  useEffect(() => {
-    const handleEarthquakesDoubleTap = () => {
-      console.log('Earthquakes double tap event received, calling scrollToTop');
-      scrollToTop();
-    };
-    console.log('Setting up earthquakes double tap listener');
-    eventEmitter.on('earthquakesDoubleTap', handleEarthquakesDoubleTap);
-    return () => {
-      console.log('Cleaning up earthquakes double tap listener');
-      eventEmitter.off('earthquakesDoubleTap', handleEarthquakesDoubleTap);
-    };
-  }, [scrollToTop]);
-
-  // Function to open filter modal and sync temporary states
   const openFilterModal = () => {
     try {
-      // Ensure we have the latest filter states with proper null checks
       const currentRegions = Array.isArray(selectedRegions) ? [...selectedRegions] : [];
       const currentMagnitudeRanges = Array.isArray(selectedMagnitudeRanges) ? [...selectedMagnitudeRanges] : [];
       const currentSources = Array.isArray(selectedSources) ? [...selectedSources] : [];
@@ -110,7 +73,6 @@ export default function EarthquakesScreen() {
       setShowFilterModal(true);
     } catch (error) {
       console.error('Error opening filter modal:', error);
-      // Fallback: open modal with empty states
       setTempSelectedRegions([]);
       setTempSelectedMagnitudeRanges([]);
       setTempSelectedSources([]);
@@ -118,49 +80,40 @@ export default function EarthquakesScreen() {
     }
   };
 
-  // Function to apply filters
   const applyFilters = () => {
     try {
-      // Safely copy temporary states to actual filter states
       const tempRegions = tempSelectedRegions || [];
       const tempMagnitudeRanges = tempSelectedMagnitudeRanges || [];
       const tempSources = tempSelectedSources || [];
       
-      // Use functional updates to ensure state consistency
       setSelectedRegions(() => [...tempRegions]);
       setSelectedMagnitudeRanges(() => [...tempMagnitudeRanges]);
       setSelectedSources(() => [...tempSources]);
       
-      // Close modal after state updates
       setTimeout(() => {
         setShowFilterModal(false);
       }, 0);
     } catch (error) {
       console.error('Error applying filters:', error);
-      // Fallback: close modal even if there's an error
       setShowFilterModal(false);
     }
   };
 
-  // Function to close modal without applying filters
   const closeFilterModal = () => {
     setShowFilterModal(false);
   };
 
-  // Filter earthquakes based on selected filters
   const filteredEarthquakes = useMemo(() => {
     if (!earthquakes || earthquakes.length === 0) return [];
 
     let filtered = [...earthquakes];
 
-    // Source filter - only apply if sources are selected
     if (selectedSources && Array.isArray(selectedSources) && selectedSources.length > 0) {
       filtered = filtered.filter((eq: Earthquake) =>
         selectedSources.includes(eq.provider)
       );
     }
 
-    // Region filter
     if (selectedRegions && Array.isArray(selectedRegions) && selectedRegions.length > 0) {
       filtered = filtered.filter((eq: Earthquake) =>
         selectedRegions.some(
@@ -171,7 +124,6 @@ export default function EarthquakesScreen() {
       );
     }
 
-    // Magnitude filter - multiple ranges support
     if (selectedMagnitudeRanges && Array.isArray(selectedMagnitudeRanges) && selectedMagnitudeRanges.length > 0) {
       filtered = filtered.filter((eq: Earthquake) =>
         selectedMagnitudeRanges.some(
@@ -183,7 +135,6 @@ export default function EarthquakesScreen() {
     return filtered;
   }, [earthquakes, selectedSources, selectedRegions, selectedMagnitudeRanges]);
 
-  // Get unique regions from earthquakes
   const availableRegions = useMemo(() => {
     if (!earthquakes || earthquakes.length === 0) return [];
 
@@ -210,7 +161,6 @@ export default function EarthquakesScreen() {
     return "Zayıf";
   }, []);
 
-  // Function to format source names for display
   const formatSourceName = useCallback((source: string) => {
     switch (source.toLowerCase()) {
       case 'kandilli':
@@ -254,7 +204,6 @@ export default function EarthquakesScreen() {
     }
   };
 
-  // Custom marker component for magnitude display - Memoized to prevent re-renders
   const CustomMagnitudeMarker = useCallback(
     ({ magnitude }: { magnitude: number }) => (
       <View
@@ -269,7 +218,6 @@ export default function EarthquakesScreen() {
     [getMagnitudeColor]
   );
 
-  // Memoize region to prevent map re-initialization
   const mapRegion = useMemo(
     () => ({
       latitude: 39.0,
@@ -280,31 +228,25 @@ export default function EarthquakesScreen() {
     []
   );
 
-  // Clear all filters
   const clearFilters = () => {
     setTempSelectedRegions([]);
     setTempSelectedMagnitudeRanges([]);
     setTempSelectedSources(availableSources ? [...availableSources] : []);
   };
 
-  // Check if any filters are active
   const hasActiveFilters =
     selectedRegions.length > 0 || selectedMagnitudeRanges.length > 0;
 
-  // Toggle region selection - deselect if already selected
   const toggleRegion = (region: string) => {
     setSelectedRegions((prev) => {
       if (prev.includes(region)) {
-        // Deselect: Remove from array
         return prev.filter((r) => r !== region);
       } else {
-        // Select: Add to array
         return [...prev, region];
       }
     });
   };
 
-  // Toggle magnitude range selection - deselect if already selected
   const toggleMagnitudeRange = (range: MagnitudeRange) => {
     setSelectedMagnitudeRanges((prev) => {
       const isSelected = prev.some(
@@ -312,7 +254,6 @@ export default function EarthquakesScreen() {
           r.min === range.min && r.max === range.max && r.label === range.label
       );
       if (isSelected) {
-        // Deselect: Remove from array
         return prev.filter(
           (r) =>
             !(
@@ -322,27 +263,22 @@ export default function EarthquakesScreen() {
             )
         );
       } else {
-        // Select: Add to array
         return [...prev, range];
       }
     });
   };
 
-  // Toggle source selection - deselect if already selected
   const toggleSource = (source: string) => {
     setSelectedSources((prev) => {
       const currentSources = prev || [];
       if (currentSources.includes(source)) {
-        // Deselect: Remove from array
         return currentSources.filter((s) => s !== source);
       } else {
-        // Select: Add to array
         return [...currentSources, source];
       }
     });
   };
 
-  // Temporary toggle functions (for modal)
   const toggleTempRegion = (region: string) => {
     setTempSelectedRegions((prev) => {
       if (prev.includes(region)) {
@@ -385,7 +321,6 @@ export default function EarthquakesScreen() {
     });
   };
 
-  // Check if magnitude range is selected - more precise matching
   const isMagnitudeRangeSelected = (range: MagnitudeRange) => {
     return selectedMagnitudeRanges.some(
       (r) =>
@@ -393,7 +328,6 @@ export default function EarthquakesScreen() {
     );
   };
 
-  // Temporary magnitude range selection check (for modal)
   const isTempMagnitudeRangeSelected = (range: MagnitudeRange) => {
     return tempSelectedMagnitudeRanges.some(
       (r) =>
@@ -401,7 +335,6 @@ export default function EarthquakesScreen() {
     );
   };
 
-  // Loading durumu
   if (isLoading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -417,7 +350,6 @@ export default function EarthquakesScreen() {
     );
   }
 
-  // Error durumu
   if (error) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -451,7 +383,6 @@ export default function EarthquakesScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
-        ref={scrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom }}
@@ -464,7 +395,6 @@ export default function EarthquakesScreen() {
           />
         }
       >
-        {/* Map Container */}
         <View style={styles.mapContainer}>
           <MapView
             key={`map-${(selectedSources || []).join('-')}-${(selectedRegions || []).join('-')}-${(selectedMagnitudeRanges || []).length}`}
@@ -500,11 +430,7 @@ export default function EarthquakesScreen() {
           </MapView>
         </View>
 
-
-
-        {/* Earthquake List */}
         <View style={styles.listContainer}>
-          {/* List Header with Filter Button */}
           <View style={styles.listHeader}>
             <Text style={styles.listTitle}>Deprem Listesi</Text>
             <EarthquakeFilter
@@ -527,7 +453,6 @@ export default function EarthquakesScreen() {
             />
           </View>
 
-          {/* Results Count */}
           <View style={styles.resultsCount}>
             <Text style={styles.resultsCountText}>
               {filteredEarthquakes.length} deprem listeleniyor
@@ -544,7 +469,6 @@ export default function EarthquakesScreen() {
                 params: { source: 'list' }
               })}
             >
-              {/* Magnitude Chip */}
               <View
                 style={[
                   styles.magnitudeChip,
@@ -557,7 +481,6 @@ export default function EarthquakesScreen() {
                 </Text>
               </View>
 
-              {/* Main Content */}
               <View style={styles.cardContent}>
                 <Text style={styles.earthquakeTitle} numberOfLines={2}>
                   {eq.title && eq.title.trim() !== "" ? eq.title : "Başlık bulunamadı"}
@@ -595,7 +518,6 @@ export default function EarthquakesScreen() {
                     </View>
                   )}
 
-                  {/* Fay hattı detayı */}
                   {eq.faultline && eq.faultline.trim() !== "" && (
                     <View style={styles.detailItem}>
                       <Text style={styles.detailLabel}>Fay Hattı</Text>
@@ -606,7 +528,6 @@ export default function EarthquakesScreen() {
                   )}
                 </View>
 
-                {/* Source indicator */}
                 {eq.provider && (
                   <View style={styles.sourceContainer}>
                     <Text style={styles.sourceLabel}>Kaynak:</Text>
@@ -617,7 +538,6 @@ export default function EarthquakesScreen() {
                 )}
               </View>
 
-              {/* Time Badge for recent earthquakes */}
               {eq.date && new Date().getTime() - new Date(eq.date).getTime() < 3600000 && (
                 <View style={styles.recentBadge}>
                   <Text style={styles.recentText}>YENİ</Text>
@@ -645,7 +565,6 @@ export default function EarthquakesScreen() {
   );
 }
 
-// Styles - Filter styles removed (now in EarthquakeFilter component)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -703,7 +622,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#2d3748",
   },
-  // Results Count
   resultsCount: {
     marginBottom: 16,
     paddingHorizontal: 4,
@@ -713,7 +631,6 @@ const styles = StyleSheet.create({
     color: "#718096",
     fontWeight: "500",
   },
-  // No Results
   noResultsContainer: {
     alignItems: "center",
     paddingVertical: 40,
@@ -736,7 +653,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
-  // Existing styles continue...
   earthquakeCard: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
@@ -856,5 +772,4 @@ const styles = StyleSheet.create({
     color: "#4299e1",
     fontWeight: "600",
   },
-
 });

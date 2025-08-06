@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Platform,
   Dimensions,
   StatusBar,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -93,6 +95,27 @@ export default function SignUp() {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  // Keyboard event listeners
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        // Handle keyboard show if needed
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        // Handle keyboard hide if needed
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+    };
   }, []);
 
   // useEffect(() => {
@@ -223,14 +246,15 @@ export default function SignUp() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardAvoidingView}
         >
-          <ScrollView
-            contentContainerStyle={[
-              styles.scrollContent,
-              styles.scrollContentKeyboard,
-            ]}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <ScrollView
+              contentContainerStyle={[
+                styles.scrollContent,
+                styles.scrollContentKeyboard,
+              ]}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.title}>Hesap Oluştur</Text>
@@ -508,7 +532,8 @@ export default function SignUp() {
                 </TouchableOpacity>
               </View>
             </View>
-          </ScrollView>
+            </ScrollView>
+          </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </View>
     </SafeAreaView>

@@ -20,37 +20,7 @@ import { colors } from "@/constants/colors";
 import { useEarthquakeComments } from "@/hooks/useEarthquakeComments";
 import { useEarthquakeById } from "@/hooks/useEarthquakes";
 import { useAuth } from "@/hooks/useAuth";
-
-const getMagnitudeColor = (magnitude: number) => {
-  if (magnitude >= 5.0) return "#FF4444";
-  if (magnitude >= 4.0) return "#FF8800";
-  if (magnitude >= 3.0) return "#FFB800";
-  return "#4CAF50";
-};
-
-const getMagnitudeLabel = (magnitude: number) => {
-  if (magnitude >= 5.0) return "Güçlü";
-  if (magnitude >= 4.0) return "Orta";
-  if (magnitude >= 3.0) return "Hafif";
-  return "Zayıf";
-};
-
-function formatDate(dateString: string) {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffHours < 1) return "Az önce";
-  if (diffHours < 24) return `${diffHours} saat önce`;
-  if (diffDays < 7) return `${diffDays} gün önce`;
-  return date.toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { getMagnitudeColor, getMagnitudeLabel, formatDate } from "@/utils/earthquakeUtils";
 
 // Comment Item Component
 const CommentItem = ({ comment, onEdit, onDelete, isOwnComment }: any) => {

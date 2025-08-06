@@ -22,6 +22,16 @@ export interface SignUpData {
   fullName?: string;
 }
 
+// Kullanıcı ID'si oluşturma fonksiyonu
+const generateUserId = (email: string): string => {
+  // Email'den @ işaretinden sonraki kısmı al
+  const emailPart = email.split('@')[0];
+  // Özel karakterleri temizle ve küçük harfe çevir
+  const cleanEmail = emailPart.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  // @ ile başlayan ID oluştur
+  return `@${cleanEmail}`;
+};
+
 export const useAuth = () => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
@@ -231,6 +241,12 @@ export const useAuth = () => {
     }
   };
 
+  // Kullanıcı ID'si getirme fonksiyonu
+  const getUserId = (): string | null => {
+    if (!authState.user?.email) return null;
+    return generateUserId(authState.user.email);
+  };
+
   return {
     // State
     ...authState,
@@ -248,6 +264,7 @@ export const useAuth = () => {
     
     // Utility
     clearError: () => setAuthState(prev => ({ ...prev, error: null })),
+    getUserId,
   };
 };
 

@@ -23,7 +23,8 @@ import {
 } from "@expo/vector-icons";
 import { colors } from "@/constants/colors";
 import { Divider } from "react-native-paper";
-import { useSafetyScore, useSafetyFormCompletion, useProfile, useProfileCompletion } from "@/hooks/useProfile";
+import { useSafetyScore, useSafetyFormCompletion, useProfileCompletion } from "@/hooks/useProfile";
+import { useProfile as useProfileData } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePremium } from "@/hooks/usePremium";
 import { PremiumPackageType } from "@/types/types";
@@ -60,12 +61,13 @@ const AnimatedProgressBar = ({ percentage }: { percentage: number }) => {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, getUserId } = useAuth();
   const queryClient = useQueryClient();
   const { data: safetyScore = 0 } = useSafetyScore(user?.id || "");
   const { data: hasCompletedForm = false, isLoading: isLoadingFormCompletion } = useSafetyFormCompletion(user?.id || "");
   const { data: profileCompletion = { percentage: 0, completedFields: 0, totalFields: 6 } } = useProfileCompletion(user?.id || "");
   const { getCurrentLevel } = usePremium();
+  const { profile } = useProfileData();
   
   // Premium seviye adını getir
   const getPremiumLevelName = (level: PremiumPackageType): string => {
@@ -120,66 +122,162 @@ export default function ProfileScreen() {
         bounces={false}
         contentContainerStyle={{ paddingBottom: insets.bottom }}
       >
-        {/* Profile Section with Gradient */}
+        {/* Profile Section with Premium Gradient */}
         <LinearGradient
-          colors={[colors.gradientOne, colors.gradientTwo]}
-          style={styles.profileSection}
+          colors={
+            getCurrentLevel() === PremiumPackageType.FREE 
+              ? [colors.gradientOne, colors.gradientTwo]
+              : getCurrentLevel() === PremiumPackageType.SUPPORTER
+              ? ['#FFD700', '#FFA500', '#FFD700']
+              : getCurrentLevel() === PremiumPackageType.PROTECTOR
+              ? ['#FF5700', '#FF8C00', '#FF5700']
+              : ['#8A2BE2', '#9370DB', '#8A2BE2']
+          }
+          style={[
+            styles.profileSection,
+            getCurrentLevel() !== PremiumPackageType.FREE && styles.premiumProfileSection,
+            getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterProfileSection,
+            getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorProfileSection,
+            getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorProfileSection,
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
-          <View style={styles.profileImageContainer}>
-            <Image
-              source={require("@/assets/images/profile.png")}
-              style={styles.profileImage}
-            />
-          </View>
-          <Text style={styles.userName}>Burak Bayramin</Text>
-
-          {/* Premium Status */}
-          <View style={styles.premiumStatusContainer}>
-            <TouchableOpacity
-              style={styles.premiumStatusChip}
-              activeOpacity={0.7}
-              onPress={() => router.push("/(protected)/premium-packages")}
-            >
-              <Ionicons
-                name="star"
-                size={16}
-                color="#FFD700"
-              />
-              <Text style={styles.premiumStatusText}>
-                Üyelik Seviyesi: {getPremiumLevelName(getCurrentLevel())}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Security Score Chip - Only show if assessment is completed and has a score > 0 */}
-          {isFormCompleted && safetyScore > 0 && (
-            <View style={styles.securityScoreContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.securityScoreChip,
-                  { borderColor: getScoreColor(safetyScore) },
-                ]}
-                activeOpacity={0.7}
-                onPress={() => {
-                  // router.push("/(protected)/security-score");
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="shield-check"
-                  size={16}
-                  color={getScoreColor(safetyScore)}
-                />
-                <Text
-                  style={[
-                    styles.securityScoreText,
-                    { color: getScoreColor(safetyScore) },
-                  ]}
-                >
-                  % {safetyScore}
-                </Text>
-              </TouchableOpacity>
-            </View>
+          {/* Premium Section Decorations */}
+          {getCurrentLevel() !== PremiumPackageType.FREE && (
+            <>
+              <View style={[
+                styles.premiumSectionDecoration,
+                styles.premiumSectionDecorationTop,
+                getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterSectionDecoration,
+                getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorSectionDecoration,
+                getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorSectionDecoration,
+              ]} />
+              <View style={[
+                styles.premiumSectionDecoration,
+                styles.premiumSectionDecorationBottom,
+                getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterSectionDecoration,
+                getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorSectionDecoration,
+                getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorSectionDecoration,
+              ]} />
+            </>
           )}
+          <View style={[
+            styles.profileImageContainer,
+            getCurrentLevel() !== PremiumPackageType.FREE && styles.premiumProfileContainer,
+            getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterProfileContainer,
+            getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorProfileContainer,
+            getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorProfileContainer,
+          ]}>
+            {/* Premium Background Pattern */}
+            {getCurrentLevel() !== PremiumPackageType.FREE && (
+              <View style={[
+                styles.premiumBackgroundPattern,
+                getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterBackgroundPattern,
+                getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorBackgroundPattern,
+                getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorBackgroundPattern,
+              ]}>
+                <LinearGradient
+                  colors={
+                    getCurrentLevel() === PremiumPackageType.SUPPORTER 
+                      ? ['rgba(255, 215, 0, 0.1)', 'rgba(255, 165, 0, 0.05)', 'rgba(255, 215, 0, 0.1)']
+                      : getCurrentLevel() === PremiumPackageType.PROTECTOR
+                      ? ['rgba(255, 87, 0, 0.1)', 'rgba(255, 140, 0, 0.05)', 'rgba(255, 87, 0, 0.1)']
+                      : ['rgba(138, 43, 226, 0.1)', 'rgba(147, 112, 219, 0.05)', 'rgba(138, 43, 226, 0.1)']
+                  }
+                  style={styles.premiumBackgroundGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+              </View>
+            )}
+            
+            <View style={[
+              styles.profileImageWrapper,
+              getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterFrame,
+              getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorFrame,
+              getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorFrame,
+            ]}>
+              {/* Premium Frame Overlay */}
+              {getCurrentLevel() !== PremiumPackageType.FREE && (
+                <View style={[
+                  styles.premiumFrameOverlay,
+                  getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterFrameOverlay,
+                  getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorFrameOverlay,
+                  getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorFrameOverlay,
+                ]}>
+                  <LinearGradient
+                    colors={
+                      getCurrentLevel() === PremiumPackageType.SUPPORTER 
+                        ? ['#FFD700', '#FFA500', '#FFD700']
+                        : getCurrentLevel() === PremiumPackageType.PROTECTOR
+                        ? ['#FF5700', '#FF8C00', '#FF5700']
+                        : ['#8A2BE2', '#9370DB', '#8A2BE2']
+                    }
+                    style={styles.premiumFrameGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                  <View style={styles.premiumFrameInner} />
+                </View>
+              )}
+              
+              <Image
+                source={require("@/assets/images/profile.png")}
+                style={styles.profileImage}
+              />
+              
+              {/* Premium Badge */}
+              {getCurrentLevel() !== PremiumPackageType.FREE && (
+                <View style={[
+                  styles.premiumBadge,
+                  getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterBadge,
+                  getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorBadge,
+                  getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorBadge,
+                ]}>
+                  <Text style={styles.premiumBadgeText}>
+                    {getCurrentLevel() === PremiumPackageType.SUPPORTER && "Supporter"}
+                    {getCurrentLevel() === PremiumPackageType.PROTECTOR && "Protector"}
+                    {getCurrentLevel() === PremiumPackageType.SPONSOR && "Sponsor"}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            {/* Premium Decorative Elements */}
+            {getCurrentLevel() !== PremiumPackageType.FREE && (
+              <View style={styles.premiumDecorations}>
+                <View style={[
+                  styles.premiumDecorationDot,
+                  getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterDecorationDot,
+                  getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorDecorationDot,
+                  getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorDecorationDot,
+                ]} />
+                <View style={[
+                  styles.premiumDecorationDot,
+                  getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterDecorationDot,
+                  getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorDecorationDot,
+                  getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorDecorationDot,
+                ]} />
+                <View style={[
+                  styles.premiumDecorationDot,
+                  getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterDecorationDot,
+                  getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorDecorationDot,
+                  getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorDecorationDot,
+                ]} />
+              </View>
+            )}
+          </View>
+          <Text style={styles.userName}>
+            {profile?.show_full_name_in_profile && profile?.name && profile?.surname 
+              ? `${profile.name} ${profile.surname}`
+              : getUserId() || 'Kullanıcı'
+            }
+          </Text>
+
+
+
+
 
           <View style={styles.chipContainer}>
             <TouchableOpacity 
@@ -211,6 +309,29 @@ export default function ProfileScreen() {
               </Text>
             </View>
           </View>
+          
+          {/* Premium Section Bottom Border */}
+          {getCurrentLevel() !== PremiumPackageType.FREE && (
+            <View style={[
+              styles.premiumSectionBorder,
+              getCurrentLevel() === PremiumPackageType.SUPPORTER && styles.supporterSectionBorder,
+              getCurrentLevel() === PremiumPackageType.PROTECTOR && styles.protectorSectionBorder,
+              getCurrentLevel() === PremiumPackageType.SPONSOR && styles.sponsorSectionBorder,
+            ]}>
+              <LinearGradient
+                colors={
+                  getCurrentLevel() === PremiumPackageType.SUPPORTER 
+                    ? ['#FFD700', '#FFA500', '#FFD700']
+                    : getCurrentLevel() === PremiumPackageType.PROTECTOR
+                    ? ['#FF5700', '#FF8C00', '#FF5700']
+                    : ['#8A2BE2', '#9370DB', '#8A2BE2']
+                }
+                style={styles.premiumSectionBorderGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              />
+            </View>
+          )}
         </LinearGradient>
 
         {/* Menu Container */}
@@ -266,11 +387,16 @@ export default function ProfileScreen() {
                   <Ionicons
                     name="diamond-outline"
                     size={20}
-                    color="#666"
+                    color={getCurrentLevel() === PremiumPackageType.FREE ? "#FFD700" : "#666"}
                   />
                 </View>
                 <Text style={styles.menuItemText}>Premium Paketler</Text>
               </View>
+              {getCurrentLevel() === PremiumPackageType.FREE && (
+                <View style={styles.premiumUpgradeChip}>
+                  <Text style={styles.premiumUpgradeText}>Yükselt</Text>
+                </View>
+              )}
               <TouchableOpacity
                 style={{
                   position: "absolute",
@@ -532,6 +658,79 @@ const styles = StyleSheet.create({
     paddingVertical: 30,
     width: "100%",
   },
+  premiumProfileSection: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  supporterProfileSection: {
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 25,
+    elevation: 15,
+  },
+  protectorProfileSection: {
+    shadowColor: '#FF5700',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 25,
+    elevation: 15,
+  },
+  sponsorProfileSection: {
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 25,
+    elevation: 15,
+  },
+  premiumSectionDecoration: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    opacity: 0.1,
+  },
+  premiumSectionDecorationTop: {
+    top: -100,
+    right: -100,
+  },
+  premiumSectionDecorationBottom: {
+    bottom: -100,
+    left: -100,
+  },
+  supporterSectionDecoration: {
+    backgroundColor: '#FFD700',
+  },
+  protectorSectionDecoration: {
+    backgroundColor: '#FF5700',
+  },
+  sponsorSectionDecoration: {
+    backgroundColor: '#8A2BE2',
+  },
+  premiumSectionBorder: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    overflow: 'hidden',
+  },
+  supporterSectionBorder: {
+    // Supporter specific border
+  },
+  protectorSectionBorder: {
+    // Protector specific border
+  },
+  sponsorSectionBorder: {
+    // Sponsor specific border
+  },
+  premiumSectionBorderGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   profileImageContainer: {
     marginBottom: 15,
     padding: 3,
@@ -547,12 +746,227 @@ const styles = StyleSheet.create({
     // shadowRadius: 4,
     // elevation: 5,
   },
+  premiumProfileContainer: {
+    position: 'relative',
+    padding: 20,
+    borderRadius: 75,
+    marginTop: -20,
+    marginBottom: 5,
+  },
+  supporterProfileContainer: {
+    backgroundColor: 'rgba(255, 215, 0, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.2)',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  protectorProfileContainer: {
+    backgroundColor: 'rgba(255, 87, 0, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 87, 0, 0.2)',
+    shadowColor: '#FF5700',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  sponsorProfileContainer: {
+    backgroundColor: 'rgba(138, 43, 226, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 43, 226, 0.2)',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  premiumBackgroundPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 75,
+    overflow: 'hidden',
+  },
+  supporterBackgroundPattern: {
+    // Supporter specific background pattern
+  },
+  protectorBackgroundPattern: {
+    // Protector specific background pattern
+  },
+  sponsorBackgroundPattern: {
+    // Sponsor specific background pattern
+  },
+  premiumBackgroundGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 75,
+  },
+  premiumDecorations: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  premiumDecorationDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  supporterDecorationDot: {
+    backgroundColor: '#FFD700',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  protectorDecorationDot: {
+    backgroundColor: '#FF5700',
+    shadowColor: '#FF5700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  sponsorDecorationDot: {
+    backgroundColor: '#8A2BE2',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  profileImageWrapper: {
+    position: 'relative',
+    borderRadius: 55,
+    padding: 4,
+  },
+  premiumFrameOverlay: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 63,
+    zIndex: 1,
+  },
+  supporterFrameOverlay: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+    elevation: 12,
+  },
+  protectorFrameOverlay: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    shadowColor: '#FF5700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+    elevation: 12,
+  },
+  sponsorFrameOverlay: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+    elevation: 12,
+  },
+  premiumFrameInner: {
+    position: 'absolute',
+    top: 2,
+    left: 2,
+    right: 2,
+    bottom: 2,
+    borderRadius: 59,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  premiumFrameGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 63,
+  },
+  supporterFrame: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  protectorFrame: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    shadowColor: '#FF5700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  sponsorFrame: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  premiumBadge: {
+    position: 'absolute',
+    bottom: -8,
+    right: -8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 3,
+  },
+  supporterBadge: {
+    backgroundColor: '#FFD700',
+  },
+  protectorBadge: {
+    backgroundColor: '#FF5700',
+  },
+  sponsorBadge: {
+    backgroundColor: '#8A2BE2',
+  },
+  premiumBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#fff',
+    fontFamily: 'NotoSans-Bold',
+  },
   profileImage: {
     width: 100,
     height: 100,
     borderRadius: 50,
     borderWidth: 2,
     borderColor: "white",
+    zIndex: 2,
   },
   userName: {
     color: "white",
@@ -909,5 +1323,43 @@ const styles = StyleSheet.create({
   riskAssessmentSubtitle: {
     fontSize: 14,
     fontFamily: "NotoSans-Regular",
+  },
+  premiumUpgradeChip: {
+    backgroundColor: "#FFD700",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    shadowColor: "#FFD700",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  premiumUpgradeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "bold",
+    fontFamily: "NotoSans-Bold",
+  },
+  completedProfileChip: {
+    backgroundColor: "rgba(39, 174, 96, 0.3)",
+    borderWidth: 1,
+    borderColor: "rgba(39, 174, 96, 0.5)",
+  },
+  missionChip: {
+    backgroundColor: "rgba(255, 215, 0, 0.3)",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 215, 0, 0.5)",
+  },
+  missionChipText: {
+    color: "white",
+    fontSize: 12,
+    fontFamily: "NotoSans-Medium",
+    marginLeft: 5,
   },
 });

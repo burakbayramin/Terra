@@ -11,6 +11,9 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  Switch,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -198,6 +201,10 @@ const ProfileSettingsPage = () => {
     surname: "",
     address: "",
   });
+  const [privacySettings, setPrivacySettings] = useState({
+    show_full_name_in_profile: false,
+    show_full_name_in_comments: false,
+  });
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<District | null>(
     null
@@ -226,6 +233,12 @@ const ProfileSettingsPage = () => {
         name: profile.name || "",
         surname: profile.surname || "",
         address: profile.address || "",
+      });
+
+      // Privacy ayarlarını yükle
+      setPrivacySettings({
+        show_full_name_in_profile: profile.show_full_name_in_profile || false,
+        show_full_name_in_comments: profile.show_full_name_in_comments || false,
       });
 
       // Set city and district from backend data
@@ -399,6 +412,8 @@ const ProfileSettingsPage = () => {
       city: selectedCity ? selectedCity.name : null,
       district: selectedDistrict ? selectedDistrict.name : null,
       emergency_contacts: emergencyContacts.length > 0 ? emergencyContacts : null,
+      show_full_name_in_profile: privacySettings.show_full_name_in_profile,
+      show_full_name_in_comments: privacySettings.show_full_name_in_comments,
     };
 
     updateProfileMutation.mutate(
@@ -454,10 +469,11 @@ const ProfileSettingsPage = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
-        showsVerticalScrollIndicator={false}
-      >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Kişisel Bilgiler</Text>
           <View style={styles.inputGroup}>
@@ -553,6 +569,57 @@ const ProfileSettingsPage = () => {
           />
         </View>
 
+        {/* Gizlilik Ayarları */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Gizlilik Ayarları</Text>
+          
+          <View style={styles.privacyOption}>
+            <View style={styles.privacyOptionContent}>
+              <View style={styles.privacyOptionText}>
+                <Text style={styles.privacyOptionTitle}>Profilimde Ad Soyadımı Göster</Text>
+                <Text style={styles.privacyOptionDescription}>
+                  {privacySettings.show_full_name_in_profile 
+                    ? "Profil sayfanızda adınız ve soyadınız görünecek"
+                    : "Profil sayfanızda kullanıcı ID'niz (@kullaniciadi) görünecek"
+                  }
+                </Text>
+              </View>
+              <Switch
+                value={privacySettings.show_full_name_in_profile}
+                onValueChange={(value) => 
+                  setPrivacySettings(prev => ({ ...prev, show_full_name_in_profile: value }))
+                }
+                trackColor={{ false: "#e2e8f0", true: colors.primary }}
+                thumbColor={privacySettings.show_full_name_in_profile ? "#fff" : "#f4f3f4"}
+                disabled={isSaving}
+              />
+            </View>
+          </View>
+
+          <View style={styles.privacyOption}>
+            <View style={styles.privacyOptionContent}>
+              <View style={styles.privacyOptionText}>
+                <Text style={styles.privacyOptionTitle}>Yorumlarda Tam Adımı Göster</Text>
+                <Text style={styles.privacyOptionDescription}>
+                  {privacySettings.show_full_name_in_comments 
+                    ? "Yorumlarınızda adınız ve soyadınız görünecek"
+                    : "Yorumlarınızda kullanıcı ID'niz (@kullaniciadi) görünecek"
+                  }
+                </Text>
+              </View>
+              <Switch
+                value={privacySettings.show_full_name_in_comments}
+                onValueChange={(value) => 
+                  setPrivacySettings(prev => ({ ...prev, show_full_name_in_comments: value }))
+                }
+                trackColor={{ false: "#e2e8f0", true: colors.primary }}
+                thumbColor={privacySettings.show_full_name_in_comments ? "#fff" : "#f4f3f4"}
+                disabled={isSaving}
+              />
+            </View>
+          </View>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.infoText}>
             Bu bilgiler, Terra AI'nin deprem analizlerini ve topluluk
@@ -584,7 +651,8 @@ const ProfileSettingsPage = () => {
             {isSaving ? "Kaydediliyor..." : "Kaydet"}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
 
       <CityDistrictSelector
         visible={modalVisible}
@@ -687,6 +755,33 @@ const styles = StyleSheet.create({
     color: colors.light.textSecondary,
     fontFamily: "NotoSans-Regular",
     marginTop: 4,
+  },
+  privacyOption: {
+    marginBottom: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  privacyOptionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  privacyOptionText: {
+    flex: 1,
+    marginRight: 16,
+  },
+  privacyOptionTitle: {
+    fontSize: 16,
+    color: colors.light.textPrimary,
+    fontFamily: "NotoSans-Bold",
+    marginBottom: 4,
+  },
+  privacyOptionDescription: {
+    fontSize: 14,
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Regular",
+    lineHeight: 20,
   },
   locationButton: {
     backgroundColor: colors.light.background,

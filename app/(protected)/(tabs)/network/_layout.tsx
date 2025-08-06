@@ -17,7 +17,23 @@ export default function NetworkLayout() {
         name="[id]"
         options={{
           title: "Ağ Detayı",
-          headerShown: true,
+          headerShown: false,
+          headerBackTitle: "Geri",
+        }}
+      />
+      <Stack.Screen
+        name="safe-zones"
+        options={{
+          title: "Güvenli Alanlar",
+          headerShown: false,
+          headerBackTitle: "Geri",
+        }}
+      />
+      <Stack.Screen
+        name="emergency-plan"
+        options={{
+          title: "Acil Durum Eylem Planı",
+          headerShown: false,
           headerBackTitle: "Geri",
         }}
       />

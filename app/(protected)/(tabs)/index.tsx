@@ -708,7 +708,7 @@ export default function HomeScreen() {
                     data={userFeltEarthquakes}
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    estimatedItemSize={280}
+                    estimatedItemSize={316}
                     keyExtractor={(item) => `${item.id}-${item.felt_at}`}
                     contentContainerStyle={{}}
                     renderItem={({ item }) => {
@@ -852,7 +852,7 @@ export default function HomeScreen() {
                     data={userComments}
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    estimatedItemSize={300}
+                    estimatedItemSize={352}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={{}}
                     renderItem={({ item }) => {
@@ -2519,13 +2519,13 @@ const styles = StyleSheet.create({
     color: "#6b7280",
   },
   feltEarthquakesContainer: {
-    height: 160,
+    height: 200,
   },
   feltEarthquakeCard: {
-    width: 280,
+    width: 300,
     backgroundColor: "#ffffff",
     borderRadius: 16,
-    padding: 12,
+    padding: 16,
     marginHorizontal: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -2623,13 +2623,13 @@ const styles = StyleSheet.create({
     color: "#6b7280",
   },
   userCommentsContainer: {
-    height: 200,
+    height: 240,
   },
   userCommentCard: {
-    width: 300,
+    width: 320,
     backgroundColor: "#ffffff",
     borderRadius: 16,
-    padding: 14,
+    padding: 16,
     marginHorizontal: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
