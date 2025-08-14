@@ -8,6 +8,8 @@ export type News = {
   category: string[];
   source: string;
   earthquake_id?: string | null;
+  url?: string;
+  author?: string | null;
 };
 
 export interface Earthquake {
