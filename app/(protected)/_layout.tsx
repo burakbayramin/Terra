@@ -37,13 +37,13 @@ export default function AppLayout() {
           headerShown: false,
         }}
       />
-      <Stack.Screen
+      {/* <Stack.Screen
         name="premium-packages"
         options={{
           headerShown: false,
         }}
-      />
-      <Stack.Screen
+      /> */}
+      {/* <Stack.Screen
         name="notification-settings"
         options={{
           headerShown: false,
@@ -54,7 +54,7 @@ export default function AppLayout() {
         options={{
           headerShown: false,
         }}
-      />
+      /> */}
     </Stack>
   );
 }

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { News } from '@/types/types';
 
+// Mevcut useNews hook'u aynı kalır
 export const useNews = () => {
   return useQuery({
     queryKey: ['news'],
@@ -17,10 +18,15 @@ export const useNews = () => {
       
       return data || [];
     },
+    staleTime: 1000 * 60 * 30, // 30 dakika
+    gcTime: 1000 * 60 * 60, // 60 dakika
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 };
 
-export const useNewsById = (id: string) => {
+// Güncellenen useNewsById hook'u - initialData parametresi eklendi
+export const useNewsById = (id: string, initialData?: News) => {
   return useQuery({
     queryKey: ['news', id],
     queryFn: async (): Promise<News> => {
@@ -41,5 +47,16 @@ export const useNewsById = (id: string) => {
       return data;
     },
     enabled: !!id,
+    
+    // InitialData olarak cache'den gelen veriyi kullan
+    initialData: initialData,
+    
+    // Ayarlar
+    staleTime: 1000 * 60 * 30, // 30 dakika
+    gcTime: 1000 * 60 * 60, // 60 dakika
+    
+    // Cache'de veri varsa ilk mount'ta refetch yapma
+    refetchOnMount: !initialData,
+    refetchOnWindowFocus: false,
   });
 };

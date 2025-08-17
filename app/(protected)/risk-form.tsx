@@ -13,12 +13,10 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/constants/colors";
-import { useAuth } from "@/hooks/useAuth";
-import { useSafetyScore, useUpdateProfile } from "@/hooks/useProfile";
-import { usePremium } from "@/hooks/usePremium";
-import PremiumFeatureGate from "@/components/PremiumFeatureGate";
-import { supabase } from "@/lib/supabase";
-import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuths";
+import { useProfile, useUpdateProfile } from "@/hooks/useProfiles";
+import categories from "@/assets/data/categories.json";
+import { getRiskLevel, getRiskMessage } from "@/utils/userUtils";
 
 interface Option {
   label: string;
@@ -38,312 +36,45 @@ interface Category {
 const RiskForm = () => {
   const router = useRouter();
   const { showResults } = useLocalSearchParams();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const { data: currentSafetyScore = 0, isLoading: isLoadingSafetyScore } =
-    useSafetyScore(user?.id || "");
-  const updateProfileMutation = useUpdateProfile();
-  
-  // Premium hook'u
-  const { hasAccessToFeature } = usePremium();
 
+  // Hooks - useProfile zaten cache'deki auth user'ı kullanıyor
+  const {
+    data: profile,
+    isLoading: isLoadingProfile,
+    refetch: refetchProfile,
+  } = useProfile();
+  const updateProfileMutation = useUpdateProfile();
+
+  // Prefetch edilmiş profile verilerini kullan
+  const currentSafetyScore = profile?.safety_score || 0;
+  const hasCompletedForm = profile?.has_completed_safety_form || false;
+
+  // Local state
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [currentScore, setCurrentScore] = useState(100);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSavingScore, setIsSavingScore] = useState(false);
 
-  // If showResults parameter is present and user has completed the form, show results directly
+  // showResults parametresi varsa ve form tamamlanmışsa sonuçları direkt göster
   useEffect(() => {
-    if (showResults === "true" && currentSafetyScore > 0) {
+    if (showResults === "true" && hasCompletedForm && currentSafetyScore > 0) {
       setCurrentScore(currentSafetyScore);
       setIsCompleted(true);
     }
-  }, [showResults, currentSafetyScore]);
+  }, [showResults, hasCompletedForm, currentSafetyScore]);
+
+  // Profile güncellendiğinde yeniden fetch et
+  useEffect(() => {
+    if (updateProfileMutation.isSuccess) {
+      refetchProfile();
+    }
+  }, [updateProfileMutation.isSuccess, refetchProfile]);
 
   const riskData: { initialScore: number; categories: Category[] } = {
     initialScore: 100,
-    categories: [
-      {
-        name: "Eğitim Durumu",
-        questions: [
-          {
-            question: "Daha önce deprem eğitimi aldınız mı?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -5 },
-            ],
-          },
-          {
-            question: "Deprem tatbikatına hiç katıldınız mı?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -3 },
-            ],
-          },
-          {
-            question:
-              "Deprem öncesi, anı ve sonrası davranışları biliyor musunuz?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -5 },
-              { label: "Emin değilim", scoreChange: -5 },
-            ],
-          },
-        ],
-      },
-      {
-        name: "Bina ve Mahalli Durum",
-        questions: [
-          {
-            question: "Binanız ne zaman yapıldı?",
-            options: [
-              { label: "2000 sonrası", scoreChange: 0 },
-              { label: "2000 öncesi", scoreChange: -7 },
-            ],
-          },
-          {
-            question: "Binanızda gözle görülür çatlaklar var mı?",
-            options: [
-              { label: "Hayır", scoreChange: 0 },
-              { label: "Evet", scoreChange: -10 },
-            ],
-          },
-          {
-            question: "Zemin etüdü yapılmış mı?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -5 },
-              { label: "Bilmiyorum", scoreChange: -5 },
-            ],
-          },
-        ],
-      },
-      {
-        name: "Konum",
-        questions: [
-          {
-            question:
-              "Aktif fay hattına 5 km'den daha yakın bir bölgede misiniz?",
-            options: [
-              { label: "Hayır", scoreChange: 0 },
-              { label: "Evet", scoreChange: -5 },
-              { label: "Bilmiyorum", scoreChange: -5 },
-            ],
-          },
-          {
-            question: "Yaşadığınız bölge sıvılaşma riski taşıyor mu?",
-            options: [
-              { label: "Hayır", scoreChange: -3 },
-              { label: "Evet", scoreChange: -5 },
-              { label: "Bilmiyorum", scoreChange: -3 },
-            ],
-          },
-          {
-            question: "Binanızın çevresinde yüksek riskli yapılar var mı?",
-            options: [
-              { label: "Hayır", scoreChange: 0 },
-              { label: "Evet", scoreChange: -3 },
-            ],
-          },
-        ],
-      },
-      {
-        name: "Acil Durum Çantası",
-        questions: [
-          {
-            question: "Hazırda bir acil durum çantanız var mı?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -5 },
-            ],
-          },
-          {
-            question: "Çantanızda en az 3 günlük su ve gıda var mı?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -3 },
-              { label: "Emin değilim", scoreChange: -3 },
-            ],
-          },
-          {
-            question:
-              "Çantanızda kimlik fotokopisi ve önemli belgeler mevcut mu?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -2 },
-            ],
-          },
-        ],
-      },
-      {
-        name: "Acil Durum Planı",
-        questions: [
-          {
-            question:
-              "Aile bireyleriyle belirlenmiş bir toplanma planınız var mı?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -5 },
-            ],
-          },
-          {
-            question:
-              "Acil durumda ulaşacağınız kişilerin iletişim bilgileri elinizde mevcut mu?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -3 },
-            ],
-          },
-          {
-            question: "Apartman/acil çıkış planı görülebilir yerde mi?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -2 },
-            ],
-          },
-        ],
-      },
-      {
-        name: "Acil Toplanma Alanı",
-        questions: [
-          {
-            question: "Size en yakın toplanma alanını biliyor musunuz?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -5 },
-            ],
-          },
-          {
-            question: "O alana yürüyerek ulaşmanız ne kadar sürer?",
-            options: [
-              { label: "5-10 dakika", scoreChange: 0 },
-              { label: "10 dakika üzeri", scoreChange: -2 },
-            ],
-          },
-          {
-            question: "Toplanma alanı düzenli mi, güvenli mi?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -3 },
-              { label: "Bilmiyorum", scoreChange: -3 },
-            ],
-          },
-        ],
-      },
-      {
-        name: "Deprem Anı Davranış",
-        questions: [
-          {
-            question:
-              "Deprem anında 'çök-kapan-tutun' davranışını uygulayabilir misiniz?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -5 },
-            ],
-          },
-          {
-            question:
-              "Sarsıntı bitmeden dışarı çıkmam gerektiğini düşünüyorum.",
-            options: [
-              { label: "Katılmıyorum", scoreChange: 0 },
-              { label: "Katılıyorum", scoreChange: -5 },
-            ],
-          },
-          {
-            question: "Deprem sırasında ilk yaptığınız şey nedir?",
-            options: [
-              { label: "Güvenli pozisyon almak", scoreChange: 0 },
-              { label: "Pencereden bakmak", scoreChange: -5 },
-              { label: "Koşmak", scoreChange: -5 },
-            ],
-          },
-        ],
-      },
-      {
-        name: "Ağır Eşyalar Sabit mi?",
-        questions: [
-          {
-            question:
-              "Evdeki büyük mobilyalar (dolap, kitaplık vb.) sabitlenmiş mi?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -5 },
-            ],
-          },
-          {
-            question: "Üst raflarda ağır ve cam eşyalar var mı?",
-            options: [
-              { label: "Hayır", scoreChange: 0 },
-              { label: "Evet", scoreChange: -3 },
-            ],
-          },
-          {
-            question: "Yatakların çevresinde devrilebilecek eşyalar var mı?",
-            options: [
-              { label: "Hayır", scoreChange: 0 },
-              { label: "Evet", scoreChange: -3 },
-            ],
-          },
-        ],
-      },
-      {
-        name: "Fay Hattına Mesafe",
-        questions: [
-          {
-            question: "Eviniz fay hattına 5 km'den daha yakın mı?",
-            options: [
-              { label: "Hayır", scoreChange: 0 },
-              { label: "Evet", scoreChange: -5 },
-            ],
-          },
-          {
-            question:
-              "Konumunuza özel riskli fay hattı bilgisine sahip misiniz?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -2 },
-            ],
-          },
-          {
-            question: "Fay hattı bölgesinde yapılaşma sınırlı mı?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -3 },
-              { label: "Bilmiyorum", scoreChange: -3 },
-            ],
-          },
-        ],
-      },
-      {
-        name: "İlk Yardım Eğitimi",
-        questions: [
-          {
-            question: "Temel ilk yardım eğitimi aldınız mı?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -5 },
-            ],
-          },
-          {
-            question: "Ailede ilk yardım bilgisi olan biri var mı?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -3 },
-            ],
-          },
-          {
-            question: "İlk yardım çantanız var mı?",
-            options: [
-              { label: "Evet", scoreChange: 0 },
-              { label: "Hayır", scoreChange: -2 },
-            ],
-          },
-        ],
-      },
-    ],
+    categories,
   };
 
   const totalQuestions = riskData.categories.reduce(
@@ -353,13 +84,6 @@ const RiskForm = () => {
   const currentQuestionNumber = answers.length + 1;
   const currentCategory = riskData.categories[currentCategoryIndex];
   const currentQuestion = currentCategory?.questions[currentQuestionIndex];
-
-  const getScoreColor = (score: number): string => {
-    if (score >= 80) return "#27ae60";
-    if (score >= 60) return "#f39c12";
-    if (score >= 40) return "#e67e22";
-    return "#e74c3c";
-  };
 
   const handleAnswer = async (optionIndex: number) => {
     setIsLoading(true);
@@ -390,75 +114,50 @@ const RiskForm = () => {
   };
 
   const saveSafetyScore = async (formScore: number) => {
-    if (!user?.id) return;
-
-    setIsSavingScore(true);
     try {
-      // Calculate final score: current safety score + form result
+      // Calculate final score: ensure it's between 0-100
       const finalScore = Math.max(0, Math.min(100, formScore));
 
-      // First, try to upsert the profile to ensure it exists
-      const { error: upsertError } = await supabase
-        .from("profiles")
-        .upsert({
-          id: user.id,
+      // Update profile using the mutation
+      const updatedProfile = await updateProfileMutation.mutateAsync({
+        profileData: {
           safety_score: finalScore,
           has_completed_safety_form: true,
-          updated_at: new Date().toISOString(),
-        });
+        },
+      });
 
-      if (upsertError) {
-        throw upsertError;
-      }
-
-      // Invalidate and refetch all related queries
-      await queryClient.invalidateQueries({
-        queryKey: ["safetyScore", user.id],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["safetyFormCompletion", user.id],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["profile", user.id],
-      });
+      // Profile başarıyla güncellenirse yeniden fetch et
+      await refetchProfile();
 
       Alert.alert("Başarılı", `Güvenlik skorunuz güncellendi: %${finalScore}`, [
         { text: "Tamam" },
       ]);
+
+      console.log("Profile updated successfully:", updatedProfile);
     } catch (error) {
       console.error("Error saving safety score:", error);
       Alert.alert("Hata", "Güvenlik skoru güncellenirken bir hata oluştu.", [
+        {
+          text: "Tekrar Dene",
+          onPress: () => saveSafetyScore(formScore),
+        },
         { text: "Tamam" },
       ]);
-    } finally {
-      setIsSavingScore(false);
     }
   };
 
-  const resetForm = () => {
+  const resetForm = async () => {
     setCurrentCategoryIndex(0);
     setCurrentQuestionIndex(0);
     setAnswers([]);
     setCurrentScore(100);
     setIsCompleted(false);
+
+    // Form sıfırlandığında profil verilerini yenile
+    await refetchProfile();
   };
 
-  const getRiskLevel = (score: number): string => {
-    if (score >= 80) return "Düşük Risk";
-    if (score >= 60) return "Orta Risk";
-    if (score >= 40) return "Yüksek Risk";
-    return "Çok Yüksek Risk";
-  };
-
-  const getRiskMessage = (score: number): string => {
-    if (score >= 80)
-      return "Tebrikler! Deprem riskine karşı iyi hazırlıklısınız.";
-    if (score >= 60)
-      return "Deprem hazırlığınız orta seviyede. Bazı konularda iyileştirme yapabilirsiniz.";
-    if (score >= 40)
-      return "Deprem riskine karşı hazırlığınızı artırmanız önerilir.";
-    return "Acil olarak deprem hazırlığı konusunda önlemler almanız gerekiyor.";
-  };
+  // getRiskLevel and getRiskMessage moved to userUtils
 
   const getCorrectAnswersCount = (): number => {
     let correctCount = 0;
@@ -481,8 +180,32 @@ const RiskForm = () => {
     return correctCount;
   };
 
+  // Loading state için profil yükleniyorsa göster
+  if (isLoadingProfile && !profile) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Risk Değerlendirme</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.errorContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.errorMessage}>
+            Profil bilgileri yükleniyor...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // If user is not logged in, show error
-  if (!user) {
+  if (!profile) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -549,7 +272,7 @@ const RiskForm = () => {
                 style={styles.scoreIcon}
               />
               <Text style={styles.scoreTitle}>Güvenlik Skorunuz</Text>
-              {isSavingScore ? (
+              {updateProfileMutation.isPending ? (
                 <ActivityIndicator
                   size="large"
                   color="#fff"
@@ -561,11 +284,12 @@ const RiskForm = () => {
                   <Text style={styles.riskLevel}>
                     {getRiskLevel(currentScore)}
                   </Text>
-                  {/* {currentSafetyScore !== currentScore && (
-                    <Text style={styles.previousScore}>
-                      Önceki: %{currentSafetyScore}
-                    </Text>
-                  )} */}
+                  {currentSafetyScore !== currentScore &&
+                    currentSafetyScore > 0 && (
+                      <Text style={styles.previousScore}>
+                        Önceki: %{currentSafetyScore}
+                      </Text>
+                    )}
                 </>
               )}
             </LinearGradient>
@@ -575,29 +299,6 @@ const RiskForm = () => {
                 {getRiskMessage(currentScore)}
               </Text>
             </View>
-
-            {/* AI Risk Assessment Comment - Premium Özellik */}
-            <PremiumFeatureGate featureId="risk-assessment-ai">
-              <View style={styles.aiCommentContainer}>
-                <View style={styles.aiCommentHeader}>
-                  <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
-                  <Text style={styles.aiCommentTitle}>Terra AI Risk Analizi</Text>
-                </View>
-                <View style={styles.aiCommentContent}>
-                  <Text style={styles.aiCommentText}>
-                    Skorunuz {currentScore} olarak hesaplandı. Bu skor, deprem güvenliği konusundaki hazırlık seviyenizi gösteriyor. 
-                    {currentScore >= 80 
-                      ? " Mükemmel! Deprem güvenliği konusunda çok iyi hazırlıklısınız. Bu seviyeyi korumaya devam edin."
-                      : currentScore >= 60
-                      ? " İyi! Ancak bazı alanlarda iyileştirme yapabilirsiniz. Özellikle eğitim ve hazırlık konularına odaklanın."
-                      : currentScore >= 40
-                      ? " Orta seviyede hazırlıklısınız. Deprem güvenliği konusunda daha fazla bilgi edinmeniz ve hazırlık yapmanız önerilir."
-                      : " Düşük seviyede hazırlıklısınız. Acil olarak deprem güvenliği konusunda eğitim almanız ve hazırlık yapmanız kritik önem taşıyor."
-                    }
-                  </Text>
-                </View>
-              </View>
-            </PremiumFeatureGate>
 
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
@@ -743,26 +444,6 @@ const styles = StyleSheet.create({
     color: colors.light.textPrimary,
     fontFamily: "NotoSans-Bold",
     textAlign: "center",
-  },
-  scoreChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.light.background,
-    borderWidth: 2,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  scoreText: {
-    fontSize: 14,
-    fontWeight: "700",
-    fontFamily: "NotoSans-Bold",
   },
   progressContainer: {
     paddingHorizontal: 15,
@@ -1026,39 +707,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
     fontFamily: "NotoSans-Bold",
-  },
-  // AI Comment Styles
-  aiCommentContainer: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  aiCommentHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  aiCommentTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: colors.light.textPrimary,
-    marginLeft: 8,
-  },
-  aiCommentContent: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    padding: 16,
-  },
-  aiCommentText: {
-    fontSize: 14,
-    color: colors.light.textSecondary,
-    lineHeight: 20,
   },
 });
 

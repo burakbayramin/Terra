@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
 import { colors } from "@/constants/colors";
 import { useEarthquakeStats } from "@/hooks/useEarthquakeStats";
-import { usePremium } from "@/hooks/usePremium";
-import PremiumFeatureGate from "@/components/PremiumFeatureGate";
+// import { usePremium } from "@/hooks/usePremium";
+// import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 import { router } from "expo-router";
 
 type MagnitudeFilter = 'total' | 'mag3' | 'mag4' | 'mag5';
@@ -171,14 +171,14 @@ const EarthquakeStat: React.FC = () => {
 
       <View style={{ marginTop: 20 }} />
 
-      <PremiumFeatureGate featureId="detailed-statistics">
+      {/* <PremiumFeatureGate featureId="detailed-statistics">
         <TouchableOpacity 
           style={styles.detailedStatsButton}
           onPress={() => router.push("/earthquake-stats")}
         >
           <Text style={styles.detailedStatsButtonText}>Detaylı İstatistikler Git</Text>
         </TouchableOpacity>
-      </PremiumFeatureGate>
+      </PremiumFeatureGate> */}
     </View>
   );
 };

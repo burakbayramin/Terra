@@ -8,6 +8,7 @@ import Carousel, {
 import { Earthquake } from "@/types/types";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/constants/colors";
+import { getMagnitudeColor } from "@/utils/earthquakeUtils";
 
 interface EarthquakeCarouselProps {
   carouselData: Earthquake[];
@@ -32,14 +33,7 @@ const EarthquakeCarousel: React.FC<EarthquakeCarouselProps> = ({
   formatDate,
   isLoading = false,
 }) => {
-  const getMagnitudeColor = (magnitude: number) => {
-    if (magnitude >= 5.0) return "#FF4444";
-    if (magnitude >= 4.0) return "#FF8800";
-    if (magnitude >= 3.0) return "#FFB800";
-    return "#4CAF50";
-  };
 
-  // Filter earthquakes based on provider and limit to last 15
   const filteredData = carouselData.filter(earthquake => {
     const providerUpper = earthquake.provider?.toUpperCase();
     if (filter === "afad") return providerUpper === "AFAD";
@@ -49,14 +43,6 @@ const EarthquakeCarousel: React.FC<EarthquakeCarouselProps> = ({
     if (filter === "emsc") return providerUpper === "EMSC";
     return true; // Show all if no specific filter
   }).slice(0, 15); // Only show last 15 earthquakes
-
-  // Debug: Log filtering results (only in development)
-  useEffect(() => {
-    if (__DEV__ && filteredData.length === 0 && carouselData.length > 0) {
-      console.log(`No data found for filter: ${filter}`);
-      console.log('Available providers:', [...new Set(carouselData.map(eq => eq.provider))]);
-    }
-  }, [filter, carouselData.length, filteredData.length]);
 
   // Use filtered data directly (no "more" item)
   const carouselDataWithMore = filteredData;

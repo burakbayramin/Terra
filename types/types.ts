@@ -60,11 +60,14 @@ export interface Profile {
   longitude: number | null;
   created_at: string | null;
   emergency_phone: string | null;
-  emergency_contacts: string[] | null;
   safety_score?: number | null;
   has_completed_safety_form: boolean;
-  show_full_name_in_profile?: boolean;
-  show_full_name_in_comments?: boolean;
+  username?: string | null;
+  subscription_plan_id?: string | null;
+  subscription_status?: string | null;
+  subscription_start_date?: string | null;
+  subscription_end_date?: string | null;
+  auto_renew?: boolean | null;
 }
 
 export interface EarthquakeFeltReport {
@@ -79,142 +82,146 @@ export interface FeltReportStats {
   user_has_reported: boolean;
 }
 
-export interface PremiumPackage {
-  id: string;
-  name: string;
-  price: number;
-  currency: string;
-  period: 'monthly' | 'yearly';
-  features: string[];
-  isPopular?: boolean;
-  isCurrent?: boolean;
+export interface LocationData {
+  latitude: number;
+  longitude: number;
 }
+// export interface PremiumPackage {
+//   id: string;
+//   name: string;
+//   price: number;
+//   currency: string;
+//   period: "monthly" | "yearly";
+//   features: string[];
+//   isPopular?: boolean;
+//   isCurrent?: boolean;
+// }
 
-export interface UserSubscription {
-  packageId: string;
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
-  autoRenew: boolean;
-}
+// export interface UserSubscription {
+//   packageId: string;
+//   startDate: string;
+//   endDate: string;
+//   isActive: boolean;
+//   autoRenew: boolean;
+// }
 
-export interface NotificationSetting {
-  id: string;
-  name: string;
-  isActive: boolean;
-  sources: string[]; // ['kandilli', 'afad', 'all'] gibi
-  magnitudeRange: {
-    min: number;
-    max: number;
-  };
-  location: {
-    type: 'all' | 'cities';
-    cities?: string[];
-  };
-  created_at: string;
-  updated_at: string;
-}
+// export interface NotificationSetting {
+//   id: string;
+//   name: string;
+//   isActive: boolean;
+//   sources: string[]; // ['kandilli', 'afad', 'all'] gibi
+//   magnitudeRange: {
+//     min: number;
+//     max: number;
+//   };
+//   location: {
+//     type: "all" | "cities";
+//     cities?: string[];
+//   };
+//   created_at: string;
+//   updated_at: string;
+// }
 
-export interface NotificationSource {
-  id: string;
-  name: string;
-  code: string;
-  description: string;
-}
+// export interface NotificationSource {
+//   id: string;
+//   name: string;
+//   code: string;
+//   description: string;
+// }
 
-// Premium Package Types
-export enum PremiumPackageType {
-  FREE = 'free',
-  SUPPORTER = 'supporter', // Seviye 1
-  PROTECTOR = 'protector',  // Seviye 2
-  SPONSOR = 'sponsor'       // Seviye 3
-}
+// // Premium Package Types
+// export enum PremiumPackageType {
+//   FREE = 'free',
+//   SUPPORTER = 'supporter', // Seviye 1
+//   PROTECTOR = 'protector', // Seviye 2
+//   SPONSOR = 'sponsor'      // Seviye 3
+// }
 
-export enum PaymentPeriod {
-  MONTHLY = 'monthly',
-  YEARLY = 'yearly'
-}
+// export enum PaymentPeriod {
+//   MONTHLY = 'monthly',
+//   YEARLY = 'yearly'
+// }
 
-export interface UserPremiumInfo {
-  isPremium: boolean;
-  premiumPackageType: PremiumPackageType;
-  paymentPeriod: PaymentPeriod;
-  firstPaymentDate: string;
-  nextPaymentDate: string;
-  subscriptionStartDate: string;
-  subscriptionEndDate: string;
-  isActive: boolean;
-  autoRenew: boolean;
-}
+// export interface UserPremiumInfo {
+//   isPremium: boolean;
+//   premiumPackageType: PremiumPackageType;
+//   paymentPeriod: PaymentPeriod;
+//   firstPaymentDate: string;
+//   nextPaymentDate: string;
+//   subscriptionStartDate: string;
+//   subscriptionEndDate: string;
+//   isActive: boolean;
+//   autoRenew: boolean;
+// }
 
-// Premium Feature Requirements
-export interface PremiumFeature {
-  id: string;
-  name: string;
-  description: string;
-  requiredLevel: PremiumPackageType;
-  location: string; // Screen/component where this feature is used
-}
+// // Premium Feature Requirements
+// export interface PremiumFeature {
+//   id: string;
+//   name: string;
+//   description: string;
+//   requiredLevel: PremiumPackageType;
+//   location: string; // Screen/component where this feature is used
+// }
 
-// Premium Features Configuration
-export const PREMIUM_FEATURES: PremiumFeature[] = [
-  {
-    id: 'all-comments',
-    name: 'Tüm Yorumları Gör',
-    description: 'Deprem detay sayfasında tüm kullanıcı deneyimlerini ve yorumlarını görüntüleyerek topluluk bilgilerine erişim sağlayın',
-    requiredLevel: PremiumPackageType.SUPPORTER,
-    location: 'earthquake-detail'
-  },
-  {
-    id: 'terra-ai-comment',
-    name: 'Terra AI Yorumu',
-    description: 'Deprem hakkında AI tarafından oluşturulan detaylı teknik analiz, etki alanı hesaplaması ve güvenlik önerilerini görün',
-    requiredLevel: PremiumPackageType.SUPPORTER,
-    location: 'earthquake-detail'
-  },
-  {
-    id: 'earthquake-risk-analysis',
-    name: 'Deprem Risk Analizi',
-    description: 'İl, ilçe, mahalle ve konum bazlı zemin analizi, altyapı sistemleri ve fay hatlarına göre kişiselleştirilmiş risk değerlendirmesi yapın',
-    requiredLevel: PremiumPackageType.PROTECTOR,
-    location: 'home'
-  },
-  {
-    id: 'detailed-statistics',
-    name: 'Detaylı İstatistikler',
-    description: 'Gelişmiş deprem istatistikleri, trend analizleri, bölgesel karşılaştırmalar ve gelecek tahmin modellerine erişim',
-    requiredLevel: PremiumPackageType.PROTECTOR,
-    location: 'home'
-  },
-  {
-    id: 'smart-notification-engine',
-    name: 'Akıllı Bildirim Kural Motoru',
-    description: 'Kişiselleştirilmiş bildirim kuralları, otomatik filtreleme, öncelik sıralaması ve gelişmiş uyarı sistemleri',
-    requiredLevel: PremiumPackageType.SUPPORTER,
-    location: 'home'
-  },
-  {
-    id: 'risk-assessment-ai',
-    name: 'Risk Değerlendirme AI Yorumu',
-    description: 'Risk formu sonuçlarında AI tarafından oluşturulan detaylı analiz, iyileştirme önerileri ve kişiselleştirilmiş güvenlik planları',
-    requiredLevel: PremiumPackageType.SUPPORTER,
-    location: 'risk-form'
-  },
-  {
-    id: 'terra-ai-daily-questions',
-    name: 'Terra AI Günlük 3+ Soru Kullanımı',
-    description: 'Günlük AI soru limitini aşın, sınırsız AI desteği alın ve deprem güvenliği konusunda uzman seviyesinde bilgi edinin',
-    requiredLevel: PremiumPackageType.SUPPORTER,
-    location: 'ai-menu'
-  },
-  {
-    id: 'smart-emergency-route',
-    name: 'Akıllı Acil Durum Rotası',
-    description: 'Ağ grubunuz için özelleştirilmiş acil durum rotaları oluşturun, kullanıcıların rota seçimi yapmasını sağlayın ve kriz anında otomatik yönlendirme alın',
-    requiredLevel: PremiumPackageType.PROTECTOR,
-    location: 'network'
-  }
-];
+// // Premium Features Configuration
+// export const PREMIUM_FEATURES: PremiumFeature[] = [
+//   {
+//     id: 'all-comments',
+//     name: 'Tüm Yorumları Gör',
+//     description: 'Deprem detay sayfasında tüm kullanıcı deneyimlerini ve yorumlarını görüntüleyerek topluluk bilgilerine erişim sağlayın',
+//     requiredLevel: PremiumPackageType.SUPPORTER,
+//     location: 'earthquake-detail'
+//   },
+//   {
+//     id: 'terra-ai-comment',
+//     name: 'Terra AI Yorumu',
+//     description: 'Deprem hakkında AI tarafından oluşturulan detaylı teknik analiz, etki alanı hesaplaması ve güvenlik önerilerini görün',
+//     requiredLevel: PremiumPackageType.SUPPORTER,
+//     location: 'earthquake-detail'
+//   },
+//   {
+//     id: 'earthquake-risk-analysis',
+//     name: 'Deprem Risk Analizi',
+//     description: 'İl, ilçe, mahalle ve konum bazlı zemin analizi, altyapı sistemleri ve fay hatlarına göre kişiselleştirilmiş risk değerlendirmesi yapın',
+//     requiredLevel: PremiumPackageType.PROTECTOR,
+//     location: 'home'
+//   },
+//   {
+//     id: 'detailed-statistics',
+//     name: 'Detaylı İstatistikler',
+//     description: 'Gelişmiş deprem istatistikleri, trend analizleri, bölgesel karşılaştırmalar ve gelecek tahmin modellerine erişim',
+//     requiredLevel: PremiumPackageType.PROTECTOR,
+//     location: 'home'
+//   },
+//   {
+//     id: 'smart-notification-engine',
+//     name: 'Akıllı Bildirim Kural Motoru',
+//     description: 'Kişiselleştirilmiş bildirim kuralları, otomatik filtreleme, öncelik sıralaması ve gelişmiş uyarı sistemleri',
+//     requiredLevel: PremiumPackageType.SUPPORTER,
+//     location: 'home'
+//   },
+//   {
+//     id: 'risk-assessment-ai',
+//     name: 'Risk Değerlendirme AI Yorumu',
+//     description: 'Risk formu sonuçlarında AI tarafından oluşturulan detaylı analiz, iyileştirme önerileri ve kişiselleştirilmiş güvenlik planları',
+//     requiredLevel: PremiumPackageType.SUPPORTER,
+//     location: 'risk-form'
+//   },
+//   {
+//     id: 'terra-ai-daily-questions',
+//     name: 'Terra AI Günlük 3+ Soru Kullanımı',
+//     description: 'Günlük AI soru limitini aşın, sınırsız AI desteği alın ve deprem güvenliği konusunda uzman seviyesinde bilgi edinin',
+//     requiredLevel: PremiumPackageType.SUPPORTER,
+//     location: 'ai-menu'
+//   },
+//   {
+//     id: 'smart-emergency-route',
+//     name: 'Akıllı Acil Durum Rotası',
+//     description: 'Ağ grubunuz için özelleştirilmiş acil durum rotaları oluşturun, kullanıcıların rota seçimi yapmasını sağlayın ve kriz anında otomatik yönlendirme alın',
+//     requiredLevel: PremiumPackageType.PROTECTOR,
+//     location: 'network'
+//   }
+// ];
 
 // Smart Emergency Route Types
 export interface SmartRouteSettings {
@@ -231,7 +238,12 @@ export interface SmartRoute {
   network_id: string;
   name: string;
   description?: string;
-  route_type: 'default' | 'family' | 'disabled_friendly' | 'elderly_friendly' | 'custom';
+  route_type:
+    | "default"
+    | "family"
+    | "disabled_friendly"
+    | "elderly_friendly"
+    | "custom";
   is_default: boolean;
   created_by: string;
   created_at: string;
@@ -243,7 +255,7 @@ export interface SmartRoute {
 export interface RouteWaypoint {
   id: string;
   route_id: string;
-  waypoint_type: 'gathering_point' | 'safe_zone' | 'checkpoint';
+  waypoint_type: "gathering_point" | "safe_zone" | "checkpoint";
   name: string;
   description?: string;
   latitude: number;
@@ -270,7 +282,12 @@ export interface UserRouteProgress {
   network_id: string;
   route_id: string;
   current_waypoint_id?: string;
-  status: 'not_started' | 'in_progress' | 'at_gathering_point' | 'at_safe_zone' | 'completed';
+  status:
+    | "not_started"
+    | "in_progress"
+    | "at_gathering_point"
+    | "at_safe_zone"
+    | "completed";
   started_at?: string;
   completed_at?: string;
   current_latitude?: number;
@@ -304,3 +321,18 @@ export interface MagnitudeRange {
   max: number;
   label: string;
 }
+
+// Task Types
+export interface Task {
+  id: string;
+  title: string;
+  snippet: string;
+  description: string;
+  icon: string;
+  category: "profile" | "education" | "safety" | "community" | "feedback";
+  isCompleted?: boolean;
+  completedAt?: string;
+  priority?: number;
+}
+
+export type TaskCategory = Task["category"];

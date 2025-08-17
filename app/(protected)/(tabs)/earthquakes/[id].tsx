@@ -29,8 +29,7 @@ import { colors } from "@/constants/colors";
 import { useEarthquakeById } from "@/hooks/useEarthquakes";
 import { useEarthquakeFeltReports } from "@/hooks/useEarthquakeFeltReports";
 import { useEarthquakeComments } from "@/hooks/useEarthquakeComments";
-import { usePremium } from "@/hooks/usePremium";
-import PremiumFeatureGate from "@/components/PremiumFeatureGate";
+// import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { 
   getMagnitudeColor, 
@@ -294,7 +293,6 @@ export default function EarthquakeDetailScreen() {
   } = useEarthquakeComments(id);
 
   // Premium hook'u
-  const { hasAccessToFeature, getCurrentLevel } = usePremium();
 
   // Loading durumu
   if (isLoading) {
@@ -880,7 +878,7 @@ export default function EarthquakeDetailScreen() {
               </View>
 
               {/* AI Comment Section - Premium Özellik */}
-              <PremiumFeatureGate featureId="terra-ai-comment">
+              {/* <PremiumFeatureGate featureId="terra-ai-comment">
                 <View style={styles.aiCommentSection}>
                   <View style={styles.sectionHeader}>
                     <Ionicons name="sparkles-outline" size={22} color="#2d3748" />
@@ -930,7 +928,7 @@ export default function EarthquakeDetailScreen() {
                     </View>
                   )}
                 </View>
-              </PremiumFeatureGate>
+              </PremiumFeatureGate> */}
 
               {/* Comments Section */}
               <View style={styles.commentsSection}>
@@ -997,7 +995,7 @@ export default function EarthquakeDetailScreen() {
                       ))}
                       
                       {/* View All Comments Button - sadece 3'ten fazla yorum varsa göster */}
-                      {allComments && allComments.length > 3 && (
+                      {/* {allComments && allComments.length > 3 && (
                         <PremiumFeatureGate featureId="all-comments" compact>
                           <TouchableOpacity
                             style={styles.viewAllCommentsButton}
@@ -1019,7 +1017,7 @@ export default function EarthquakeDetailScreen() {
                             </View>
                           </TouchableOpacity>
                         </PremiumFeatureGate>
-                      )}
+                      )} */}
 
                     </>
                   ) : (

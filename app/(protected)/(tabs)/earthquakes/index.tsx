@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity } from "react-native";
-import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
-import { Earthquake, MagnitudeRange } from "@/types/types";
+import React, { useCallback, useMemo } from "react";
+import { Earthquake } from "@/types/types";
 import MapView, { Marker } from "react-native-maps";
 import {
   ScrollView,
@@ -8,31 +8,24 @@ import {
   Dimensions,
   RefreshControl,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
+import { mapConstants } from "@/constants/mapConstants";
 import { useEarthquakes } from "@/hooks/useEarthquakes";
-import EarthquakeFilter from "@/components/EarthquakeFilter";
+import { 
+  getMagnitudeColor, 
+  getMagnitudeLabel, 
+  formatSourceName, 
+  formatDate 
+} from '@/utils/earthquakeUtils';
+import LoadingView from "@/components/LoadingView";
+import ErrorView from "@/components/ErrorView";
 
 export default function EarthquakesScreen() {
   const { width } = Dimensions.get("window");
   const mapHeight = 280;
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const sourcesInitialized = useRef(false);
-
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-  const [selectedMagnitudeRanges, setSelectedMagnitudeRanges] = useState<
-    MagnitudeRange[]
-  >([]);
-  const [selectedSources, setSelectedSources] = useState<string[]>([]);
-
-  const [tempSelectedRegions, setTempSelectedRegions] = useState<string[]>([]);
-  const [tempSelectedMagnitudeRanges, setTempSelectedMagnitudeRanges] = useState<
-    MagnitudeRange[]
-  >([]);
-  const [tempSelectedSources, setTempSelectedSources] = useState<string[]>([]);
 
   const {
     data: earthquakes = [],
@@ -41,168 +34,6 @@ export default function EarthquakesScreen() {
     refetch,
     isFetching,
   } = useEarthquakes();
-
-  const availableSources = useMemo(() => {
-    if (!earthquakes || earthquakes.length === 0) return [];
-
-    const sources = new Set<string>();
-    earthquakes.forEach((eq: Earthquake) => {
-      if (eq.provider && eq.provider.trim() !== "") {
-        sources.add(eq.provider);
-      }
-    });
-    return Array.from(sources).sort();
-  }, [earthquakes]);
-
-  useEffect(() => {
-    if (availableSources && availableSources.length > 0 && !sourcesInitialized.current) {
-      setSelectedSources([...availableSources]);
-      sourcesInitialized.current = true;
-    }
-  }, [availableSources]);
-
-  const openFilterModal = () => {
-    try {
-      const currentRegions = Array.isArray(selectedRegions) ? [...selectedRegions] : [];
-      const currentMagnitudeRanges = Array.isArray(selectedMagnitudeRanges) ? [...selectedMagnitudeRanges] : [];
-      const currentSources = Array.isArray(selectedSources) ? [...selectedSources] : [];
-      
-      setTempSelectedRegions(currentRegions);
-      setTempSelectedMagnitudeRanges(currentMagnitudeRanges);
-      setTempSelectedSources(currentSources);
-      setShowFilterModal(true);
-    } catch (error) {
-      console.error('Error opening filter modal:', error);
-      setTempSelectedRegions([]);
-      setTempSelectedMagnitudeRanges([]);
-      setTempSelectedSources([]);
-      setShowFilterModal(true);
-    }
-  };
-
-  const applyFilters = () => {
-    try {
-      const tempRegions = tempSelectedRegions || [];
-      const tempMagnitudeRanges = tempSelectedMagnitudeRanges || [];
-      const tempSources = tempSelectedSources || [];
-      
-      setSelectedRegions(() => [...tempRegions]);
-      setSelectedMagnitudeRanges(() => [...tempMagnitudeRanges]);
-      setSelectedSources(() => [...tempSources]);
-      
-      setTimeout(() => {
-        setShowFilterModal(false);
-      }, 0);
-    } catch (error) {
-      console.error('Error applying filters:', error);
-      setShowFilterModal(false);
-    }
-  };
-
-  const closeFilterModal = () => {
-    setShowFilterModal(false);
-  };
-
-  const filteredEarthquakes = useMemo(() => {
-    if (!earthquakes || earthquakes.length === 0) return [];
-
-    let filtered = [...earthquakes];
-
-    if (selectedSources && Array.isArray(selectedSources) && selectedSources.length > 0) {
-      filtered = filtered.filter((eq: Earthquake) =>
-        selectedSources.includes(eq.provider)
-      );
-    }
-
-    if (selectedRegions && Array.isArray(selectedRegions) && selectedRegions.length > 0) {
-      filtered = filtered.filter((eq: Earthquake) =>
-        selectedRegions.some(
-          (region) =>
-            eq.region?.toLowerCase().includes(region.toLowerCase()) ||
-            eq.title?.toLowerCase().includes(region.toLowerCase())
-        )
-      );
-    }
-
-    if (selectedMagnitudeRanges && Array.isArray(selectedMagnitudeRanges) && selectedMagnitudeRanges.length > 0) {
-      filtered = filtered.filter((eq: Earthquake) =>
-        selectedMagnitudeRanges.some(
-          (range) => eq.mag >= range.min && eq.mag <= range.max
-        )
-      );
-    }
-
-    return filtered;
-  }, [earthquakes, selectedSources, selectedRegions, selectedMagnitudeRanges]);
-
-  const availableRegions = useMemo(() => {
-    if (!earthquakes || earthquakes.length === 0) return [];
-
-    const regions = new Set<string>();
-    earthquakes.forEach((eq: Earthquake) => {
-      if (eq.region && eq.region.trim() !== "") {
-        regions.add(eq.region);
-      }
-    });
-    return Array.from(regions).sort();
-  }, [earthquakes]);
-
-  const getMagnitudeColor = useCallback((magnitude: number) => {
-    if (magnitude >= 5.0) return "#FF4444";
-    if (magnitude >= 4.0) return "#FF8800";
-    if (magnitude >= 3.0) return "#FFB800";
-    return "#4CAF50";
-  }, []);
-
-  const getMagnitudeLabel = useCallback((magnitude: number) => {
-    if (magnitude >= 5.0) return "Güçlü";
-    if (magnitude >= 4.0) return "Orta";
-    if (magnitude >= 3.0) return "Hafif";
-    return "Zayıf";
-  }, []);
-
-  const formatSourceName = useCallback((source: string) => {
-    switch (source.toLowerCase()) {
-      case 'kandilli':
-        return 'KANDILLI';
-      case 'afad':
-        return 'AFAD';
-      case 'usgs':
-        return 'USGS';
-      case 'iris':
-        return 'IRIS';
-      case 'emsc':
-        return 'EMSC';
-      default:
-        return source.toUpperCase();
-    }
-  }, []);
-
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString || typeof dateString !== 'string') return "Bilinmiyor";
-
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "Geçersiz tarih";
-
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffDays = Math.floor(diffHours / 24);
-
-      if (diffHours < 1) return "Az önce";
-      if (diffHours < 24) return `${diffHours} saat önce`;
-      if (diffDays < 7) return `${diffDays} gün önce`;
-      return date.toLocaleDateString("tr-TR", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return "Geçersiz tarih";
-    }
-  };
 
   const CustomMagnitudeMarker = useCallback(
     ({ magnitude }: { magnitude: number }) => (
@@ -218,174 +49,32 @@ export default function EarthquakesScreen() {
     [getMagnitudeColor]
   );
 
-  const mapRegion = useMemo(
-    () => ({
-      latitude: 39.0,
-      longitude: 35.0,
-      latitudeDelta: 12.5,
-      longitudeDelta: 17.5,
-    }),
-    []
-  );
-
-  const clearFilters = () => {
-    setTempSelectedRegions([]);
-    setTempSelectedMagnitudeRanges([]);
-    setTempSelectedSources(availableSources ? [...availableSources] : []);
-  };
-
-  const hasActiveFilters =
-    selectedRegions.length > 0 || selectedMagnitudeRanges.length > 0;
-
-  const toggleRegion = (region: string) => {
-    setSelectedRegions((prev) => {
-      if (prev.includes(region)) {
-        return prev.filter((r) => r !== region);
-      } else {
-        return [...prev, region];
-      }
-    });
-  };
-
-  const toggleMagnitudeRange = (range: MagnitudeRange) => {
-    setSelectedMagnitudeRanges((prev) => {
-      const isSelected = prev.some(
-        (r) =>
-          r.min === range.min && r.max === range.max && r.label === range.label
-      );
-      if (isSelected) {
-        return prev.filter(
-          (r) =>
-            !(
-              r.min === range.min &&
-              r.max === range.max &&
-              r.label === range.label
-            )
-        );
-      } else {
-        return [...prev, range];
-      }
-    });
-  };
-
-  const toggleSource = (source: string) => {
-    setSelectedSources((prev) => {
-      const currentSources = prev || [];
-      if (currentSources.includes(source)) {
-        return currentSources.filter((s) => s !== source);
-      } else {
-        return [...currentSources, source];
-      }
-    });
-  };
-
-  const toggleTempRegion = (region: string) => {
-    setTempSelectedRegions((prev) => {
-      if (prev.includes(region)) {
-        return prev.filter((r) => r !== region);
-      } else {
-        return [...prev, region];
-      }
-    });
-  };
-
-  const toggleTempMagnitudeRange = (range: MagnitudeRange) => {
-    setTempSelectedMagnitudeRanges((prev) => {
-      const isSelected = prev.some(
-        (r) =>
-          r.min === range.min && r.max === range.max && r.label === range.label
-      );
-      if (isSelected) {
-        return prev.filter(
-          (r) =>
-            !(
-              r.min === range.min &&
-              r.max === range.max &&
-              r.label === range.label
-            )
-        );
-      } else {
-        return [...prev, range];
-      }
-    });
-  };
-
-  const toggleTempSource = (source: string) => {
-    setTempSelectedSources((prev) => {
-      const currentSources = prev || [];
-      if (currentSources.includes(source)) {
-        return currentSources.filter((s) => s !== source);
-      } else {
-        return [...currentSources, source];
-      }
-    });
-  };
-
-  const isMagnitudeRangeSelected = (range: MagnitudeRange) => {
-    return selectedMagnitudeRanges.some(
-      (r) =>
-        r.min === range.min && r.max === range.max && r.label === range.label
-    );
-  };
-
-  const isTempMagnitudeRangeSelected = (range: MagnitudeRange) => {
-    return tempSelectedMagnitudeRanges.some(
-      (r) =>
-        r.min === range.min && r.max === range.max && r.label === range.label
-    );
-  };
+  const mapRegion = mapConstants.turkeyRegion;
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.mainHeader}>
-          <Text style={styles.inboxText}>Depremler</Text>
-        </View>
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <Text>Depremler yükleniyor...</Text>
-        </View>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <LoadingView />
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.mainHeader}>
-          <Text style={styles.inboxText}>Depremler</Text>
-        </View>
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <Text style={{ color: "red", marginBottom: 20 }}>
-            {error instanceof Error ? error.message : "Bir hata oluştu"}
-          </Text>
-          <TouchableOpacity
-            style={{
-              backgroundColor: colors.primary,
-              paddingHorizontal: 20,
-              paddingVertical: 10,
-              borderRadius: 8,
-            }}
-            onPress={() => refetch()}
-          >
-            <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "600" }}>
-              Tekrar Dene
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <ErrorView 
+          message={error instanceof Error ? error.message : "Bir hata oluştu"}
+          onRetry={refetch}
+        />
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <SafeAreaView style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom }}
         refreshControl={
           <RefreshControl
             refreshing={isFetching}
@@ -397,7 +86,6 @@ export default function EarthquakesScreen() {
       >
         <View style={styles.mapContainer}>
           <MapView
-            key={`map-${(selectedSources || []).join('-')}-${(selectedRegions || []).join('-')}-${(selectedMagnitudeRanges || []).length}`}
             style={[styles.map, { width: width - 32, height: mapHeight }]}
             initialRegion={mapRegion}
             showsUserLocation={false}
@@ -406,8 +94,8 @@ export default function EarthquakesScreen() {
             loadingEnabled={true}
             loadingIndicatorColor={colors.primary}
             loadingBackgroundColor={colors.light.background}
-          >
-            {filteredEarthquakes.map((eq: Earthquake) => (
+          > 
+            {earthquakes.map((eq: Earthquake) => (
               <Marker
                 key={`earthquake-${eq.id}`}
                 coordinate={{
@@ -433,40 +121,21 @@ export default function EarthquakesScreen() {
         <View style={styles.listContainer}>
           <View style={styles.listHeader}>
             <Text style={styles.listTitle}>Deprem Listesi</Text>
-            <EarthquakeFilter
-              showFilterModal={showFilterModal}
-              setShowFilterModal={setShowFilterModal}
-              selectedRegions={tempSelectedRegions}
-              availableRegions={availableRegions}
-              selectedMagnitudeRanges={tempSelectedMagnitudeRanges}
-              selectedSources={tempSelectedSources}
-              availableSources={availableSources}
-              toggleRegion={toggleTempRegion}
-              toggleMagnitudeRange={toggleTempMagnitudeRange}
-              toggleSource={toggleTempSource}
-              clearFilters={clearFilters}
-              isMagnitudeRangeSelected={isTempMagnitudeRangeSelected}
-              hasActiveFilters={hasActiveFilters}
-              onApply={applyFilters}
-              onOpenModal={openFilterModal}
-              onClose={closeFilterModal}
-            />
           </View>
 
           <View style={styles.resultsCount}>
             <Text style={styles.resultsCountText}>
-              {filteredEarthquakes.length} deprem listeleniyor
+              {earthquakes.length} deprem listeleniyor
             </Text>
           </View>
 
-          {filteredEarthquakes.map((eq: Earthquake, index: number) => (
+          {earthquakes.map((eq: Earthquake, index: number) => (
             <TouchableOpacity
               key={eq.id}
               style={[styles.earthquakeCard, index === 0 && styles.firstCard]}
               activeOpacity={0.7}
               onPress={() => router.push({
                 pathname: `/(protected)/(tabs)/earthquakes/${eq.id}`,
-                params: { source: 'list' }
               })}
             >
               <View
@@ -546,22 +215,16 @@ export default function EarthquakesScreen() {
             </TouchableOpacity>
           ))}
 
-          {filteredEarthquakes.length === 0 && (
+          {earthquakes.length === 0 && (
             <View style={styles.noResultsContainer}>
               <Text style={styles.noResultsText}>
-                Seçilen filtrelere uygun deprem bulunamadı.
+                Henüz deprem verisi bulunmuyor.
               </Text>
-              <TouchableOpacity
-                onPress={clearFilters}
-                style={styles.clearFiltersButton}
-              >
-                <Text style={styles.clearFiltersText}>Filtreleri Temizle</Text>
-              </TouchableOpacity>
             </View>
           )}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

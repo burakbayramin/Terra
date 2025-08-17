@@ -6,12 +6,9 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
+  Alert,
   Modal,
   ActivityIndicator,
-  Keyboard,
-  TouchableWithoutFeedback,
-  Share,
-  Clipboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,11 +16,9 @@ import {
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
-import { useCreateNetwork, useJoinNetwork, useMyNetworks, useUpdateNetwork, useDeleteNetwork, useNetworkMembers } from "@/hooks/useNetwork";
-import { supabase } from "@/lib/supabase";
-import Toast from "@/components/Toast";
+import { useCreateNetwork, useJoinNetwork, useMyNetworks } from "@/hooks/useNetwork";
 
 export default function NetworkScreen() {
   const insets = useSafeAreaInsets();
@@ -32,56 +27,20 @@ export default function NetworkScreen() {
   // State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [networkName, setNetworkName] = useState("");
   const [networkDescription, setNetworkDescription] = useState("");
   const [networkCode, setNetworkCode] = useState("");
-  const [selectedNetworkType, setSelectedNetworkType] = useState<"family" | "friends" | null>(null);
-  const [selectedNetwork, setSelectedNetwork] = useState<any>(null);
-  const [editName, setEditName] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [currentUser, setCurrentUser] = useState<any>(null);
-
-  // Toast state
-  const [toast, setToast] = useState({
-    visible: false,
-    message: '',
-    type: 'success' as 'success' | 'error' | 'info'
-  });
 
   // Queries
-  const { data: myNetworks, isLoading: isLoadingNetworks, refetch: refetchNetworks } = useMyNetworks();
+  const { data: myNetworks, isLoading: isLoadingNetworks } = useMyNetworks();
 
   // Mutations
   const createNetworkMutation = useCreateNetwork();
   const joinNetworkMutation = useJoinNetwork();
-  const updateNetworkMutation = useUpdateNetwork();
-  const deleteNetworkMutation = useDeleteNetwork();
 
   // Filter networks by role
   const createdNetworks = myNetworks?.filter(memberData => memberData.role === 'creator') || [];
   const joinedNetworks = myNetworks?.filter(memberData => memberData.role === 'member') || [];
-
-  // Sayfa focus olduğunda verileri yeniden yükle
-  useFocusEffect(
-    React.useCallback(() => {
-      refetchNetworks();
-    }, [refetchNetworks])
-  );
-
-  // Show toast function
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    setToast({
-      visible: true,
-      message,
-      type
-    });
-  };
-
-  // Hide toast function
-  const hideToast = () => {
-    setToast(prev => ({ ...prev, visible: false }));
-  };
 
   // Navigate to network detail
   const navigateToNetworkDetail = (networkId: string) => {
@@ -90,16 +49,13 @@ export default function NetworkScreen() {
 
   const handleCreateNetwork = () => {
     if (!networkName.trim()) {
-      showToast("Lütfen ağ adını girin.", "error");
+      Alert.alert("Uyarı", "Lütfen ağ adını girin.");
       return;
     }
 
-    // Ağ adını olduğu gibi kullan, otomatik kategori ekleme yapma
-    const finalNetworkName = networkName.trim();
-
     createNetworkMutation.mutate(
       {
-        name: finalNetworkName,
+        name: networkName.trim(),
         description: networkDescription.trim() || undefined,
         max_members: 50,
       },
@@ -108,11 +64,10 @@ export default function NetworkScreen() {
           setShowCreateModal(false);
           setNetworkName("");
           setNetworkDescription("");
-          setSelectedNetworkType(null);
-          showToast("Ağınız başarıyla oluşturuldu!");
+          Alert.alert("Başarılı", "Ağınız başarıyla oluşturuldu!");
         },
         onError: (error) => {
-          showToast(error.message, "error");
+          Alert.alert("Hata", error.message);
         },
       }
     );
@@ -120,7 +75,7 @@ export default function NetworkScreen() {
 
   const handleJoinNetwork = () => {
     if (!networkCode.trim()) {
-      showToast("Lütfen ağ kodunu girin.", "error");
+      Alert.alert("Uyarı", "Lütfen ağ kodunu girin.");
       return;
     }
 
@@ -128,234 +83,12 @@ export default function NetworkScreen() {
       onSuccess: () => {
         setShowJoinModal(false);
         setNetworkCode("");
-        setSelectedNetworkType(null);
-        showToast("Ağa başarıyla katıldınız!");
+        Alert.alert("Başarılı", "Ağa başarıyla katıldınız!");
       },
       onError: (error) => {
-        showToast(error.message, "error");
+        Alert.alert("Hata", error.message);
       },
     });
-  };
-
-  const openCreateModal = () => {
-    setSelectedNetworkType(null);
-    setShowCreateModal(true);
-  };
-
-  const openJoinModal = () => {
-    setSelectedNetworkType(null);
-    setShowJoinModal(true);
-  };
-
-  // Get current user
-  React.useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUser(user);
-      }
-    };
-    getCurrentUser();
-  }, []);
-
-  // Check if user is network admin
-  const isNetworkAdmin = (network: any) => {
-    return currentUser && network && currentUser.id === network.creator_id;
-  };
-
-  // Check if network is default (Ailem or Arkadaşlarım)
-  const isDefaultNetwork = (network: any) => {
-    if (!network?.name) return false;
-    const name = network.name.toLowerCase();
-    return name.includes('aile') || name.includes('arkadaş') || name.includes('friend');
-  };
-
-  // Check if network can be modified (admin + not default)
-  const canModifyNetwork = (network: any) => {
-    return isNetworkAdmin(network) && !isDefaultNetwork(network);
-  };
-
-  const handleEditNetwork = (network: any) => {
-    setSelectedNetwork(network);
-    setEditName(network.name);
-    setEditDescription(network.description || "");
-    setShowEditModal(true);
-  };
-
-  const handleUpdateNetwork = () => {
-    if (!editName.trim() || !selectedNetwork) {
-      showToast("Lütfen ağ adını girin.", "error");
-      return;
-    }
-
-    updateNetworkMutation.mutate(
-      {
-        networkId: selectedNetwork.id,
-        updates: {
-          name: editName.trim(),
-          description: editDescription.trim() || undefined,
-        }
-      },
-      {
-        onSuccess: () => {
-          setShowEditModal(false);
-          setSelectedNetwork(null);
-          showToast("Ağ bilgileri güncellendi!");
-        },
-        onError: (error) => {
-          showToast(error.message, "error");
-        },
-      }
-    );
-  };
-
-  const handleDeleteNetwork = (network: any) => {
-    // Check if trying to delete default network
-    if (isDefaultNetwork(network)) {
-      showToast("Varsayılan ağlar (Ailem ve Arkadaşlarım) silinemez.", "error");
-      return;
-    }
-
-    // Show confirmation dialog
-    showToast("Ağı silmek istediğinizden emin misiniz?", "info");
-    
-    // For now, we'll use a simple confirmation
-    // In a real app, you might want to use a custom confirmation modal
-    deleteNetworkMutation.mutate(network.id, {
-      onSuccess: () => {
-        showToast("Ağ silindi!");
-      },
-      onError: (error) => {
-        showToast(error.message, "error");
-      },
-    });
-  };
-
-  // Copy network code to clipboard
-  const copyNetworkCode = async (networkCode: string) => {
-    try {
-      await Clipboard.setString(networkCode);
-      showToast("Ağ kodu kopyalandı!");
-    } catch (error) {
-      showToast("Kod kopyalanamadı.", "error");
-    }
-  };
-
-  // Share network invitation
-  const shareNetwork = async (network: any) => {
-    try {
-      const shareMessage = `🌐 ${network.name} ağına katılmak ister misiniz?\n\n` +
-        `Ağ Kodu: ${network.network_code}\n\n` +
-        `Bu kodu Terra uygulamasında kullanarak ağa katılabilirsiniz. ` +
-        `Acil durumlar için güvenli iletişim kurun!\n\n` +
-        `📱 Terra Uygulamasını İndirin:\n` +
-        `iOS: https://apps.apple.com/app/terra-earthquake-safety/id1234567890\n` +
-        `Android: https://play.google.com/store/apps/details?id=com.terra.earthquakesafety`;
-
-      await Share.share({
-        message: shareMessage,
-        title: `${network.name} Ağına Davet`,
-      });
-    } catch (error) {
-      showToast("Paylaşım yapılamadı.", "error");
-    }
-  };
-
-  // Network Card Component
-  const NetworkCard = ({ memberData, networkType }: { memberData: any, networkType: 'family' | 'friends' | 'other' }) => {
-    const { data: members } = useNetworkMembers(memberData.networks?.id || '');
-    const memberCount = members?.length || 0;
-    
-    const getNetworkIcon = () => {
-      switch (networkType) {
-        case 'family':
-          return "home-heart";
-        case 'friends':
-          return "account-group";
-        default:
-          return "account-multiple";
-      }
-    };
-
-    const getNetworkColor = () => {
-      switch (networkType) {
-        case 'family':
-          return "#FF6B6B";
-        case 'friends':
-          return "#4ECDC4";
-        default:
-          return colors.primary;
-      }
-    };
-
-    return (
-      <TouchableOpacity
-        style={[styles.networkCard, { borderLeftColor: getNetworkColor() }]}
-        onPress={() => navigateToNetworkDetail(memberData.networks?.id || '')}
-      >
-        <LinearGradient
-          colors={[getNetworkColor() + '10', getNetworkColor() + '05']}
-          style={styles.cardGradient}
-        >
-          <View style={styles.cardHeader}>
-            <View style={styles.cardIconContainer}>
-              <MaterialCommunityIcons
-                name={getNetworkIcon()}
-                size={28}
-                color={getNetworkColor()}
-              />
-            </View>
-            <View style={styles.cardTitleContainer}>
-              <Text style={styles.cardTitle}>{memberData.networks?.name}</Text>
-              <View style={styles.cardBadge}>
-                <Text style={[styles.cardBadgeText, { color: getNetworkColor() }]}>
-                  {memberCount} üye
-                </Text>
-              </View>
-            </View>
-
-          </View>
-          
-          {(() => {
-            // Varsayılan ağlar için özel açıklamalar
-            if (networkType === 'family') {
-              return (
-                                 <Text style={styles.cardDescription}>
-                   Ailenizle güvenli iletişim kurun. Acil durumlarda birbirinizi bilgilendirin ve koordinasyon sağlayın.
-                 </Text>
-              );
-            } else if (networkType === 'friends') {
-              return (
-                                 <Text style={styles.cardDescription}>
-                   Sevdiklerinizle güvenli iletişim kurun. Acil durumlarda birbirinizi destekleyin ve sosyal aktiviteleri koordine edin.
-                 </Text>
-              );
-            } else if (memberData.networks?.description) {
-              // Diğer ağlar için veritabanından gelen açıklama
-              return (
-                <Text style={styles.cardDescription}>
-                  {memberData.networks.description}
-                </Text>
-              );
-            }
-            return null;
-          })()}
-          
-          <View style={styles.cardFooter}>
-            <TouchableOpacity
-              style={styles.codeButton}
-              onPress={() => copyNetworkCode(memberData.networks?.network_code)}
-            >
-              <Text style={[styles.codeText, { color: getNetworkColor() }]}>
-                Kod: {memberData.networks?.network_code}
-              </Text>
-              <Ionicons name="copy-outline" size={16} color={getNetworkColor()} />
-            </TouchableOpacity>
-            <Ionicons name="chevron-forward" size={20} color={colors.light.textSecondary} />
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
-    );
   };
 
   return (
@@ -365,193 +98,65 @@ export default function NetworkScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Ağ Yönetimi</Text>
           <Text style={styles.headerSubtitle}>
-            Ağlarınızı yönetin ve yeni bağlantılar kurun
+            Yeni bir ağ oluşturun veya mevcut bir ağa katılın
           </Text>
         </View>
 
-        {/* Created Networks Section */}
-        <View style={styles.networksContainer}>
-          <Text style={styles.mainSectionTitle}>Varsayılan Ağlar</Text>
-          
-          {/* Ailem Network */}
-          <View style={styles.networkSection}>
-            <Text style={styles.sectionTitle}>👨‍👩‍👧‍👦 Ailem</Text>
-            {createdNetworks.filter(network => network.networks?.name?.toLowerCase().includes('aile')).length > 0 ? (
-              createdNetworks.filter(network => network.networks?.name?.toLowerCase().includes('aile')).map((memberData) => (
-                <NetworkCard key={memberData.id} memberData={memberData} networkType="family" />
-              ))
-            ) : (
-              <View style={styles.emptyNetworkCard}>
-                <LinearGradient
-                  colors={['#FF6B6B10', '#FF6B6B05']}
-                  style={styles.emptyCardGradient}
-                >
-                  <MaterialCommunityIcons
-                    name="home-heart"
-                    size={56}
-                    color="#FF6B6B"
-                  />
-                  <Text style={styles.emptyCardTitle}>Ailem</Text>
-                  <Text style={styles.emptyCardDescription}>
-                    Ailenizle güvenli iletişim kurun. Acil durumlarda birbirinizi bilgilendirin ve koordinasyon sağlayın.
-                  </Text>
-                </LinearGradient>
-              </View>
-            )}
-          </View>
-
-          {/* Arkadaşlarım Network */}
-          <View style={styles.networkSection}>
-            <Text style={styles.sectionTitle}>👥 Arkadaşlarım</Text>
-            {createdNetworks.filter(network => network.networks?.name?.toLowerCase().includes('arkadaş') || network.networks?.name?.toLowerCase().includes('friend')).length > 0 ? (
-              createdNetworks.filter(network => network.networks?.name?.toLowerCase().includes('arkadaş') || network.networks?.name?.toLowerCase().includes('friend')).map((memberData) => (
-                <NetworkCard key={memberData.id} memberData={memberData} networkType="friends" />
-              ))
-            ) : (
-              <View style={styles.emptyNetworkCard}>
-                <LinearGradient
-                  colors={['#4ECDC410', '#4ECDC405']}
-                  style={styles.emptyCardGradient}
-                >
-                  <MaterialCommunityIcons
-                    name="account-group"
-                    size={56}
-                    color="#4ECDC4"
-                  />
-                  <Text style={styles.emptyCardTitle}>Arkadaş Ağınız</Text>
-                  <Text style={styles.emptyCardDescription}>
-                    Sevdiklerinizle güvenli iletişim kurun. Acil durumlarda birbirinizi destekleyin ve sosyal aktiviteleri koordine edin.
-                  </Text>
-                </LinearGradient>
-              </View>
-            )}
-          </View>
-
-          {/* Diğer Networks */}
-          <View style={styles.networkSection}>
-            <Text style={styles.sectionTitle}>🔗 Diğer Ağlar</Text>
-            {createdNetworks.filter(network => 
-              !network.networks?.name?.toLowerCase().includes('aile') && 
-              !network.networks?.name?.toLowerCase().includes('arkadaş') && 
-              !network.networks?.name?.toLowerCase().includes('friend')
-            ).length > 0 ? (
-              createdNetworks.filter(network => 
-                !network.networks?.name?.toLowerCase().includes('aile') && 
-                !network.networks?.name?.toLowerCase().includes('arkadaş') && 
-                !network.networks?.name?.toLowerCase().includes('friend')
-              ).map((memberData) => (
-                <NetworkCard key={memberData.id} memberData={memberData} networkType="other" />
-              ))
-            ) : (
-              <View style={styles.emptyNetworkCard}>
-                <LinearGradient
-                  colors={[colors.primary + '10', colors.primary + '05']}
-                  style={styles.emptyCardGradient}
-                >
-                  <MaterialCommunityIcons
-                    name="account-multiple"
-                    size={56}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.emptyCardTitle}>Özel Ağlarınız</Text>
-                  <Text style={styles.emptyCardDescription}>
-                    Kendi özelleştirilmiş ağınızı kurun ve takipte kalın. İş ekibi, spor kulübü, hobi grubu veya özel projeleriniz için güvenli iletişim ağları oluşturun.
-                  </Text>
-                </LinearGradient>
-              </View>
-            )}
-          </View>
-
-          {/* Create Network Button */}
+        {/* Main Options */}
+        <View style={styles.optionsContainer}>
+          {/* Create Network Option */}
           <TouchableOpacity
-            style={styles.createNetworkButton}
-            onPress={() => openCreateModal()}
+            style={styles.optionCard}
+            onPress={() => setShowCreateModal(true)}
           >
-            <LinearGradient
-              colors={[colors.primary, colors.primary + 'CC']}
-              style={styles.createButtonGradient}
-            >
-              <Ionicons name="add-circle" size={24} color="#fff" />
-              <Text style={styles.createNetworkButtonText}>Yeni Ağ Oluştur</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-
-        {/* Joined Networks Section */}
-        <View style={[styles.networksContainer, styles.joinedNetworksContainer]}>
-          <Text style={styles.mainSectionTitle}>Katıldığım Ağlar</Text>
-          
-          {joinedNetworks.length > 0 ? (
-            joinedNetworks.map((memberData) => (
-              <TouchableOpacity
-                key={memberData.id}
-                style={styles.joinedNetworkCard}
-                onPress={() => navigateToNetworkDetail(memberData.networks?.id || '')}
-              >
-                <LinearGradient
-                  colors={['#667eea10', '#764ba205']}
-                  style={styles.joinedCardGradient}
-                >
-                  <View style={styles.joinedCardHeader}>
-                    <View style={styles.joinedCardIcon}>
-                      <MaterialCommunityIcons
-                        name="account-group"
-                        size={24}
-                        color="#667eea"
-                      />
-                    </View>
-                    <View style={styles.joinedCardInfo}>
-                      <Text style={styles.joinedCardTitle}>{memberData.networks?.name}</Text>
-                      {memberData.networks?.description && (
-                        <Text style={styles.joinedCardDescription}>
-                          {memberData.networks.description}
-                        </Text>
-                      )}
-                      <Text style={styles.joinedCardDate}>
-                        Katıldığınız tarih: {new Date(memberData.joined_at).toLocaleDateString('tr-TR')}
-                      </Text>
-                    </View>
-                    <View style={styles.joinedCardStatus}>
-                      <View style={styles.memberBadge}>
-                        <Text style={styles.memberBadgeText}>Üye</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={20} color={colors.light.textSecondary} />
-                    </View>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))
-          ) : (
-            <View style={styles.emptyJoinedCard}>
+            <View style={styles.optionIcon}>
+              <MaterialCommunityIcons
+                name="account-group-outline"
+                size={48}
+                color={colors.primary}
+              />
+            </View>
+            <Text style={styles.optionTitle}>Ağ Oluştur</Text>
+            <Text style={styles.optionDescription}>
+              Yeni bir güvenlik ağı oluşturun ve arkadaşlarınızı davet edin
+            </Text>
+            <View style={styles.optionButton}>
               <LinearGradient
-                colors={['#667eea10', '#764ba205']}
-                style={styles.emptyJoinedGradient}
+                colors={[colors.gradientOne, colors.gradientTwo]}
+                style={styles.gradientButton}
               >
-                <MaterialCommunityIcons
-                  name="account-group-outline"
-                  size={56}
-                  color="#667eea"
-                />
-                <Text style={styles.emptyJoinedTitle}>Henüz Bir Ağa Katılmadınız</Text>
-                <Text style={styles.emptyJoinedDescription}>
-                  Mevcut bir ağa katılmak için ağ kodunu kullanın ve yeni bağlantılar kurun
-                </Text>
-                
-                <TouchableOpacity
-                  style={styles.joinNetworkButton}
-                  onPress={() => openJoinModal()}
-                >
-                  <LinearGradient
-                    colors={['#667eea', '#5a67d8']}
-                    style={styles.joinButtonGradient}
-                  >
-                    <Ionicons name="people" size={20} color="#fff" />
-                    <Text style={styles.joinNetworkButtonText}>Ağa Katıl</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                <Text style={styles.optionButtonText}>Oluştur</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
               </LinearGradient>
             </View>
-          )}
+          </TouchableOpacity>
+
+          {/* Join Network Option */}
+          <TouchableOpacity
+            style={styles.optionCard}
+            onPress={() => setShowJoinModal(true)}
+          >
+            <View style={styles.optionIcon}>
+              <MaterialCommunityIcons
+                name="account-plus-outline"
+                size={48}
+                color={colors.primary}
+              />
+            </View>
+            <Text style={styles.optionTitle}>Ağa Katıl</Text>
+            <Text style={styles.optionDescription}>
+              Mevcut bir ağın kodunu girerek o ağa katılın
+            </Text>
+            <View style={styles.optionButton}>
+              <LinearGradient
+                colors={[colors.gradientOne, colors.gradientTwo]}
+                style={styles.gradientButton}
+              >
+                <Text style={styles.optionButtonText}>Katıl</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </LinearGradient>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Loading State */}
@@ -559,6 +164,95 @@ export default function NetworkScreen() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Ağlar yükleniyor...</Text>
+          </View>
+        )}
+
+        {/* My Created Networks */}
+        {!isLoadingNetworks && createdNetworks.length > 0 && (
+          <View style={styles.networkSection}>
+            <Text style={styles.sectionTitle}>Oluşturduğum Ağlar</Text>
+            {createdNetworks.map((memberData) => (
+              <TouchableOpacity
+                key={memberData.id}
+                style={styles.networkItem}
+                onPress={() => navigateToNetworkDetail(memberData.networks?.id || '')}
+              >
+                <View style={styles.networkInfo}>
+                  <MaterialCommunityIcons
+                    name="crown"
+                    size={24}
+                    color="#FFD700"
+                  />
+                  <View style={styles.networkDetails}>
+                    <Text style={styles.networkName}>{memberData.networks?.name}</Text>
+                    {memberData.networks?.description && (
+                      <Text style={styles.networkDescription}>
+                        {memberData.networks.description}
+                      </Text>
+                    )}
+                    <Text style={styles.networkCode}>
+                      Kod: {memberData.networks?.network_code}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.networkStatus}>
+                  <Text style={styles.creatorBadge}>Yönetici</Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.light.textSecondary} />
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* My Joined Networks */}
+        {!isLoadingNetworks && joinedNetworks.length > 0 && (
+          <View style={styles.networkSection}>
+            <Text style={styles.sectionTitle}>Katıldığım Ağlar</Text>
+            {joinedNetworks.map((memberData) => (
+              <TouchableOpacity
+                key={memberData.id}
+                style={styles.networkItem}
+                onPress={() => navigateToNetworkDetail(memberData.networks?.id || '')}
+              >
+                <View style={styles.networkInfo}>
+                  <MaterialCommunityIcons
+                    name="account-group"
+                    size={24}
+                    color={colors.primary}
+                  />
+                  <View style={styles.networkDetails}>
+                    <Text style={styles.networkName}>{memberData.networks?.name}</Text>
+                    {memberData.networks?.description && (
+                      <Text style={styles.networkDescription}>
+                        {memberData.networks.description}
+                      </Text>
+                    )}
+                    <Text style={styles.joinDate}>
+                      Katıldığınız tarih: {new Date(memberData.joined_at).toLocaleDateString('tr-TR')}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.networkStatus}>
+                  <Text style={styles.memberBadge}>Üye</Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.light.textSecondary} />
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* No Networks Message */}
+        {!isLoadingNetworks && createdNetworks.length === 0 && joinedNetworks.length === 0 && (
+          <View style={styles.noNetworksContainer}>
+            <MaterialCommunityIcons
+              name="account-group-outline"
+              size={64}
+              color={colors.light.textSecondary}
+            />
+            <Text style={styles.noNetworksTitle}>Henüz Ağınız Yok</Text>
+            <Text style={styles.noNetworksDescription}>
+              Yukarıdaki seçenekleri kullanarak yeni bir ağ oluşturun veya mevcut bir ağa katılın
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -571,63 +265,59 @@ export default function NetworkScreen() {
         onRequestClose={() => setShowCreateModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Yeni Ağ Oluştur</Text>
-                <TouchableOpacity
-                  onPress={() => setShowCreateModal(false)}
-                  style={styles.closeButton}
-                >
-                  <Ionicons name="close" size={24} color="#666" />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.modalSubtitle}>
-                Ağ adınızı girin, otomatik olarak uygun kategoriye eklenecektir
-              </Text>
-
-              <TextInput
-                style={styles.input}
-                placeholder="Ağ adını girin (örn: Aile Ağım, Arkadaş Grubu, İş Ekibi, Spor Kulübü)"
-                placeholderTextColor="#999"
-                value={networkName}
-                onChangeText={setNetworkName}
-                maxLength={50}
-              />
-
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Ağ hakkında kısa bir açıklama yazın (opsiyonel)"
-                placeholderTextColor="#999"
-                value={networkDescription}
-                onChangeText={setNetworkDescription}
-                multiline
-                numberOfLines={3}
-                maxLength={200}
-              />
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowCreateModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>İptal</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.confirmButton}
-                  onPress={handleCreateNetwork}
-                  disabled={createNetworkMutation.isPending}
-                >
-                  {createNetworkMutation.isPending ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.confirmButtonText}>Oluştur</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Ağ Oluştur</Text>
+              <TouchableOpacity
+                onPress={() => setShowCreateModal(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
             </View>
-          </TouchableWithoutFeedback>
+
+            <Text style={styles.modalSubtitle}>
+              Acil durumlar için güvenlik ağınızı oluşturun
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Ağ Adı (örn: Aile Ağım)"
+              value={networkName}
+              onChangeText={setNetworkName}
+              maxLength={50}
+            />
+
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Açıklama (opsiyonel)"
+              value={networkDescription}
+              onChangeText={setNetworkDescription}
+              multiline
+              numberOfLines={3}
+              maxLength={200}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowCreateModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleCreateNetwork}
+                disabled={createNetworkMutation.isPending}
+              >
+                {createNetworkMutation.isPending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.confirmButtonText}>Oluştur</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
 
@@ -639,137 +329,59 @@ export default function NetworkScreen() {
         onRequestClose={() => setShowJoinModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Ağa Katıl</Text>
-                <TouchableOpacity
-                  onPress={() => setShowJoinModal(false)}
-                  style={styles.closeButton}
-                >
-                  <Ionicons name="close" size={24} color="#666" />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.modalSubtitle}>
-                Katılmak istediğiniz ağın kodunu girin
-              </Text>
-
-              <TextInput
-                style={styles.input}
-                placeholder="Ağ kodunu girin (örn: ABC123)"
-                placeholderTextColor="#999"
-                value={networkCode}
-                onChangeText={setNetworkCode}
-                maxLength={20}
-                autoCapitalize="characters"
-              />
-
-              <View style={styles.infoBox}>
-                <Ionicons name="information-circle" size={20} color={colors.primary} />
-                <Text style={styles.infoText}>
-                  Ağ kodu, ağ sahibinden alabileceğiniz benzersiz bir koddur
-                </Text>
-              </View>
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowJoinModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>İptal</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.confirmButton}
-                  onPress={handleJoinNetwork}
-                  disabled={joinNetworkMutation.isPending}
-                >
-                  {joinNetworkMutation.isPending ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.confirmButtonText}>Katıl</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Ağa Katıl</Text>
+              <TouchableOpacity
+                onPress={() => setShowJoinModal(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
             </View>
-          </TouchableWithoutFeedback>
+
+            <Text style={styles.modalSubtitle}>
+              Katılmak istediğiniz ağın kodunu girin
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Ağ Kodu"
+              value={networkCode}
+              onChangeText={setNetworkCode}
+              maxLength={20}
+              autoCapitalize="characters"
+            />
+
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle" size={20} color={colors.primary} />
+              <Text style={styles.infoText}>
+                Ağ kodu, ağ sahibinden alabileceğiniz benzersiz bir koddur
+              </Text>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowJoinModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleJoinNetwork}
+                disabled={joinNetworkMutation.isPending}
+              >
+                {joinNetworkMutation.isPending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.confirmButtonText}>Katıl</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
-
-      {/* Edit Network Modal */}
-      <Modal
-        visible={showEditModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowEditModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Ağı Düzenle</Text>
-                <TouchableOpacity
-                  onPress={() => setShowEditModal(false)}
-                  style={styles.closeButton}
-                >
-                  <Ionicons name="close" size={24} color="#666" />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.modalSubtitle}>
-                Ağ bilgilerini güncelleyin
-              </Text>
-
-              <TextInput
-                style={styles.input}
-                placeholder="Ağ adını girin"
-                placeholderTextColor="#999"
-                value={editName}
-                onChangeText={setEditName}
-                maxLength={50}
-              />
-
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Ağ hakkında kısa bir açıklama yazın (opsiyonel)"
-                value={editDescription}
-                onChangeText={setEditDescription}
-                multiline
-                numberOfLines={3}
-                maxLength={200}
-              />
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowEditModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>İptal</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.confirmButton}
-                  onPress={handleUpdateNetwork}
-                  disabled={updateNetworkMutation.isPending}
-                >
-                  {updateNetworkMutation.isPending ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.confirmButtonText}>Güncelle</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </Modal>
-
-      {/* Toast Component */}
-      <Toast
-        visible={toast.visible}
-        message={toast.message}
-        type={toast.type}
-        onHide={hideToast}
-      />
     </View>
   );
 }
@@ -784,221 +396,64 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 24,
-    backgroundColor: colors.light.background,
+    paddingVertical: 20,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: "800",
+    fontWeight: "bold",
     color: colors.light.textPrimary,
-    marginBottom: 10,
-    letterSpacing: -0.5,
+    marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 16,
     color: colors.light.textSecondary,
-    lineHeight: 24,
-    fontWeight: "400",
   },
-  networksContainer: {
+  optionsContainer: {
     paddingHorizontal: 20,
-    gap: 16,
-    paddingBottom: 20,
+    gap: 20,
   },
-  networkGroup: {
+  optionCard: {
     backgroundColor: "#fff",
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 6,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.02)",
-  },
-  networkGroupHeader: {
-    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
-    justifyContent: "space-between",
-  },
-  chevronIcon: {
-    marginLeft: "auto",
-  },
-  networkGroupTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: colors.light.textPrimary,
-    marginLeft: 14,
-    letterSpacing: -0.3,
-  },
-  networkGroupContent: {
-    gap: 16,
-  },
-  networkInfo: {
-    gap: 8,
-  },
-  networkDescription: {
-    fontSize: 13,
-    color: colors.light.textSecondary,
-    lineHeight: 18,
-    marginBottom: 2,
-  },
-  networkStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  networkStatusText: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: "500",
-  },
-  actionButtons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  compactButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: "#fff",
-    gap: 6,
-  },
-  compactButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.primary,
-  },
-  joinButton: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  joinButtonText: {
-    color: "#fff",
-  },
-  actionButtonsContainer: {
-    paddingHorizontal: 20,
-    marginTop: 20,
-    gap: 12,
-  },
-  actionButtonx: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: "#fff",
-    gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.primary,
-    letterSpacing: -0.2,
-  },
-  joinActionButton: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  joinActionButtonText: {
-    color: "#fff",
-  },
-  adminActions: {
-    flexDirection: "row",
-    gap: 8,
-    marginRight: 8,
-  },
-  adminButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: colors.primary,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  deleteButton: {
-    backgroundColor: "#ff4757",
-    borderColor: "#ff4757",
-    shadowColor: "#ff4757",
-    shadowOpacity: 0.2,
+  optionIcon: {
+    marginBottom: 16,
   },
-
-  mainSectionTitle: {
-    fontSize: 22,
-    fontWeight: "700",
+  optionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
     color: colors.light.textPrimary,
-    marginBottom: 12,
-    marginTop: 4,
-    letterSpacing: -0.4,
+    marginBottom: 8,
   },
-  createNetworkButton: {
+  optionDescription: {
+    fontSize: 14,
+    color: colors.light.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  optionButton: {
+    width: "100%",
+  },
+  gradientButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 14,
-    paddingHorizontal: 20,
     borderRadius: 12,
-    gap: 6,
-    marginTop: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  createNetworkButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#fff",
-    letterSpacing: -0.1,
-  },
-  joinNetworkButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 14,
     gap: 8,
-    marginTop: 20,
-    shadowColor: "#667eea",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  joinNetworkButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
+  optionButtonText: {
     color: "#fff",
-    letterSpacing: -0.2,
-  },
-  joinedNetworksContainer: {
-    marginTop: 16,
+    fontSize: 16,
+    fontWeight: "600",
   },
   modalOverlay: {
     flex: 1,
@@ -1042,7 +497,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 16,
     backgroundColor: "#fafafa",
-    color: colors.light.textPrimary,
   },
   textArea: {
     height: 80,
@@ -1104,30 +558,32 @@ const styles = StyleSheet.create({
   },
   networkSection: {
     paddingHorizontal: 20,
-    marginTop: 16,
+    marginTop: 30,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "bold",
     color: colors.light.textPrimary,
-    marginBottom: 12,
-    letterSpacing: -0.3,
+    marginBottom: 16,
   },
   networkItem: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 14,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.03)",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  networkInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
   },
   networkDetails: {
     marginLeft: 12,
@@ -1138,56 +594,25 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.light.textPrimary,
     marginBottom: 4,
-    letterSpacing: -0.2,
+  },
+  networkDescription: {
+    fontSize: 14,
+    color: colors.light.textSecondary,
+    marginBottom: 4,
   },
   networkCode: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.primary,
-    fontWeight: "600",
-    letterSpacing: 0.5,
-  },
-  networkMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 4,
-  },
-  memberCount: {
-    fontSize: 13,
-    color: colors.light.textSecondary,
     fontWeight: "500",
-    backgroundColor: "rgba(0,0,0,0.04)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  codeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(0,0,0,0.02)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  shareButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: colors.primary,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
   },
   joinDate: {
     fontSize: 12,
     color: colors.light.textSecondary,
+  },
+  networkStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   creatorBadge: {
     backgroundColor: "#FFD700",
@@ -1198,7 +623,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-
+  memberBadge: {
+    backgroundColor: colors.primary + "20",
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
   noNetworksContainer: {
     alignItems: "center",
     paddingHorizontal: 40,
@@ -1217,275 +650,5 @@ const styles = StyleSheet.create({
     color: colors.light.textSecondary,
     textAlign: "center",
     lineHeight: 20,
-  },
-  networkCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.03)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  cardGradient: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 18,
-    justifyContent: "space-between",
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  cardIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.05)",
-    marginRight: 12,
-  },
-  cardTitleContainer: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.light.textPrimary,
-    marginBottom: 4,
-    letterSpacing: -0.2,
-  },
-  cardBadge: {
-    backgroundColor: "rgba(0,0,0,0.05)",
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  cardBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  cardActions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
-  },
-  actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "transparent",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  deleteActionButton: {
-    backgroundColor: "#ff4757",
-    borderColor: "#ff4757",
-    shadowColor: "#ff4757",
-    shadowOpacity: 0.2,
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: colors.light.textSecondary,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  codeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(0,0,0,0.02)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  codeText: {
-    fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 0.5,
-  },
-  emptyNetworkCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 32,
-    marginBottom: 12,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.02)",
-  },
-  emptyCardGradient: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyCardTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.light.textPrimary,
-    marginTop: 16,
-    marginBottom: 8,
-    letterSpacing: -0.3,
-  },
-  emptyCardDescription: {
-    fontSize: 14,
-    color: colors.light.textSecondary,
-    textAlign: "center",
-    lineHeight: 20,
-    fontWeight: "400",
-  },
-  createButtonGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 14,
-    gap: 8,
-  },
-  joinedNetworkCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.03)",
-  },
-  joinedCardGradient: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  joinedCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  joinedCardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.05)",
-    marginRight: 12,
-  },
-  joinedCardInfo: {
-    flex: 1,
-  },
-  joinedCardTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.light.textPrimary,
-    marginBottom: 4,
-    letterSpacing: -0.2,
-  },
-  joinedCardDescription: {
-    fontSize: 14,
-    color: colors.light.textSecondary,
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  joinedCardDate: {
-    fontSize: 12,
-    color: colors.light.textSecondary,
-  },
-  joinedCardStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  memberBadge: {
-    backgroundColor: colors.primary + "20",
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  memberBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.primary,
-  },
-  emptyJoinedCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 32,
-    marginBottom: 12,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.02)",
-  },
-  emptyJoinedGradient: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyJoinedTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.light.textPrimary,
-    marginTop: 16,
-    marginBottom: 8,
-    letterSpacing: -0.3,
-    textAlign: "center",
-  },
-  emptyJoinedDescription: {
-    fontSize: 14,
-    color: colors.light.textSecondary,
-    textAlign: "center",
-    lineHeight: 20,
-    fontWeight: "400",
-  },
-  joinButtonGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 14,
-    gap: 8,
   },
 });

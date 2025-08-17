@@ -1,4 +1,4 @@
-// NewsDetailScreen.tsx - Mevcut dosyanızı bu şekilde güncelleyin
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -15,48 +15,49 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { formatDistanceToNowStrict, isToday } from "date-fns";
 import { tr } from "date-fns/locale";
 import { colors } from "@/constants/colors";
-import { useNewsById } from "@/hooks/useNews"; // YENİ IMPORT
-import React from "react";
+import { useNewsById } from "@/hooks/useNews";
+import { useQueryClient } from "@tanstack/react-query";
+import { News } from "@/types/types";
+import ErrorView from "@/components/ErrorView";
+import LoadingView from "@/components/LoadingView";
 
 export default function NewsDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
 
-  // ESKİ useState'leri silin, yerine bu hook'u kullanın
+  // Cache'den veriyi bul
+  const cachedNews = useMemo(() => {
+    const allNews = queryClient.getQueryData(["news"]) as News[];
+    return allNews?.find((item) => item.id === id);
+  }, [id, queryClient]);
+
+  // Hook'u cache'deki veriyle başlat
   const {
     data: news,
     isLoading,
     error,
     refetch,
     isFetching,
-  } = useNewsById(id!);
+  } = useNewsById(id!, cachedNews);
+
+  // Cache'de veri varsa loading gösterme
+  const showLoading = isLoading && !cachedNews;
+  const showError = error && !news;
 
   // Loading durumu
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Haber yükleniyor...</Text>
-        </View>
-      </View>
-    );
+  if (showLoading) {
+    return <LoadingView />;
   }
 
   // Error durumu
-  if (error) {
+  if (showError) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>
-            {error instanceof Error ? error.message : "Bir hata oluştu"}
-          </Text>
-          <Pressable style={styles.retryButton} onPress={() => refetch()}>
-            <Text style={styles.retryButtonText}>Tekrar Dene</Text>
-          </Pressable>
-        </View>
-      </View>
+      <ErrorView
+        message={error instanceof Error ? error.message : undefined}
+        onRetry={refetch}
+      />
     );
   }
 
@@ -80,7 +81,6 @@ export default function NewsDetailScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
-        // YENİ: Pull to refresh
         refreshControl={
           <RefreshControl
             refreshing={isFetching}
@@ -90,17 +90,10 @@ export default function NewsDetailScreen() {
           />
         }
       >
+        {/* Header */}
         <View style={styles.headerRow}>
           <View style={styles.categoryRow}>
-            {(Array.isArray(news.category)
-              ? news.category
-              : typeof news.category === "string"
-              ? (news.category as string)
-                  .replace(/[{}]/g, "")
-                  .split(",")
-                  .map((cat: string) => cat.trim().replace(/"/g, ""))
-              : []
-            ).map((cat, idx) => (
+            {(news.category || []).map((cat, idx) => (
               <View key={idx} style={styles.chip}>
                 <Text style={styles.chipText}>{cat}</Text>
               </View>
@@ -123,7 +116,7 @@ export default function NewsDetailScreen() {
         <Text style={styles.title}>{news.title}</Text>
 
         {/* Kapak Görseli */}
-        {!!news.image && (
+        {news.image && (
           <Image
             source={{ uri: news.image }}
             style={styles.image}
@@ -131,45 +124,19 @@ export default function NewsDetailScreen() {
           />
         )}
 
-        {/* Tam İçerik */}
+        {/* İçerik */}
         <View style={styles.contentBox}>
           <Text style={styles.contentText}>{news.content}</Text>
         </View>
 
         {/* Kaynak ve Deprem Bilgisi */}
-        <View
-          style={{
-            marginHorizontal: 0,
-            marginBottom: 18,
-            marginTop: 2,
-            paddingHorizontal: 16,
-          }}
-        >
-          <Text
-            style={[
-              styles.sourceText,
-              { marginBottom: 8, textAlign: "left", paddingLeft: 10 },
-            ]}
-          >
-            Kaynak: {news.source}
-          </Text>
+        <View style={styles.footer}>
+          <Text style={styles.sourceText}>Kaynak: {news.source}</Text>
+
           {news.earthquake_id && (
             <Pressable
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: colors.primary,
-                borderRadius: 20,
-                paddingVertical: 8,
-                paddingHorizontal: 18,
-                shadowColor: colors.primary,
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.15,
-                shadowRadius: 4,
-                elevation: 2,
-                alignSelf: "flex-start",
-              }}
-              onPress={() => router.push("/earthquakes")}
+              style={styles.earthquakeButton}
+              onPress={() => router.push(`/earthquakes/${news.earthquake_id}`)}
             >
               <Entypo
                 name="info-with-circle"
@@ -177,24 +144,24 @@ export default function NewsDetailScreen() {
                 color="#fff"
                 style={{ marginRight: 8 }}
               />
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 15,
-                  fontFamily: "NotoSans-Bold",
-                }}
-              >
+              <Text style={styles.earthquakeButtonText}>
                 Deprem Bilgisine Git
               </Text>
             </Pressable>
           )}
         </View>
       </ScrollView>
+
+      {/* Arka planda güncelleme göstergesi */}
+      {isFetching && !showLoading && (
+        <View style={styles.refreshIndicator}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      )}
     </View>
   );
 }
 
-// Styles aynı kalıyor - hiçbir şey değiştirmeyin
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -229,12 +196,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
+    marginBottom: 10,
+  },
+  backButton: {
+    backgroundColor: colors.light.textSecondary,
   },
   retryButtonText: {
     color: "#ffffff",
     fontSize: 14,
     fontFamily: "NotoSans-Medium",
     fontWeight: "600",
+  },
+  refreshIndicator: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    padding: 8,
+    borderRadius: 20,
+    zIndex: 100,
   },
   headerRow: {
     flexDirection: "row",
@@ -247,6 +227,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
     flexWrap: "wrap",
+    flex: 1,
   },
   chip: {
     borderColor: colors.primary,
@@ -304,15 +285,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#f2f2f2",
     marginTop: 6,
   },
-  snippet: {
-    fontSize: 15,
-    color: "#444",
-    marginHorizontal: 35,
-    marginBottom: 10,
-    marginTop: 2,
-    fontWeight: "500",
-    fontFamily: "NotoSans-Medium",
-  },
   contentBox: {
     marginHorizontal: 16,
     backgroundColor: "#f8f8f8",
@@ -327,10 +299,38 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontFamily: "NotoSans-Regular",
   },
+  footer: {
+    marginHorizontal: 0,
+    marginBottom: 18,
+    marginTop: 2,
+    paddingHorizontal: 16,
+  },
   sourceText: {
     fontSize: 13,
     color: colors.light.textPrimary,
     fontStyle: "italic",
     fontFamily: "NotoSans-Regular",
+    marginBottom: 8,
+    textAlign: "left",
+    paddingLeft: 10,
+  },
+  earthquakeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+    alignSelf: "flex-start",
+  },
+  earthquakeButtonText: {
+    color: "#fff",
+    fontSize: 15,
+    fontFamily: "NotoSans-Bold",
   },
 });

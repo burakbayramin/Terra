@@ -32,6 +32,8 @@ const generateUserId = (email: string): string => {
   return `@${cleanEmail}`;
 };
 
+//
+
 export const useAuth = () => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
@@ -289,53 +291,4 @@ const getAuthErrorMessage = (error: AuthError): string => {
       console.error('Auth error:', error);
       return error.message || 'Bilinmeyen bir hata oluştu';
   }
-};
-
-// Profil bilgilerini almak için ek hook
-export const useProfile = () => {
-  const { user, isAuthenticated } = useAuth();
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isAuthenticated || !user) {
-      setProfile(null);
-      return;
-    }
-
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          console.error('Profile fetch error:', error);
-          return;
-        }
-
-        setProfile(data);
-      } catch (error) {
-        console.error('Profile fetch error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [user, isAuthenticated]);
-
-  return {
-    profile,
-    loading,
-    refetch: () => {
-      if (user) {
-        // Re-fetch logic here if needed
-      }
-    },
-  };
 };

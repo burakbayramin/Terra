@@ -1,20 +1,17 @@
 import { Slot } from "expo-router";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { prefetchCriticalData, setupBackgroundRefresh } from "@/utils/prefetchData";
+import NetInfo from '@react-native-community/netinfo';
 
-//TODO color theme dark-light theme secime eklenecek ThemeProvider
 SplashScreen.preventAutoHideAsync();
 
-// SplashScreen.setOptions({
-//   duration: 1000,
-//   fade: true,
-// });
-
 export default function RootLayout() {
+  const [isAppReady, setIsAppReady] = useState(false);
   const [loaded] = useFonts({
     "NotoSans-Bold": require("@/assets/fonts/NotoSans-Bold.ttf"),
     "NotoSans-Regular": require("@/assets/fonts/NotoSans-Regular.ttf"),
@@ -23,16 +20,48 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    const prepareApp = async () => {
+      try {
+        // Network durumunu kontrol et
+        const netInfo = await NetInfo.fetch();
+        
+        if (netInfo.isConnected) {
+          // Online ise verileri prefetch et
+          await prefetchCriticalData();
+        }
+        // Offline olsa bile cache'deki verilerle devam et
+        
+      } catch (error) {
+        console.error('App hazırlama hatası:', error);
+        // Hata olsa bile uygulamayı aç
+      } finally {
+        setIsAppReady(true);
+      }
+    };
+
     if (loaded) {
-      SplashScreen.hideAsync();
+      prepareApp();
     }
   }, [loaded]);
 
-  if (!loaded) {
+  useEffect(() => {
+    if (loaded && isAppReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, isAppReady]);
+
+  // Background refresh'i başlat
+  useEffect(() => {
+    if (isAppReady) {
+      const cleanup = setupBackgroundRefresh();
+      return cleanup;
+    }
+  }, [isAppReady]);
+
+  if (!loaded || !isAppReady) {
     return null;
   }
 
-  // TODO theme provider eklenebilir
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryProvider>

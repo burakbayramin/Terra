@@ -1,3 +1,6 @@
+import { formatDate } from "@/utils/earthquakeUtils";
+import { getCategoryColor } from "@/utils/generalUtils";
+import { getScoreColor } from "@/utils/userUtils";
 import {
   View,
   Text,
@@ -12,12 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Divider } from "react-native-paper";
-import {
-  AntDesign,
-  Feather,
-  Ionicons,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useSharedValue } from "react-native-reanimated";
@@ -30,114 +28,44 @@ import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
 import EmergencyButton from "@/components/EmergencyButton";
 import EarthquakeRiskAnalyzer from "@/components/EarthquakeRiskAnalyzer";
-import PremiumFeatureGate from "@/components/PremiumFeatureGate";
+// import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useEarthquakes } from "@/hooks/useEarthquakes";
-import { useLocation } from "@/hooks/useLocation";
+// import { useLocation } from "@/hooks/useLocation";
 import { useSafetyScore, useProfile } from "@/hooks/useProfile";
 import { useNews } from "@/hooks/useNews";
-import { useScrollToTop } from "@/hooks/useScrollToTop";
-import { usePremium } from "@/hooks/usePremium";
-import { eventEmitter } from "@/lib/eventEmitter";
-
-// Yeni düzenlenmiş görev verisi (sabit)
-const taskData = [
-  {
-    id: "1",
-    title: "Profil Bilgilerini Tamamla",
-    snippet: "Ad, soyad ve iletişim bilgilerini eksiksiz şekilde doldur.",
-    description:
-      "Daha güvenli ve kişiselleştirilmiş bir deneyim sunabilmemiz için bu bilgiler bize yardımcı olur.",
-    icon: "person-circle",
-    category: "profile",
-  },
-  {
-    id: "2",
-    title: "Deprem Risk Eğitimini Tamamla",
-    snippet: "Profil sayfandaki eğitim modülünü baştan sona tamamla.",
-    description:
-      "Deprem öncesi, sırasında ve sonrasında ne yapman gerektiğini öğrenerek kendini ve sevdiklerini koruyabilirsin.",
-    icon: "school",
-    category: "education",
-  },
-  {
-    id: "3",
-    title: "Deprem Risk Değerlendirmesini Doldur",
-    snippet: "Yaşadığın konum ve evin özelliklerine göre risk analizini yap.",
-    description:
-      "Böylece sana özel öneriler sunabilir, daha doğru önlemler almanı sağlayabiliriz.",
-    icon: "analytics",
-    category: "safety",
-  },
-  {
-    id: "4",
-    title: "Aileni ve Arkadaşlarını Davet Et",
-    snippet: "Sevdiklerini uygulamaya davet et ve onları da bilgilendir.",
-    description:
-      "Afetlere karşı hazırlıklı olmak sadece bireysel değil, toplumsal bir sorumluluk. Hep birlikte daha güçlü oluruz.",
-    icon: "people",
-    category: "community",
-  },
-  {
-    id: "5",
-    title: "Uygulamayı Değerlendir",
-    snippet:
-      "Uygulama hakkında düşüncelerini paylaş: Neler işe yaradı, neleri iyileştirebiliriz?",
-    description:
-      "Senin geri bildiriminle daha iyi bir deneyim sunabilir, ihtiyaca yönelik geliştirmeler yapabiliriz.",
-    icon: "star",
-    category: "feedback",
-  },
-];
+// import { usePremium } from "@/hooks/usePremium";
+import { TASK_DATA } from "@/constants/taskConstants";
 
 const { width } = Dimensions.get("window");
-const CARD_HEIGHT = width * 0.6; // Adjust height based on width for better responsiveness
+const CARD_HEIGHT = width * 0.6;
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const { scrollViewRef, scrollToTop } = useScrollToTop();
-  const {
-    getAndSaveLocation,
-    hasPermission,
-    requestLocationPermission,
-    authLoading,
-  } = useLocation();
+
+  // const {
+  //   getAndSaveLocation,
+  //   hasPermission,
+  //   requestLocationPermission,
+  //   authLoading,
+  // } = useLocation();
+
   const [activeSegment, setActiveSegment] = useState<
     "afad" | "kandilli" | "usgs" | "iris" | "emsc"
   >("kandilli");
   const carouselRef = useRef<ICarouselInstance | null>(null);
   const progress = useSharedValue(0);
-
-  // Güvenlik skorunu hook'tan al
   const { data: securityScore = 0, isLoading: isLoadingSafetyScore } =
     useSafetyScore(user?.id || "");
-
-  // Profil bilgilerini hook'tan al
   const { data: profileData } = useProfile(user?.id || "");
-
-  // Deprem verileri
-  const { data: earthquakes = [], isLoading: isLoadingEarthquakes } = useEarthquakes();
-
-  // Debug: Log available providers (only in development)
-  useEffect(() => {
-    if (__DEV__ && earthquakes.length > 0) {
-      const providers = [...new Set(earthquakes.map(eq => eq.provider))];
-      console.log('Available providers:', providers);
-      console.log('Provider counts:', providers.map(provider => ({
-        provider,
-        count: earthquakes.filter(eq => eq.provider === provider).length
-      })));
-    }
-  }, [earthquakes]);
-
-  // Haber verileri
+  const { data: earthquakes = [], isLoading: isLoadingEarthquakes } =
+    useEarthquakes();
   const { data: news = [], isLoading: isLoadingNews } = useNews();
 
-  // Kullanıcının hissettiği depremler
   const { data: userFeltEarthquakes, isLoading: isLoadingFeltEarthquakes } =
     useQuery({
       queryKey: ["user-felt-earthquakes", user?.id],
@@ -222,39 +150,13 @@ export default function HomeScreen() {
     staleTime: 5 * 60 * 1000, // 5 dakika fresh
   });
 
-  // Güvenlik skoru renk fonksiyonu
-  const getScoreColor = (score: number): string => {
-    if (score >= 85) return "#27ae60"; // Koyu Yeşil
-    if (score >= 70) return "#2ecc71"; // Açık Yeşil
-    if (score >= 55) return "#f1c40f"; // Sarı
-    if (score >= 40) return "#f39c12"; // Koyu Sarı/Altın
-    if (score >= 25) return "#e67e22"; // Turuncu
-    if (score >= 10) return "#e74c3c"; // Kırmızı
-    return "#c0392b"; // Koyu Kırmızı
-  };
-
-  // Görevler için state: visibleTasks ve nextTaskIndex
-  const [visibleTasks, setVisibleTasks] = useState(() => taskData.slice(0, 4));
+  const [visibleTasks, setVisibleTasks] = useState(() => TASK_DATA.slice(0, 4));
   const [nextTaskIndex, setNextTaskIndex] = useState(4);
-
-  // Format date function
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("tr-TR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-
 
   const { sendEmergencySMS, loading } = EmergencyButton();
 
   // Premium hook'u
-  const { hasAccessToFeature, getCurrentLevel, isPremium } = usePremium();
+  // const { hasAccessToFeature, getCurrentLevel, isPremium } = usePremium();
 
   // AI sorulari için örnek veriler
   const aiQuestions = [
@@ -265,118 +167,63 @@ export default function HomeScreen() {
     { id: "5", question: "Afet sonrası iletişim nasıl sağlanır?" },
   ];
 
-  // ...
-
-  // Yardımcı fonksiyonlar
-  const getCategoryColor = (category: string) => {
-    const categoryColors = {
-      profile: "#3498db",
-      preparation: "#e74c3c",
-      education: "#f39c12",
-      emergency: "#e67e22",
-      location: "#9b59b6",
-      safety: "#27ae60",
-      community: "#8e44ad",
-      feedback: "#16a085",
-    };
-    return (
-      (categoryColors as Record<string, string>)[category] || colors.primary
-    );
-  };
-
-  const getCategoryName = (category: string) => {
-    const categoryNames = {
-      profile: "Profil",
-      preparation: "Hazırlık",
-      education: "Eğitim",
-      emergency: "Acil Durum",
-      location: "Konum",
-      safety: "Güvenlik",
-      community: "Topluluk",
-      feedback: "Geri Bildirim",
-    };
-    return (categoryNames as Record<string, string>)[category] || "Genel";
-  };
-
-  // Bildirim ayarları için state'ler (diğer state'lerin yanına ekleyin)
   const [magnitudeNotification, setMagnitudeNotification] = useState(true);
   const [selectedMagnitude, setSelectedMagnitude] = useState("4.0");
   const [locationNotification, setLocationNotification] = useState(true);
   const [selectedDistance, setSelectedDistance] = useState("50");
   const [criticalNotification, setCriticalNotification] = useState(true);
 
-  // Sayfa yüklendiğinde kullanıcının konumunu al ve kaydet
-  useEffect(() => {
-    const handleLocationOnLoad = async () => {
-      // Auth loading durumunu bekle
-      if (authLoading) {
-        console.log("Auth still loading, waiting...");
-        return;
-      }
+  // useEffect(() => {
+  //   const handleLocationOnLoad = async () => {
+  //     if (authLoading) {
+  //       console.log("Auth still loading, waiting...");
+  //       return;
+  //     }
 
-      if (user) {
-        try {
-          // Konum iznini kontrol et veya iste
-          if (!hasPermission) {
-            // Kullanıcıya konum izni hakkında bilgi ver
-            Alert.alert(
-              "Konum İzni",
-              "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar.",
-              [
-                {
-                  text: "İptal",
-                  style: "cancel",
-                },
-                {
-                  text: "İzin Ver",
-                  onPress: async () => {
-                    const permissionGranted = await requestLocationPermission();
-                    if (permissionGranted) {
-                      const success = await getAndSaveLocation();
-                      if (success) {
-                        console.log("Konum başarıyla kaydedildi");
-                      }
-                    }
-                  },
-                },
-              ]
-            );
-          } else {
-            // İzin zaten varsa konumu al ve kaydet
-            const success = await getAndSaveLocation();
-            if (success) {
-              console.log("Konum başarıyla kaydedildi");
-            } else {
-              console.log("Konum kaydedilemedi");
-            }
-          }
-        } catch (error) {
-          console.error("Konum alma hatası:", error);
-        }
-      }
-    };
+  //     if (user) {
+  //       try {
+  //         if (!hasPermission) {
+  //           Alert.alert(
+  //             "Konum İzni",
+  //             "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar.",
+  //             [
+  //               {
+  //                 text: "İptal",
+  //                 style: "cancel",
+  //               },
+  //               {
+  //                 text: "İzin Ver",
+  //                 onPress: async () => {
+  //                   const permissionGranted = await requestLocationPermission();
+  //                   if (permissionGranted) {
+  //                     const success = await getAndSaveLocation();
+  //                     if (success) {
+  //                       console.log("Konum başarıyla kaydedildi");
+  //                     }
+  //                   }
+  //                 },
+  //               },
+  //             ]
+  //           );
+  //         } else {
+  //           const success = await getAndSaveLocation();
+  //           if (success) {
+  //             console.log("Konum başarıyla kaydedildi");
+  //           } else {
+  //             console.log("Konum kaydedilemedi");
+  //           }
+  //         }
+  //       } catch (error) {
+  //         console.error("Konum alma hatası:", error);
+  //       }
+  //     }
+  //   };
 
-    handleLocationOnLoad();
-  }, [user, authLoading]); // authLoading'i de dependency'e ekle
-
-  // Handle double-tap to scroll to top
-  useEffect(() => {
-    const handleHomeDoubleTap = () => {
-      scrollToTop();
-    };
-
-    // Listen for home double-tap event
-    eventEmitter.on('homeDoubleTap', handleHomeDoubleTap);
-
-    return () => {
-      eventEmitter.off('homeDoubleTap', handleHomeDoubleTap);
-    };
-  }, [scrollToTop]);
-
+  //   handleLocationOnLoad();
+  // }, [user, authLoading]); 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
-        ref={scrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom }}
@@ -409,10 +256,8 @@ export default function HomeScreen() {
               activeOpacity={0.7}
               onPress={() => {
                 if (profileData?.has_completed_safety_form) {
-                  // Show results of the completed form
                   router.push("/(protected)/risk-form?showResults=true");
                 } else {
-                  // Take the form for the first time
                   router.push("/(protected)/risk-form");
                 }
               }}
@@ -604,11 +449,13 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <Divider style={styles.divider} />
-          
+
           {/* Deprem Risk Analizi Modülü - Premium Özellik */}
-          <PremiumFeatureGate featureId="earthquake-risk-analysis">
+          {/* <PremiumFeatureGate featureId="earthquake-risk-analysis">
             <View style={styles.riskAnalysisContainer}>
-              <Text style={styles.sectionTitle}>Konumuna Göre Deprem Riskini Öğren</Text>
+              <Text style={styles.sectionTitle}>
+                Konumuna Göre Deprem Riskini Öğren
+              </Text>
               <View style={styles.riskAnalysisCard}>
                 <LinearGradient
                   colors={[colors.gradientOne, colors.gradientTwo]}
@@ -616,24 +463,37 @@ export default function HomeScreen() {
                 >
                   <View style={styles.riskAnalysisContent}>
                     <View style={styles.riskAnalysisHeader}>
-                      <MaterialCommunityIcons name="map-marker-alert" size={32} color="#fff" />
-                      <Text style={styles.riskAnalysisTitle}>Deprem Risk Analizi</Text>
+                      <MaterialCommunityIcons
+                        name="map-marker-alert"
+                        size={32}
+                        color="#fff"
+                      />
+                      <Text style={styles.riskAnalysisTitle}>
+                        Deprem Risk Analizi
+                      </Text>
                     </View>
                     <Text style={styles.riskAnalysisDescription}>
-                      İl, ilçe ve mahalle seçerek konumunuza özel deprem risk değerlendirmesi yapın
+                      İl, ilçe ve mahalle seçerek konumunuza özel deprem risk
+                      değerlendirmesi yapın
                     </Text>
                     <View style={styles.riskAnalysisFeatures}>
                       <View style={styles.riskAnalysisFeature}>
                         <Ionicons name="location" size={16} color="#fff" />
-                        <Text style={styles.riskAnalysisFeatureText}>İl, İlçe, Mahalle Seçimi</Text>
+                        <Text style={styles.riskAnalysisFeatureText}>
+                          İl, İlçe, Mahalle Seçimi
+                        </Text>
                       </View>
                       <View style={styles.riskAnalysisFeature}>
                         <Ionicons name="search" size={16} color="#fff" />
-                        <Text style={styles.riskAnalysisFeatureText}>Google Maps Entegrasyonu</Text>
+                        <Text style={styles.riskAnalysisFeatureText}>
+                          Google Maps Entegrasyonu
+                        </Text>
                       </View>
                       <View style={styles.riskAnalysisFeature}>
                         <Ionicons name="analytics" size={16} color="#fff" />
-                        <Text style={styles.riskAnalysisFeatureText}>Detaylı Risk Analizi</Text>
+                        <Text style={styles.riskAnalysisFeatureText}>
+                          Detaylı Risk Analizi
+                        </Text>
                       </View>
                     </View>
                   </View>
@@ -643,17 +503,23 @@ export default function HomeScreen() {
                   activeOpacity={0.8}
                   onPress={() => {
                     // Navigate to risk analyzer screen
-                    router.push('/(protected)/earthquake-risk-analyzer');
+                    router.push("/(protected)/earthquake-risk-analyzer");
                   }}
                 >
-                  <Text style={styles.riskAnalysisButtonText}>Risk Analizi Yap</Text>
-                  <Ionicons name="arrow-forward" size={20} color={colors.primary} />
+                  <Text style={styles.riskAnalysisButtonText}>
+                    Risk Analizi Yap
+                  </Text>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={20}
+                    color={colors.primary}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
-          </PremiumFeatureGate>
+          </PremiumFeatureGate> */}
 
-          <Divider style={styles.divider} />
+          {/* <Divider style={styles.divider} /> */}
           <View style={styles.aiQuestionsSection}>
             <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>
               AI'a Sor
@@ -1201,7 +1067,10 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            <PremiumFeatureGate featureId="smart-notification-engine" compact={true}>
+            {/* <PremiumFeatureGate
+              featureId="smart-notification-engine"
+              compact={true}
+            >
               <TouchableOpacity
                 style={styles.detailedSettingsButton}
                 onPress={() => {
@@ -1229,18 +1098,14 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                     </View>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={20}
-                      color="#fff"
-                    />
+                    <Ionicons name="chevron-forward" size={20} color="#fff" />
                   </View>
                 </LinearGradient>
               </TouchableOpacity>
-            </PremiumFeatureGate>
+            </PremiumFeatureGate> */}
           </View>
 
-          <Divider style={styles.divider} />
+          {/* <Divider style={styles.divider} /> */}
 
           {/* Yeni Görevler ve Bilgilendirme Bölümü */}
           <View style={styles.tasksSection}>
@@ -1261,8 +1126,8 @@ export default function HomeScreen() {
                     setVisibleTasks((prev) => {
                       const newTasks = prev.filter((t) => t.id !== task.id);
                       // Sıradaki görev var mı?
-                      if (nextTaskIndex < taskData.length) {
-                        newTasks.push(taskData[nextTaskIndex]);
+                      if (nextTaskIndex < TASK_DATA.length) {
+                        newTasks.push(TASK_DATA[nextTaskIndex]);
                         setNextTaskIndex((idx) => idx + 1);
                       }
                       return newTasks;
@@ -1391,7 +1256,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={styles.premiumCTAButton}
               activeOpacity={0.8}
-              onPress={() => router.push('/(protected)/premium-packages')}
+              onPress={() => router.push("/(protected)/premium-packages")}
             >
               <View style={styles.premiumCTAContent}>
                 <View style={styles.premiumCTAHeader}>
@@ -1402,20 +1267,27 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <Text style={styles.premiumCTASubtitle}>
-                  Yakında çıkacak özellikleri premium üyelerimizle birlikte ilk siz deneyimleyin
+                  Yakında çıkacak özellikleri premium üyelerimizle birlikte ilk
+                  siz deneyimleyin
                 </Text>
                 <View style={styles.premiumCTAFeatures}>
                   <View style={styles.premiumCTAFeature}>
                     <Ionicons name="flash" size={16} color="#4CAF50" />
-                    <Text style={styles.premiumCTAFeatureText}>Erken Uyarı Sistemi</Text>
+                    <Text style={styles.premiumCTAFeatureText}>
+                      Erken Uyarı Sistemi
+                    </Text>
                   </View>
                   <View style={styles.premiumCTAFeature}>
                     <Ionicons name="people" size={16} color="#4CAF50" />
-                    <Text style={styles.premiumCTAFeatureText}>Topluluk Özellikleri</Text>
+                    <Text style={styles.premiumCTAFeatureText}>
+                      Topluluk Özellikleri
+                    </Text>
                   </View>
                   <View style={styles.premiumCTAFeature}>
                     <Ionicons name="trending-up" size={16} color="#4CAF50" />
-                    <Text style={styles.premiumCTAFeatureText}>Gelişmiş Raporlar</Text>
+                    <Text style={styles.premiumCTAFeatureText}>
+                      Gelişmiş Raporlar
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -1431,7 +1303,9 @@ export default function HomeScreen() {
             {isLoadingNews ? (
               <View style={styles.newsLoading}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={styles.newsLoadingText}>Haberler yükleniyor...</Text>
+                <Text style={styles.newsLoadingText}>
+                  Haberler yükleniyor...
+                </Text>
               </View>
             ) : news.length > 0 ? (
               <FlashList
@@ -1557,7 +1431,9 @@ export default function HomeScreen() {
                   <TouchableOpacity
                     style={styles.fullWidthSupportButton}
                     activeOpacity={0.7}
-                    onPress={() => router.push('/(protected)/developer-support')}
+                    onPress={() =>
+                      router.push("/(protected)/developer-support")
+                    }
                   >
                     <LinearGradient
                       colors={["#fff", "#f8f9fa"]}
@@ -1617,7 +1493,7 @@ export default function HomeScreen() {
                     style={styles.fullWidthSupportButton}
                     activeOpacity={0.7}
                     onPress={() => {
-                      Linking.openURL('mailto:info@terraapp.io');
+                      Linking.openURL("mailto:info@terraapp.io");
                     }}
                   >
                     <LinearGradient
@@ -1772,7 +1648,7 @@ const styles = StyleSheet.create({
   detailedSettingsButton: {
     marginTop: 8,
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -1797,9 +1673,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
   detailedSettingsTextContainer: {

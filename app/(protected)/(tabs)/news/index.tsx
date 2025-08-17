@@ -7,65 +7,50 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/constants/colors";
 import { useNews } from "@/hooks/useNews";
+import LoadingView from "@/components/LoadingView";
+import ErrorView from "@/components/ErrorView";
 
 export default function NewsScreen() {
   const [activeSegment, setActiveSegment] = useState<
     "latest" | "experts" | "analysis"
   >("latest");
 
-  const { data: news = [], isLoading, error, refetch, isFetching } = useNews();
+  const {
+    data: news = [],
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+    isRefetching, // Pull to refresh için
+  } = useNews();
+
   const insets = useSafeAreaInsets();
 
+  // ÖNEMLİ: Sadece veri yoksa ve yükleniyorsa loading göster
+  const showLoading = isLoading && news.length === 0;
+  const showError = error && news.length === 0;
+
   const filteredNews = news.filter((item) => {
-    const categories = Array.isArray(item.category) 
-      ? item.category 
-      : typeof item.category === 'string' 
-        ? (item.category as string).replace(/[{}]/g, '').split(',').map((cat: string) => cat.trim().replace(/"/g, ''))
-        : [];
-    
-    if (activeSegment === "latest") return categories.includes("latest");
-    if (activeSegment === "experts") return categories.includes("experts");
-    if (activeSegment === "analysis") return categories.includes("analysis");
-    return true;
+    return item.category?.includes(activeSegment) || false;
   });
 
-  // Loading durumu için UI
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.mainHeader}>
-          <Text style={styles.inboxText}>Haberler</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Haberler yükleniyor...</Text>
-        </View>
-      </View>
-    );
+  // Loading durumu - SADECE veri yoksa göster
+  if (showLoading) {
+    return <LoadingView />;
   }
 
-  // Error durumu için UI
-  if (error) {
+  // Error durumu - SADECE veri yoksa göster
+  if (showError) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.mainHeader}>
-          <Text style={styles.inboxText}>Haberler</Text>
-        </View>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>
-            {error instanceof Error ? error.message : "Bir hata oluştu"}
-          </Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => refetch()}
-          >
-            <Text style={styles.retryButtonText}>Tekrar Dene</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ErrorView
+        message={error instanceof Error ? error.message : undefined}
+        onRetry={refetch}
+      />
     );
   }
 
@@ -73,7 +58,14 @@ export default function NewsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.mainHeader}>
         <Text style={styles.inboxText}>Haberler</Text>
+        {/* Opsiyonel: Arka planda güncelleme göstergesi */}
+        {isFetching && !isRefetching && (
+          <View style={styles.backgroundRefreshIndicator}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        )}
       </View>
+
       <View style={styles.segmentedControl}>
         <TouchableOpacity
           style={[
@@ -88,7 +80,7 @@ export default function NewsScreen() {
               activeSegment === "latest" && styles.activeSegmentText,
             ]}
           >
-            <Text>Güncel Haberler</Text>
+            Güncel Haberler
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -104,7 +96,7 @@ export default function NewsScreen() {
               activeSegment === "analysis" && styles.activeSegmentText,
             ]}
           >
-            <Text>Analizler</Text>
+            Analizler
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -120,25 +112,34 @@ export default function NewsScreen() {
               activeSegment === "experts" && styles.activeSegmentText,
             ]}
           >
-            <Text>Uzman Görüşleri</Text>
+            Uzman Görüşleri
           </Text>
         </TouchableOpacity>
       </View>
-      <FlashList
-        data={filteredNews}
-        renderItem={({ item }) => <NewsListItem news={item} />}
-        estimatedItemSize={365}
-        contentContainerStyle={{ paddingBottom: insets.bottom }}
-        // YENİ: Pull to refresh
-        refreshControl={
-          <RefreshControl
-            refreshing={isFetching}
-            onRefresh={() => refetch()}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
-        }
-      />
+
+      {/* Veri varsa göster, yoksa boş mesaj */}
+      {filteredNews.length > 0 ? (
+        <FlashList
+          data={filteredNews}
+          renderItem={({ item }) => <NewsListItem news={item} />}
+          estimatedItemSize={365}
+          contentContainerStyle={{ paddingBottom: insets.bottom }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching} // isFetching yerine isRefetching
+              onRefresh={() => refetch()}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>
+            Bu kategoride henüz haber bulunmuyor
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -195,39 +196,22 @@ const styles = StyleSheet.create({
     fontFamily: "NotoSans-Medium",
     fontWeight: "600",
   },
-  loadingContainer: {
+  emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
   },
-  loadingText: {
+  emptyText: {
     fontSize: 16,
     color: colors.light.textSecondary,
     fontFamily: "NotoSans-Medium",
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: "#ff0000",
-    fontFamily: "NotoSans-Medium",
     textAlign: "center",
-    marginBottom: 20,
   },
-  retryButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontFamily: "NotoSans-Medium",
-    fontWeight: "600",
+  backgroundRefreshIndicator: {
+    position: "absolute",
+    right: 15,
+    top: "50%",
+    transform: [{ translateY: -10 }],
   },
 });

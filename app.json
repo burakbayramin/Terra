@@ -38,7 +38,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar."
         }
-      ]
+      ],
+      "@maplibre/maplibre-react-native"
     ]
   }
 }

@@ -1,0 +1,270 @@
+[
+  {
+    "name": "Eğitim Durumu",
+    "questions": [
+      {
+        "question": "Daha önce deprem eğitimi aldınız mı?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -5 }
+        ]
+      },
+      {
+        "question": "Deprem tatbikatına hiç katıldınız mı?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -3 }
+        ]
+      },
+      {
+        "question": "Deprem öncesi, anı ve sonrası davranışları biliyor musunuz?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -5 },
+          { "label": "Emin değilim", "scoreChange": -5 }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Bina ve Mahalli Durum",
+    "questions": [
+      {
+        "question": "Binanız ne zaman yapıldı?",
+        "options": [
+          { "label": "2000 sonrası", "scoreChange": 0 },
+          { "label": "2000 öncesi", "scoreChange": -7 }
+        ]
+      },
+      {
+        "question": "Binanızda gözle görülür çatlaklar var mı?",
+        "options": [
+          { "label": "Hayır", "scoreChange": 0 },
+          { "label": "Evet", "scoreChange": -10 }
+        ]
+      },
+      {
+        "question": "Zemin etüdü yapılmış mı?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -5 },
+          { "label": "Bilmiyorum", "scoreChange": -5 }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Konum",
+    "questions": [
+      {
+        "question": "Aktif fay hattına 5 km'den daha yakın bir bölgede misiniz?",
+        "options": [
+          { "label": "Hayır", "scoreChange": 0 },
+          { "label": "Evet", "scoreChange": -5 },
+          { "label": "Bilmiyorum", "scoreChange": -5 }
+        ]
+      },
+      {
+        "question": "Yaşadığınız bölge sıvılaşma riski taşıyor mu?",
+        "options": [
+          { "label": "Hayır", "scoreChange": -3 },
+          { "label": "Evet", "scoreChange": -5 },
+          { "label": "Bilmiyorum", "scoreChange": -3 }
+        ]
+      },
+      {
+        "question": "Binanızın çevresinde yüksek riskli yapılar var mı?",
+        "options": [
+          { "label": "Hayır", "scoreChange": 0 },
+          { "label": "Evet", "scoreChange": -3 }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Acil Durum Çantası",
+    "questions": [
+      {
+        "question": "Hazırda bir acil durum çantanız var mı?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -5 }
+        ]
+      },
+      {
+        "question": "Çantanızda en az 3 günlük su ve gıda var mı?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -3 },
+          { "label": "Emin değilim", "scoreChange": -3 }
+        ]
+      },
+      {
+        "question": "Çantanızda kimlik fotokopisi ve önemli belgeler mevcut mu?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -2 }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Acil Durum Planı",
+    "questions": [
+      {
+        "question": "Aile bireyleriyle belirlenmiş bir toplanma planınız var mı?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -5 }
+        ]
+      },
+      {
+        "question": "Acil durumda ulaşacağınız kişilerin iletişim bilgileri elinizde mevcut mu?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -3 }
+        ]
+      },
+      {
+        "question": "Apartman/acil çıkış planı görülebilir yerde mi?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -2 }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Acil Toplanma Alanı",
+    "questions": [
+      {
+        "question": "Size en yakın toplanma alanını biliyor musunuz?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -5 }
+        ]
+      },
+      {
+        "question": "O alana yürüyerek ulaşmanız ne kadar sürer?",
+        "options": [
+          { "label": "5-10 dakika", "scoreChange": 0 },
+          { "label": "10 dakika üzeri", "scoreChange": -2 }
+        ]
+      },
+      {
+        "question": "Toplanma alanı düzenli mi, güvenli mi?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -3 },
+          { "label": "Bilmiyorum", "scoreChange": -3 }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Deprem Anı Davranış",
+    "questions": [
+      {
+        "question": "Deprem anında 'çök-kapan-tutun' davranışını uygulayabilir misiniz?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -5 }
+        ]
+      },
+      {
+        "question": "Sarsıntı bitmeden dışarı çıkmam gerektiğini düşünüyorum.",
+        "options": [
+          { "label": "Katılmıyorum", "scoreChange": 0 },
+          { "label": "Katılıyorum", "scoreChange": -5 }
+        ]
+      },
+      {
+        "question": "Deprem sırasında ilk yaptığınız şey nedir?",
+        "options": [
+          { "label": "Güvenli pozisyon almak", "scoreChange": 0 },
+          { "label": "Pencereden bakmak", "scoreChange": -5 },
+          { "label": "Koşmak", "scoreChange": -5 }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Ağır Eşyalar Sabit mi?",
+    "questions": [
+      {
+        "question": "Evdeki büyük mobilyalar (dolap, kitaplık vb.) sabitlenmiş mi?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -5 }
+        ]
+      },
+      {
+        "question": "Üst raflarda ağır ve cam eşyalar var mı?",
+        "options": [
+          { "label": "Hayır", "scoreChange": 0 },
+          { "label": "Evet", "scoreChange": -3 }
+        ]
+      },
+      {
+        "question": "Yatakların çevresinde devrilebilecek eşyalar var mı?",
+        "options": [
+          { "label": "Hayır", "scoreChange": 0 },
+          { "label": "Evet", "scoreChange": -3 }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Fay Hattına Mesafe",
+    "questions": [
+      {
+        "question": "Eviniz fay hattına 5 km'den daha yakın mı?",
+        "options": [
+          { "label": "Hayır", "scoreChange": 0 },
+          { "label": "Evet", "scoreChange": -5 }
+        ]
+      },
+      {
+        "question": "Konumunuza özel riskli fay hattı bilgisine sahip misiniz?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -2 }
+        ]
+      },
+      {
+        "question": "Fay hattı bölgesinde yapılaşma sınırlı mı?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -3 },
+          { "label": "Bilmiyorum", "scoreChange": -3 }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "İlk Yardım Eğitimi",
+    "questions": [
+      {
+        "question": "Temel ilk yardım eğitimi aldınız mı?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -5 }
+        ]
+      },
+      {
+        "question": "Ailede ilk yardım bilgisi olan biri var mı?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -3 }
+        ]
+      },
+      {
+        "question": "İlk yardım çantanız var mı?",
+        "options": [
+          { "label": "Evet", "scoreChange": 0 },
+          { "label": "Hayır", "scoreChange": -2 }
+        ]
+      }
+    ]
+  }
+]

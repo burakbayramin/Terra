@@ -15,7 +15,7 @@ import { colors } from "../../../constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { Divider } from "react-native-paper";
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { usePremium } from "@/hooks/usePremium";
+// import { usePremium } from "@/hooks/usePremium";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
@@ -71,7 +71,7 @@ const genAI = new GoogleGenerativeAI("AIzaSyA9gguZnXbvAcOmVvDxTm1vNVeIqOYfejA");
 
 export default function AnalyzerScreen() {
   const { user } = useAuth();
-  const { hasAccessToFeature } = usePremium();
+  // const { hasAccessToFeature } = usePremium();
   
   // Günlük soru limiti state'leri
   const [dailyQuestionCount, setDailyQuestionCount] = useState(0);
@@ -110,9 +110,9 @@ export default function AnalyzerScreen() {
     }
     
     // Premium kullanıcılar için limit yok
-    if (hasAccessToFeature('terra-ai-daily-questions')) {
-      return true;
-    }
+    // if (hasAccessToFeature('terra-ai-daily-questions')) {
+    //   return true;
+    // }
     
     // Ücretsiz kullanıcılar için 3 soru limiti
     if (dailyQuestionCount >= 3) {
@@ -288,7 +288,7 @@ export default function AnalyzerScreen() {
         </View>
 
         {/* Günlük Soru Sayısı */}
-        {!hasAccessToFeature('terra-ai-daily-questions') && (
+        {/* {!hasAccessToFeature('terra-ai-daily-questions') && (
           <View style={styles.dailyLimitContainer}>
             <View style={styles.limitInfo}>
               <Ionicons name="time-outline" size={16} color={colors.primary} />
@@ -311,7 +311,7 @@ export default function AnalyzerScreen() {
               </TouchableOpacity>
             )}
           </View>
-        )}
+        )} */}
 
         <ScrollView
           ref={scrollViewRef}

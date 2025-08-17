@@ -21,22 +21,6 @@ export default function NetworkLayout() {
           headerBackTitle: "Geri",
         }}
       />
-      <Stack.Screen
-        name="safe-zones"
-        options={{
-          title: "Güvenli Alanlar",
-          headerShown: false,
-          headerBackTitle: "Geri",
-        }}
-      />
-      <Stack.Screen
-        name="emergency-plan"
-        options={{
-          title: "Acil Durum Eylem Planı",
-          headerShown: false,
-          headerBackTitle: "Geri",
-        }}
-      />
     </Stack>
   );
 }
