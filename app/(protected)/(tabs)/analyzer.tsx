@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { colors } from "../../../constants/colors";
 import { LinearGradient } from "expo-linear-gradient";
 import { Divider } from "react-native-paper";
@@ -19,7 +19,7 @@ import { usePremium } from "@/hooks/usePremium";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 
 interface ChatMessage {
   id: string;
@@ -71,7 +71,15 @@ const genAI = new GoogleGenerativeAI("AIzaSyA9gguZnXbvAcOmVvDxTm1vNVeIqOYfejA");
 
 export default function AnalyzerScreen() {
   const { user } = useAuth();
-  const { hasAccessToFeature } = usePremium();
+  const { hasAccessToFeature, isPremium, getCurrentLevel } = usePremium();
+  const params = useLocalSearchParams();
+  
+  // URL parametrelerinden gelen soru ve otomatik sorma bilgisi
+  const autoQuestion = params.question as string;
+  const shouldAutoAsk = params.autoAsk === 'true';
+  
+  // Otomatik soru sorma işleminin sadece bir kez çalışması için flag
+  const [hasAutoAsked, setHasAutoAsked] = useState(false);
   
   // Günlük soru limiti state'leri
   const [dailyQuestionCount, setDailyQuestionCount] = useState(0);
@@ -95,14 +103,57 @@ export default function AnalyzerScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
 
+  // Sayfa her açıldığında state'leri sıfırla
+  useEffect(() => {
+    setHasAutoAsked(false);
+    // Günlük soru sayısını da sıfırla
+    const today = new Date().toDateString();
+    if (lastQuestionDate !== today) {
+      setDailyQuestionCount(0);
+      setLastQuestionDate(today);
+      setIsLimitReached(false);
+    }
+  }, []);
+
+  // Otomatik soru sorma için useEffect
+  useEffect(() => {
+    console.log('useEffect çalıştı:', { shouldAutoAsk, autoQuestion, hasAutoAsked });
+    
+    if (shouldAutoAsk && autoQuestion) {
+      console.log('Otomatik soru sorma başlatılıyor:', autoQuestion);
+      
+      // Seçilen soruyu input alanına doldur
+      setInputText(autoQuestion);
+      
+      // Kısa bir gecikme ile gönder butonuna otomatik tıkla
+      const timer = setTimeout(() => {
+        console.log('Otomatik gönder başlatılıyor:', autoQuestion);
+        // handleAutoQuestion yerine handleSendMessage çağır
+        handleSendMessage(autoQuestion);
+        setHasAutoAsked(true); // Flag'i true yaparak tekrar çalışmasını engelle
+      }, 800);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [shouldAutoAsk, autoQuestion]); // hasAutoAsked dependency'sini kaldırdık
+
   // Günlük soru sayısını kontrol et
   const checkDailyQuestionLimit = async () => {
     if (!user) return false;
     
     const today = new Date().toDateString();
     
+    console.log('checkDailyQuestionLimit çalıştı:', {
+      today,
+      lastQuestionDate,
+      dailyQuestionCount,
+      isLimitReached,
+      hasAccess: hasAccessToFeature('terra-ai-daily-questions')
+    });
+    
     // Eğer bugün ilk soru ise, sayacı sıfırla
     if (lastQuestionDate !== today) {
+      console.log('Bugün ilk soru, sayaç sıfırlanıyor');
       setDailyQuestionCount(0);
       setLastQuestionDate(today);
       setIsLimitReached(false);
@@ -111,15 +162,18 @@ export default function AnalyzerScreen() {
     
     // Premium kullanıcılar için limit yok
     if (hasAccessToFeature('terra-ai-daily-questions')) {
+      console.log('Premium kullanıcı, limit kontrolü yapılmıyor');
       return true;
     }
     
     // Ücretsiz kullanıcılar için 3 soru limiti
     if (dailyQuestionCount >= 3) {
+      console.log('Limit aşıldı, dailyQuestionCount:', dailyQuestionCount);
       setIsLimitReached(true);
       return false;
     }
     
+    console.log('Limit kontrolü geçildi, dailyQuestionCount:', dailyQuestionCount);
     return true;
   };
 
@@ -154,18 +208,103 @@ export default function AnalyzerScreen() {
     }, speed);
   };
 
-  const handlePredefinedQuestion = async (question: PredefinedQuestion) => {
-    // Günlük limit kontrolü
-    const canAskQuestion = await checkDailyQuestionLimit();
-    if (!canAskQuestion) {
-      const limitMessage: ChatMessage = {
-        id: Date.now().toString(),
-        text: "Günlük soru limitinize ulaştınız. Premium üyeliğe geçerek sınırsız soru sorabilirsiniz.",
+  // Otomatik soru sorma fonksiyonu
+  const handleAutoQuestion = async (questionText: string) => {
+    console.log('handleAutoQuestion başladı:', questionText);
+    
+    // Premium kullanıcılar için limit kontrolü yok
+    if (!hasAccessToFeature('terra-ai-daily-questions')) {
+      console.log('Ücretsiz kullanıcı, limit kontrolü yapılıyor');
+      // Günlük limit kontrolü sadece ücretsiz kullanıcılar için
+      const canAskQuestion = await checkDailyQuestionLimit();
+      if (!canAskQuestion) {
+        console.log('Limit aşıldı');
+        const limitMessage: ChatMessage = {
+          id: Date.now().toString(),
+          text: "Günlük soru limitinize ulaştınız. Premium üyeliğe geçerek sınırsız soru sorabilirsiniz.",
+          isUser: false,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, limitMessage]);
+        return;
+      }
+    } else {
+      console.log('Premium kullanıcı, limit kontrolü yapılmıyor');
+    }
+
+    // Kullanıcının sorusunu ekle
+    console.log('Kullanıcı mesajı ekleniyor:', questionText);
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      text: questionText,
+      isUser: true,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setIsLoading(true);
+    console.log('AI yanıtı bekleniyor...');
+
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      
+      const prompt = `Sen bir afet ve acil durum uzmanısın. Aşağıdaki soruya Türkçe olarak maksimum 3-4 cümle ile yanıt ver. Yanıtın kısa, net ve faydalı olsun. Soru: ${questionText}`;
+      
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: text,
         isUser: false,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, limitMessage]);
-      return;
+
+      setMessages((prev) => [...prev, aiMessage]);
+      
+      // Soru sayısını sadece ücretsiz kullanıcılar için artır
+      if (!hasAccessToFeature('terra-ai-daily-questions')) {
+        incrementQuestionCount();
+      }
+      
+      // Otomatik gönderim sonrası input'u temizle
+      setInputText("");
+      
+      // Typing effect başlat
+      setTimeout(() => {
+        typeText(text, aiMessage.id);
+      }, 200);
+      
+    } catch (error) {
+      console.error('AI yanıt hatası:', error);
+      const errorMessage: ChatMessage = {
+        id: Date.now().toString(),
+        text: "Üzgünüm, şu anda yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.",
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePredefinedQuestion = async (question: PredefinedQuestion) => {
+    // Premium kullanıcılar için limit kontrolü yok
+    if (!hasAccessToFeature('terra-ai-daily-questions')) {
+      // Günlük limit kontrolü sadece ücretsiz kullanıcılar için
+      const canAskQuestion = await checkDailyQuestionLimit();
+      if (!canAskQuestion) {
+        const limitMessage: ChatMessage = {
+          id: Date.now().toString(),
+          text: "Günlük soru limitinize ulaştınız. Premium üyeliğe geçerek sınırsız soru sorabilirsiniz.",
+          isUser: false,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, limitMessage]);
+        return;
+      }
     }
 
     // Kullanıcının sorusunu ekle
@@ -188,8 +327,10 @@ export default function AnalyzerScreen() {
     // Sorulan soruyu listeye ekle
     setAskedQuestions((prev) => [...prev, question.id]);
     
-    // Soru sayısını artır
-    incrementQuestionCount();
+    // Soru sayısını sadece ücretsiz kullanıcılar için artır
+    if (!hasAccessToFeature('terra-ai-daily-questions')) {
+      incrementQuestionCount();
+    }
     
     // Typing effect başlat
     setTimeout(() => {
@@ -197,38 +338,53 @@ export default function AnalyzerScreen() {
     }, 200);
   };
 
-  const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+  const handleSendMessage = async (autoText?: string) => {
+    const textToSend = autoText || inputText.trim();
+    if (!textToSend || isLoading) return;
+    
+    console.log('Premium kontrol:', {
+      hasAccess: hasAccessToFeature('terra-ai-daily-questions'),
+      isPremium: isPremium(),
+      currentLevel: getCurrentLevel()
+    });
 
-    // Günlük limit kontrolü
-    const canAskQuestion = await checkDailyQuestionLimit();
-    if (!canAskQuestion) {
-      const limitMessage: ChatMessage = {
-        id: Date.now().toString(),
-        text: "Günlük soru limitinize ulaştınız. Premium üyeliğe geçerek sınırsız soru sorabilirsiniz.",
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, limitMessage]);
-      setInputText("");
-      return;
+    // Premium kullanıcılar için limit kontrolü yok
+    if (!hasAccessToFeature('terra-ai-daily-questions')) {
+      console.log('Ücretsiz kullanıcı, limit kontrolü yapılıyor');
+      // Günlük limit kontrolü sadece ücretsiz kullanıcılar için
+      const canAskQuestion = await checkDailyQuestionLimit();
+      if (!canAskQuestion) {
+        console.log('Limit aşıldı');
+        const limitMessage: ChatMessage = {
+          id: Date.now().toString(),
+          text: "Günlük soru limitinize ulaştınız. Premium üyeliğe geçerek sınırsız soru sorabilirsiniz.",
+          isUser: false,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, limitMessage]);
+        setInputText("");
+        return;
+      }
+    } else {
+      console.log('Premium kullanıcı, limit kontrolü yapılmıyor');
     }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      text: inputText.trim(),
+      text: textToSend,
       isUser: true,
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    // Input'u her durumda temizle (otomatik ve manuel gönderim)
     setInputText("");
     setIsLoading(true);
 
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
       
-      const prompt = `Sen bir afet ve acil durum uzmanısın. Aşağıdaki soruya Türkçe olarak maksimum 2 cümle ile yanıt ver. Yanıtın kısa, net ve faydalı olsun. Soru: ${inputText.trim()}`;
+      const prompt = `Sen bir afet ve acil durum uzmanısın. Aşağıdaki soruya Türkçe olarak maksimum 2 cümle ile yanıt ver. Yanıtın kısa, net ve faydalı olsun. Soru: ${textToSend}`;
       
       const result = await model.generateContent(prompt);
       const response = await result.response;
@@ -243,8 +399,10 @@ export default function AnalyzerScreen() {
 
       setMessages((prev) => [...prev, aiMessage]);
       
-      // Soru sayısını artır
-      incrementQuestionCount();
+      // Soru sayısını sadece ücretsiz kullanıcılar için artır
+      if (!hasAccessToFeature('terra-ai-daily-questions')) {
+        incrementQuestionCount();
+      }
       
       // Typing effect başlat
       setTimeout(() => {
@@ -422,7 +580,7 @@ export default function AnalyzerScreen() {
                   styles.sendButton,
                   (!inputText.trim() || isLoading) && styles.sendButtonDisabled
                 ]}
-                onPress={handleSendMessage}
+                onPress={() => handleSendMessage()}
                 disabled={!inputText.trim() || isLoading}
               >
                                <LinearGradient

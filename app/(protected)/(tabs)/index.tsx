@@ -308,6 +308,9 @@ export default function HomeScreen() {
     { id: "3", question: "Deprem çantasında neler olmalı?" },
     { id: "4", question: "Deprem anında evdeysem ne yapmalıyım?" },
     { id: "5", question: "Afet sonrası iletişim nasıl sağlanır?" },
+    { id: "6", question: "Deprem öncesi ev hazırlığı nasıl yapılır?" },
+    { id: "7", question: "Deprem sırasında hangi pozisyonu almalıyım?" },
+    { id: "8", question: "Deprem sonrası ilk yardım nasıl yapılır?" },
   ];
 
   // ...
@@ -761,7 +764,14 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => {
-                    // Soru seçildiğinde yapılacak işlem
+                    // AI sayfasına yönlendir ve seçilen soruyu parametre olarak geç
+                    router.push({
+                      pathname: '/(protected)/(tabs)/analyzer',
+                      params: { 
+                        question: item.question,
+                        autoAsk: 'true'
+                      }
+                    });
                   }}
                 >
                   <LinearGradient
