@@ -19,6 +19,7 @@ import { usePremium } from "@/hooks/usePremium";
 import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface Option {
   label: string;
@@ -54,6 +55,14 @@ const RiskForm = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSavingScore, setIsSavingScore] = useState(false);
+  
+  // AI önerileri için state'ler
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [aiRecommendations, setAiRecommendations] = useState<string>("");
+  const [showAIRecommendations, setShowAIRecommendations] = useState(false);
+  const [displayedAIRecommendations, setDisplayedAIRecommendations] = useState<string>("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [showCursor, setShowCursor] = useState(false);
 
   // If showResults parameter is present and user has completed the form, show results directly
   useEffect(() => {
@@ -75,6 +84,96 @@ const RiskForm = () => {
     if (safeScore >= 25) return "#e67e22"; // Turuncu
     if (safeScore >= 10) return "#e74c3c"; // Kırmızı
     return "#c0392b"; // Koyu Kırmızı
+  };
+
+  // Risk seviyesi belirleme fonksiyonu
+  const getRiskLevel = (score: number): string => {
+    if (score >= 80) return "Düşük Risk";
+    if (score >= 60) return "Orta Risk";
+    if (score >= 40) return "Yüksek Risk";
+    return "Çok Yüksek Risk";
+  };
+
+  // Risk mesajı fonksiyonu
+  const getRiskMessage = (score: number): string => {
+    if (score >= 80) return "Tebrikler! Deprem riskine karşı iyi hazırlıklısınız.";
+    if (score >= 60) return "Deprem hazırlığınız orta seviyede. Bazı konularda iyileştirme yapabilirsiniz.";
+    if (score >= 40) return "Deprem riskine karşı hazırlığınızı artırmanız önerilir.";
+    return "Acil olarak deprem hazırlığı konusunda önlemler almanız gerekiyor.";
+  };
+
+  // Typing effect function
+  const typeText = (text: string, speed: number = 30) => {
+    setIsTyping(true);
+    setDisplayedAIRecommendations("");
+    setShowCursor(true);
+    
+    let index = 0;
+    const timer = setInterval(() => {
+      if (index < text.length) {
+        setDisplayedAIRecommendations(text.substring(0, index + 1));
+        index++;
+      } else {
+        clearInterval(timer);
+        setIsTyping(false);
+        setShowCursor(false);
+      }
+    }, speed);
+  };
+
+  // Blinking cursor effect
+  useEffect(() => {
+    if (isTyping) {
+      const cursorInterval = setInterval(() => {
+        setShowCursor(prev => !prev);
+      }, 500);
+      
+      return () => clearInterval(cursorInterval);
+    }
+  }, [isTyping]);
+
+  // AI önerileri oluşturma fonksiyonu
+  const generateAIRecommendations = async () => {
+    if (!user) return;
+
+    setIsLoadingAI(true);
+    setShowAIRecommendations(true);
+    setDisplayedAIRecommendations("");
+    
+    try {
+      const genAI = new GoogleGenerativeAI("AIzaSyA9gguZnXbvAcOmVvDxTm1vNVeIqOYfejA");
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+
+      const prompt = `
+        Kullanıcının deprem risk değerlendirme skoru: %${currentScore}
+        Risk seviyesi: ${getRiskLevel(currentScore)}
+        
+        Bu kullanıcı için deprem güvenliği konusunda 3-4 adet pratik ve uygulanabilir öneri ver. 
+        Her öneri 1-2 cümle olsun ve şu kategorilerde olsun:
+        1. Eğitim ve bilinçlendirme
+        2. Ev güvenliği
+        3. Acil durum hazırlığı
+        4. Aile planlaması
+        
+        Önerileri Türkçe olarak, madde madde ver. Her maddeyi yeni satırda başlat.
+        Yanıtı sadece önerilerle sınırla, başka açıklama ekleme.
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      setAiRecommendations(text);
+      
+      // Start typing effect immediately
+      typeText(text, 40);
+    } catch (error) {
+      console.error('AI öneriler oluşturma hatası:', error);
+      Alert.alert("Hata", "AI önerileri oluşturulurken bir hata oluştu.");
+      setShowAIRecommendations(false);
+    } finally {
+      setIsLoadingAI(false);
+    }
   };
 
   const riskData: { initialScore: number; categories: Category[] } = {
@@ -452,28 +551,7 @@ const RiskForm = () => {
     setIsCompleted(false);
   };
 
-  const getRiskLevel = (score: number): string => {
-    // Negatif değerleri 0 olarak kabul et
-    const safeScore = Math.max(0, score);
-    
-    if (safeScore >= 80) return "Düşük Risk";
-    if (safeScore >= 60) return "Orta Risk";
-    if (safeScore >= 40) return "Yüksek Risk";
-    return "Çok Yüksek Risk";
-  };
 
-  const getRiskMessage = (score: number): string => {
-    // Negatif değerleri 0 olarak kabul et
-    const safeScore = Math.max(0, score);
-    
-    if (safeScore >= 80)
-      return "Tebrikler! Deprem riskine karşı iyi hazırlıklısınız.";
-    if (safeScore >= 60)
-      return "Deprem hazırlığınız orta seviyede. Bazı konularda iyileştirme yapabilirsiniz.";
-    if (safeScore >= 40)
-      return "Deprem riskine karşı hazırlığınızı artırmanız önerilir.";
-    return "Acil olarak deprem hazırlığı konusunda önlemler almanız gerekiyor.";
-  };
 
   const getCorrectAnswersCount = (): number => {
     let correctCount = 0;
@@ -613,6 +691,59 @@ const RiskForm = () => {
                 </View>
               </View>
             </PremiumFeatureGate>
+
+            {/* AI Önerileri Butonu */}
+            <PremiumFeatureGate featureId="risk-assessment-ai">
+              <TouchableOpacity
+                style={[
+                  styles.aiButton,
+                  isLoadingAI && styles.aiButtonDisabled
+                ]}
+                onPress={generateAIRecommendations}
+                disabled={isLoadingAI}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[colors.gradientOne, colors.gradientTwo]}
+                  style={styles.aiButtonGradient}
+                >
+                  {isLoadingAI ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="sparkles" size={20} color="#fff" />
+                      <Text style={styles.aiButtonText}>
+                        AI Önerileri Al
+                      </Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </PremiumFeatureGate>
+
+            {/* AI Önerileri Kartı */}
+            {showAIRecommendations && (
+              <View style={styles.aiRecommendationsCard}>
+                <View style={styles.aiHeader}>
+                  <Ionicons name="sparkles" size={20} color={colors.primary} />
+                  <Text style={styles.aiTitle}>AI Önerileri</Text>
+                </View>
+                <View style={styles.aiRecommendationsContent}>
+                  {isLoadingAI ? (
+                    <View style={styles.typingIndicator}>
+                      <Text style={styles.typingText}>
+                        Öneriler oluşturuluyor
+                        <Text style={[styles.cursor, { opacity: showCursor ? 1 : 0 }]}>|</Text>
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.aiRecommendationsText}>
+                      {displayedAIRecommendations}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
 
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
@@ -1041,6 +1172,85 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
     fontFamily: "NotoSans-Bold",
+  },
+  // AI Comment Styles
+  aiCommentContainer: {
+    backgroundColor: "#ffffff",
+  },
+  // AI Önerileri Stilleri
+  aiButton: {
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 20,
+    shadowColor: colors.gradientTwo,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  aiButtonDisabled: {
+    shadowOpacity: 0.1,
+    elevation: 2,
+  },
+  aiButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    gap: 8,
+  },
+  aiButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+    fontFamily: "NotoSans-Bold",
+  },
+  aiRecommendationsCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  aiHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  aiTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.light.textPrimary,
+    fontFamily: "NotoSans-Bold",
+    marginLeft: 8,
+  },
+  aiRecommendationsContent: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 16,
+  },
+  aiRecommendationsText: {
+    fontSize: 15,
+    color: "#444",
+    lineHeight: 22,
+    fontFamily: "NotoSans-Regular",
+  },
+  typingIndicator: {
+    marginLeft: 8,
+  },
+  typingText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontFamily: "NotoSans-Medium",
+    fontStyle: "italic",
+  },
+  cursor: {
+    color: colors.primary,
+    fontWeight: "bold",
   },
   // AI Comment Styles
   aiCommentContainer: {

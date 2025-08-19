@@ -423,7 +423,12 @@ export default function ProfileScreen() {
                   queryClient.invalidateQueries({
                     queryKey: ["profile", user?.id],
                   });
-                  router.push("/profile/risk-assessment");
+                  // Tek risk değerlendirme sayfasına yönlendir
+                  if (isFormCompleted) {
+                    router.push("/(protected)/risk-form?showResults=true");
+                  } else {
+                    router.push("/(protected)/risk-form");
+                  }
                 }}
                 activeOpacity={0.8}
               >
