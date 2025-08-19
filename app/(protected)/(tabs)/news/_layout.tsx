@@ -15,6 +15,18 @@ export default function NewsLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="earthquake-analysis"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="earthquake-scenario"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
