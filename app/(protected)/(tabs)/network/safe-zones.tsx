@@ -22,6 +22,7 @@ import * as Location from "expo-location";
 import { colors } from "@/constants/colors";
 import Toast from "@/components/Toast";
 import { useSafeZones, useCreateSafeZone, useUpdateSafeZone, useDeleteSafeZone, SafeZone } from "@/hooks/useSafeZones";
+import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 
 export default function SafeZonesScreen() {
   const insets = useSafeAreaInsets();

@@ -215,6 +215,13 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     description: 'Ağ grubunuz için özelleştirilmiş acil durum rotaları oluşturun, kullanıcıların rota seçimi yapmasını sağlayın ve kriz anında otomatik yönlendirme alın',
     requiredLevel: PremiumPackageType.PROTECTOR,
     location: 'network'
+  },
+  {
+    id: 'network-management',
+    name: 'Ağ Yönetimi',
+    description: 'Aileniz ve sevdiklerinizle güvenli iletişim kurun, acil durum planları oluşturun ve koordinasyon sağlayın',
+    requiredLevel: PremiumPackageType.PROTECTOR,
+    location: 'network'
   }
 ];
 

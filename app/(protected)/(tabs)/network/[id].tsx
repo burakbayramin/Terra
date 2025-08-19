@@ -25,6 +25,7 @@ import { colors } from "@/constants/colors";
 import { useNetwork, useNetworkMembers, useUpdateNetwork, useDeleteNetwork, useRemoveMember } from "@/hooks/useNetwork";
 import { supabase } from "@/lib/supabase";
 import Toast from "@/components/Toast";
+import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 
 export default function NetworkDetailScreen() {
   const insets = useSafeAreaInsets();

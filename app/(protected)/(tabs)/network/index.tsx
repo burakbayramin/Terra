@@ -24,6 +24,7 @@ import { colors } from "@/constants/colors";
 import { useCreateNetwork, useJoinNetwork, useMyNetworks, useUpdateNetwork, useDeleteNetwork, useNetworkMembers } from "@/hooks/useNetwork";
 import { supabase } from "@/lib/supabase";
 import Toast from "@/components/Toast";
+import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 
 export default function NetworkScreen() {
   const insets = useSafeAreaInsets();
@@ -359,15 +360,156 @@ export default function NetworkScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Ağ Yönetimi</Text>
-          <Text style={styles.headerSubtitle}>
-            Ağlarınızı yönetin ve yeni bağlantılar kurun
-          </Text>
+    <PremiumFeatureGate 
+      featureId="network-management"
+      fallback={
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+          <LinearGradient
+            colors={[colors.primary, colors.gradientTwo, '#FF8B00']}
+            style={styles.premiumGradientBackground}
+          >
+            {/* Background Pattern */}
+            <View style={styles.backgroundPattern}>
+              <MaterialCommunityIcons name="account-group" size={120} color="rgba(255,255,255,0.1)" style={styles.patternIcon1} />
+              <MaterialCommunityIcons name="shield-account" size={80} color="rgba(255,255,255,0.08)" style={styles.patternIcon2} />
+              <MaterialCommunityIcons name="bell-ring" size={60} color="rgba(255,255,255,0.06)" style={styles.patternIcon3} />
+            </View>
+
+            <ScrollView contentContainerStyle={styles.premiumFallback} showsVerticalScrollIndicator={false}>
+              {/* Header */}
+              <View style={styles.premiumHeader}>
+                <View style={styles.premiumIconContainer}>
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
+                    style={styles.premiumIconGradient}
+                  >
+                    <MaterialCommunityIcons name="account-group" size={48} color="#fff" />
+                  </LinearGradient>
+                </View>
+                <Text style={styles.premiumTitle}>Ağ Yönetimi</Text>
+                <Text style={styles.premiumSubtitle}>Koruyucu Premium Özellik</Text>
+                <View style={styles.premiumBadge}>
+                  <Ionicons name="diamond" size={16} color="#FFD700" />
+                  <Text style={styles.premiumBadgeText}>PROTECTOR+</Text>
+                </View>
+              </View>
+
+              {/* Features List */}
+              <View style={styles.featuresContainer}>
+                <Text style={styles.featuresTitle}>Premium Ağ Özellikleri</Text>
+                
+                <View style={styles.featuresList}>
+                  <View style={styles.featureItem}>
+                    <View style={styles.featureIconContainer}>
+                      <Ionicons name="cellular-outline" size={24} color="#4ADE80" />
+                    </View>
+                    <View style={styles.featureContent}>
+                      <Text style={styles.featureTitle}>İnternet Bağımsız Bildirimler</Text>
+                      <Text style={styles.featureDescription}>
+                        Ailenizin güvende veya tehlikede olduğu bildirimini internet bağlantısı olmadan alın
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.featureItem}>
+                    <View style={styles.featureIconContainer}>
+                      <Ionicons name="heart" size={24} color="#F87171" />
+                    </View>
+                    <View style={styles.featureContent}>
+                      <Text style={styles.featureTitle}>Sevdiklerinize Özel Deprem Uyarıları</Text>
+                      <Text style={styles.featureDescription}>
+                        Sevdiklerinize yakın olan depremleri özel olarak ve öncelikli şekilde alın
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.featureItem}>
+                    <View style={styles.featureIconContainer}>
+                      <Ionicons name="location-outline" size={24} color="#60A5FA" />
+                    </View>
+                    <View style={styles.featureContent}>
+                      <Text style={styles.featureTitle}>Gerçek Zamanlı Konum Takibi</Text>
+                      <Text style={styles.featureDescription}>
+                        Ağ üyelerinizin anlık konumunu görün ve acil durumda hızla ulaşın
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.featureItem}>
+                    <View style={styles.featureIconContainer}>
+                      <Ionicons name="shield-checkmark-outline" size={24} color="#A78BFA" />
+                    </View>
+                    <View style={styles.featureContent}>
+                      <Text style={styles.featureTitle}>Acil Durum Eylem Planları</Text>
+                      <Text style={styles.featureDescription}>
+                        Aileniz için özelleştirilmiş acil durum planları oluşturun ve yönetin
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.featureItem}>
+                    <View style={styles.featureIconContainer}>
+                      <Ionicons name="people-outline" size={24} color="#FBBF24" />
+                    </View>
+                    <View style={styles.featureContent}>
+                      <Text style={styles.featureTitle}>Sınırsız Ağ Üyesi</Text>
+                      <Text style={styles.featureDescription}>
+                        Aile, arkadaş ve iş gruplarınıza sınırsız sayıda üye ekleyin
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.featureItem}>
+                    <View style={styles.featureIconContainer}>
+                      <Ionicons name="analytics-outline" size={24} color="#34D399" />
+                    </View>
+                    <View style={styles.featureContent}>
+                      <Text style={styles.featureTitle}>Güvenlik Analiz Raporları</Text>
+                      <Text style={styles.featureDescription}>
+                        Ağınızın güvenlik durumu ve risk analizlerini detaylı raporlarla takip edin
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* CTA Section */}
+              <View style={styles.ctaSection}>
+                <Text style={styles.ctaTitle}>Ailenizin Güvenliği İçin</Text>
+                <Text style={styles.ctaDescription}>
+                  Sevdiklerinizle güvenli iletişim kurun, acil durumda koordinasyon sağlayın
+                </Text>
+                
+                <TouchableOpacity 
+                  style={styles.upgradeButton}
+                  onPress={() => router.push('/(protected)/premium-packages')}
+                >
+                  <LinearGradient
+                    colors={[colors.primary, colors.gradientTwo]}
+                    style={styles.upgradeButtonGradient}
+                  >
+                    <Ionicons name="diamond" size={20} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={styles.upgradeButtonText}>Koruyucu Paket'e Yükselt</Text>
+                    <Ionicons name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 8 }} />
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <Text style={styles.priceText}>₺49.99/ay'dan başlayan fiyatlarla</Text>
+              </View>
+            </ScrollView>
+          </LinearGradient>
         </View>
+      }
+    >
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Ağ Yönetimi</Text>
+            <Text style={styles.headerSubtitle}>
+              Ağlarınızı yönetin ve yeni bağlantılar kurun
+            </Text>
+          </View>
 
         {/* Created Networks Section */}
         <View style={styles.networksContainer}>
@@ -561,7 +703,8 @@ export default function NetworkScreen() {
             <Text style={styles.loadingText}>Ağlar yükleniyor...</Text>
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       {/* Create Network Modal */}
       <Modal
@@ -770,7 +913,7 @@ export default function NetworkScreen() {
         type={toast.type}
         onHide={hideToast}
       />
-    </View>
+    </PremiumFeatureGate>
   );
 }
 
@@ -1487,5 +1630,188 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 14,
     gap: 8,
+  },
+  // Premium fallback styles
+  premiumGradientBackground: {
+    flex: 1,
+    position: 'relative',
+  },
+  backgroundPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  patternIcon1: {
+    position: 'absolute',
+    top: 50,
+    right: -20,
+    transform: [{ rotate: '15deg' }],
+  },
+  patternIcon2: {
+    position: 'absolute',
+    top: 200,
+    left: -10,
+    transform: [{ rotate: '-15deg' }],
+  },
+  patternIcon3: {
+    position: 'absolute',
+    bottom: 100,
+    right: 30,
+    transform: [{ rotate: '25deg' }],
+  },
+  premiumFallback: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+  },
+  premiumHeader: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  premiumIconContainer: {
+    marginBottom: 20,
+  },
+  premiumIconGradient: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  premiumTitle: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: -1,
+  },
+  premiumSubtitle: {
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    marginBottom: 16,
+    fontWeight: '600',
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,215,0,0.2)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+    gap: 8,
+  },
+  premiumBadgeText: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  featuresContainer: {
+    marginBottom: 40,
+  },
+  featuresTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 24,
+    letterSpacing: -0.5,
+  },
+  featuresList: {
+    gap: 20,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  featureIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  featureContent: {
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 6,
+    lineHeight: 22,
+  },
+  featureDescription: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.8)',
+    lineHeight: 22,
+  },
+  ctaSection: {
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  ctaTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: -0.5,
+  },
+  ctaDescription: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+    paddingHorizontal: 20,
+  },
+  upgradeButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 8,
+    marginBottom: 16,
+  },
+  upgradeButtonGradient: {
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 280,
+  },
+  upgradeButtonText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  priceText: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });
