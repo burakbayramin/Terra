@@ -63,6 +63,20 @@ const RiskForm = () => {
     }
   }, [showResults, currentSafetyScore]);
 
+  // Güvenlik skoru renk fonksiyonu
+  const getScoreColor = (score: number): string => {
+    // Negatif değerleri 0 olarak kabul et
+    const safeScore = Math.max(0, score);
+    
+    if (safeScore >= 85) return "#27ae60"; // Koyu Yeşil
+    if (safeScore >= 70) return "#2ecc71"; // Açık Yeşil
+    if (safeScore >= 55) return "#f1c40f"; // Sarı
+    if (safeScore >= 40) return "#f39c12"; // Koyu Sarı/Altın
+    if (safeScore >= 25) return "#e67e22"; // Turuncu
+    if (safeScore >= 10) return "#e74c3c"; // Kırmızı
+    return "#c0392b"; // Koyu Kırmızı
+  };
+
   const riskData: { initialScore: number; categories: Category[] } = {
     initialScore: 100,
     categories: [
@@ -354,18 +368,13 @@ const RiskForm = () => {
   const currentCategory = riskData.categories[currentCategoryIndex];
   const currentQuestion = currentCategory?.questions[currentQuestionIndex];
 
-  const getScoreColor = (score: number): string => {
-    if (score >= 80) return "#27ae60";
-    if (score >= 60) return "#f39c12";
-    if (score >= 40) return "#e67e22";
-    return "#e74c3c";
-  };
+
 
   const handleAnswer = async (optionIndex: number) => {
     setIsLoading(true);
 
     const selectedOption = currentQuestion.options[optionIndex];
-    const newScore = currentScore + selectedOption.scoreChange;
+    const newScore = Math.max(0, Math.min(100, currentScore + selectedOption.scoreChange));
     const newAnswers = [...answers, optionIndex];
 
     setAnswers(newAnswers);
@@ -444,18 +453,24 @@ const RiskForm = () => {
   };
 
   const getRiskLevel = (score: number): string => {
-    if (score >= 80) return "Düşük Risk";
-    if (score >= 60) return "Orta Risk";
-    if (score >= 40) return "Yüksek Risk";
+    // Negatif değerleri 0 olarak kabul et
+    const safeScore = Math.max(0, score);
+    
+    if (safeScore >= 80) return "Düşük Risk";
+    if (safeScore >= 60) return "Orta Risk";
+    if (safeScore >= 40) return "Yüksek Risk";
     return "Çok Yüksek Risk";
   };
 
   const getRiskMessage = (score: number): string => {
-    if (score >= 80)
+    // Negatif değerleri 0 olarak kabul et
+    const safeScore = Math.max(0, score);
+    
+    if (safeScore >= 80)
       return "Tebrikler! Deprem riskine karşı iyi hazırlıklısınız.";
-    if (score >= 60)
+    if (safeScore >= 60)
       return "Deprem hazırlığınız orta seviyede. Bazı konularda iyileştirme yapabilirsiniz.";
-    if (score >= 40)
+    if (safeScore >= 40)
       return "Deprem riskine karşı hazırlığınızı artırmanız önerilir.";
     return "Acil olarak deprem hazırlığı konusunda önlemler almanız gerekiyor.";
   };
@@ -537,7 +552,7 @@ const RiskForm = () => {
 
           <View style={styles.resultContainer}>
             <LinearGradient
-              colors={[colors.gradientOne, colors.gradientTwo]}
+              colors={[getScoreColor(currentScore), getScoreColor(currentScore)]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.scoreContainer}
