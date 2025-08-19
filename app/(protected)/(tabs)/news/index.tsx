@@ -14,13 +14,16 @@ import { colors } from "@/constants/colors";
 import { useNews } from "@/hooks/useNews";
 import { News } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 export default function NewsScreen() {
   const [activeSegment, setActiveSegment] = useState<
-    "latest" | "expert_opinions"
+    "latest" | "expert_opinions" | "earthquake_analysis"
   >("latest");
 
-  const { data: news = [], isLoading, error, refetch, isFetching } = useNews(activeSegment);
+  const { data: news = [], isLoading, error, refetch, isFetching } = useNews(
+    activeSegment === "earthquake_analysis" ? "latest" : activeSegment
+  );
   const insets = useSafeAreaInsets();
 
   // Loading durumu için UI
@@ -37,7 +40,9 @@ export default function NewsScreen() {
           <Text style={styles.loadingSubtext}>
             {activeSegment === 'latest' 
               ? 'NewsAPI\'den deprem haberleri getiriliyor...' 
-              : 'Uzman yorumları getiriliyor...'
+              : activeSegment === 'expert_opinions'
+              ? 'Uzman yorumları getiriliyor...'
+              : 'Deprem analizleri yükleniyor...'
             }
           </Text>
         </View>
@@ -75,6 +80,53 @@ export default function NewsScreen() {
 
   const newsData = news as News[];
 
+  // Deprem Analizleri sekmesi için içerik
+  const renderEarthquakeAnalysis = () => {
+    return (
+      <>
+        {/* Mahalle Bazlı Bina Sayıları Analizi */}
+        <View style={styles.analysisSection}>
+          <View style={styles.analysisHeader}>
+            <Ionicons name="analytics-outline" size={24} color={colors.primary} />
+            <Text style={styles.analysisTitle}>Mahalle Bazlı Bina Sayıları Analizi</Text>
+          </View>
+          <Text style={styles.analysisSubtitle}>
+            İstanbul'daki mahallelerin bina yapıları, yaş grupları ve kat sayılarına göre deprem risk analizi
+          </Text>
+          <TouchableOpacity
+            style={styles.analysisButton}
+            onPress={() => {
+              router.push("/(protected)/(tabs)/news/earthquake-analysis");
+            }}
+          >
+            <Ionicons name="arrow-forward" size={20} color="#ffffff" />
+            <Text style={styles.analysisButtonText}>Analizi Görüntüle</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Olası Deprem Senaryosu Analizi */}
+        <View style={styles.analysisSection}>
+          <View style={styles.analysisHeader}>
+            <Ionicons name="trending-up-outline" size={24} color={colors.primary} />
+            <Text style={styles.analysisTitle}>Olası Deprem Senaryosu Analizi</Text>
+          </View>
+          <Text style={styles.analysisSubtitle}>
+            7.5 Mw büyüklüğünde gece olacak deprem senaryosuna göre yapılan analizlerin sonuçları
+          </Text>
+          <TouchableOpacity
+            style={styles.analysisButton}
+            onPress={() => {
+              router.push("/(protected)/(tabs)/news/earthquake-scenario");
+            }}
+          >
+            <Ionicons name="arrow-forward" size={20} color="#ffffff" />
+            <Text style={styles.analysisButtonText}>Analizi Görüntüle</Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    );
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
@@ -95,7 +147,7 @@ export default function NewsScreen() {
           >
             <Ionicons 
               name="time-outline" 
-              size={16} 
+              size={14} 
               color={activeSegment === "latest" ? "#ffffff" : colors.light.textSecondary} 
             />
             <Text
@@ -104,7 +156,7 @@ export default function NewsScreen() {
                 activeSegment === "latest" && styles.activeSegmentText,
               ]}
             >
-              Güncel
+              Güncel Haberler
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -116,7 +168,7 @@ export default function NewsScreen() {
           >
             <Ionicons 
               name="people-circle-outline" 
-              size={16} 
+              size={14} 
               color={activeSegment === "expert_opinions" ? "#ffffff" : colors.light.textSecondary} 
             />
             <Text
@@ -128,86 +180,111 @@ export default function NewsScreen() {
               Uzman Yorumları
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              activeSegment === "earthquake_analysis" && styles.activeSegmentButton,
+            ]}
+            onPress={() => setActiveSegment("earthquake_analysis")}
+          >
+            <Ionicons 
+              name="analytics-outline" 
+              size={14} 
+              color={activeSegment === "earthquake_analysis" ? "#ffffff" : colors.light.textSecondary} 
+            />
+            <Text
+              style={[
+                styles.segmentText,
+                activeSegment === "earthquake_analysis" && styles.activeSegmentText,
+              ]}
+            >
+              Deprem Analizleri
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Results Count */}
-      <View style={styles.resultsContainer}>
-        <Text style={styles.resultsText}>
-          {newsData.length} haber bulundu
-        </Text>
-        <Text style={styles.sourceText}>
-          {activeSegment === 'latest' 
-            ? 'Türk haber kaynaklarından deprem haberleri'
-            : 'Deprem uzmanlarından güncel yorumlar'
-          }
-        </Text>
-        {activeSegment === 'expert_opinions' && (
-          <View style={styles.expertInfoContainer}>
-            <Text style={styles.expertInfoText}>
-              Aranan uzmanlar: Yoshinori Moriwaki, Naci Görür, Celâl Şengör, Şener Üşümezsoy
+      {/* Content based on active segment */}
+      {activeSegment === "earthquake_analysis" ? (
+        renderEarthquakeAnalysis()
+      ) : (
+        <>
+          {/* Results Count */}
+          <View style={styles.resultsContainer}>
+            <Text style={styles.resultsText}>
+              {newsData.length} haber bulundu
             </Text>
-            <Text style={styles.expertSearchInfo}>
-              Arama terimleri: Uzman isimleri + "deprem AND (uzman OR profesör OR prof OR doktor)"
-            </Text>
-            {newsData.length === 0 && (
-              <Text style={styles.noResultsInfo}>
-                Sonuç bulunamadı. Lütfen daha sonra tekrar deneyin veya farklı bir sekme seçin.
-              </Text>
-            )}
-          </View>
-        )}
-      </View>
-
-      {/* News List */}
-      <FlashList
-        data={newsData}
-        renderItem={({ item }) => <NewsListItem news={item} />}
-        estimatedItemSize={365}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
-        showsVerticalScrollIndicator={false}
-        // Pull to refresh
-        refreshControl={
-          <RefreshControl
-            refreshing={isFetching}
-            onRefresh={() => refetch()}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
-        }
-        // Empty state
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="newspaper-outline" size={64} color={colors.light.textSecondary} />
-            <Text style={styles.emptyTitle}>Haber bulunamadı</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text style={styles.sourceText}>
               {activeSegment === 'latest' 
-                ? 'Bu kategoride henüz haber yok'
-                : 'Uzman yorumları bulunamadı'
+                ? 'Türk haber kaynaklarından deprem haberleri'
+                : 'Deprem uzmanlarından güncel yorumlar'
               }
             </Text>
-            <Text style={styles.emptySubtext}>
-              NewsAPI'den veri alınamadı veya bu kategoride haber bulunamadı.
-            </Text>
             {activeSegment === 'expert_opinions' && (
-              <View style={styles.emptyExpertInfo}>
-                <Text style={styles.emptyExpertText}>
-                  Aranan uzmanlar:
+              <View style={styles.expertInfoContainer}>
+                <Text style={styles.expertInfoText}>
+                  Aranan uzmanlar: Yoshinori Moriwaki, Naci Görür, Celâl Şengör, Şener Üşümezsoy
                 </Text>
-                <Text style={styles.emptyExpertNames}>
-                  • Yoshinori Moriwaki{'\n'}
-                  • Naci Görür{'\n'}
-                  • Celâl Şengör{'\n'}
-                  • Şener Üşümezsoy
-                </Text>
-                <Text style={styles.emptyExpertNote}>
-                  Bu uzmanların son yorumları henüz NewsAPI'de bulunamadı.
-                </Text>
+                {newsData.length === 0 && (
+                  <Text style={styles.noResultsInfo}>
+                    Sonuç bulunamadı. Lütfen daha sonra tekrar deneyin veya farklı bir sekme seçin.
+                  </Text>
+                )}
               </View>
             )}
           </View>
-        }
-      />
+
+          {/* News List */}
+          <FlashList
+            data={newsData}
+            renderItem={({ item }) => <NewsListItem news={item} />}
+            estimatedItemSize={365}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+            showsVerticalScrollIndicator={false}
+            // Pull to refresh
+            refreshControl={
+              <RefreshControl
+                refreshing={isFetching}
+                onRefresh={() => refetch()}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+            // Empty state
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="newspaper-outline" size={64} color={colors.light.textSecondary} />
+                <Text style={styles.emptyTitle}>Haber bulunamadı</Text>
+                <Text style={styles.emptySubtitle}>
+                  {activeSegment === 'latest' 
+                    ? 'Bu kategoride henüz haber yok'
+                    : 'Uzman yorumları bulunamadı'
+                  }
+                </Text>
+                <Text style={styles.emptySubtext}>
+                  NewsAPI'den veri alınamadı veya bu kategoride haber bulunamadı.
+                </Text>
+                {activeSegment === 'expert_opinions' && (
+                  <View style={styles.emptyExpertInfo}>
+                    <Text style={styles.emptyExpertText}>
+                      Aranan uzmanlar:
+                    </Text>
+                    <Text style={styles.emptyExpertNames}>
+                      • Yoshinori Moriwaki{'\n'}
+                      • Naci Görür{'\n'}
+                      • Celâl Şengör{'\n'}
+                      • Şener Üşümezsoy
+                    </Text>
+                    <Text style={styles.emptyExpertNote}>
+                      Bu uzmanların son yorumları henüz NewsAPI'de bulunamadı.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            }
+          />
+        </>
+      )}
     </View>
   );
 }
@@ -242,17 +319,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.surface,
     borderRadius: 12,
     padding: 4,
-    gap: 4,
+    gap: 2,
   },
   segmentButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 8,
-    gap: 8,
+    gap: 4,
   },
   activeSegmentButton: {
     backgroundColor: colors.primary,
@@ -263,15 +340,17 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   segmentText: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.light.textSecondary,
     fontFamily: "NotoSans-Medium",
     fontWeight: "600",
+    textAlign: "center",
   },
   activeSegmentText: {
     color: "#ffffff",
     fontFamily: "NotoSans-Medium",
     fontWeight: "600",
+    textAlign: "center",
   },
   resultsContainer: {
     paddingHorizontal: 20,
@@ -439,5 +518,57 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontStyle: "italic",
     opacity: 0.8,
+  },
+  analysisSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: colors.light.surface,
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  analysisHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  analysisTitle: {
+    fontSize: 18,
+    fontFamily: "NotoSans-Bold",
+    color: colors.light.textPrimary,
+    marginLeft: 8,
+  },
+  analysisSubtitle: {
+    fontSize: 14,
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Regular",
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  analysisButton: {
+    backgroundColor: colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  analysisButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontFamily: "NotoSans-Medium",
+    fontWeight: "600",
   },
 });
