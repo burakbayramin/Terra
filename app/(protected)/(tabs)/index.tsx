@@ -28,7 +28,7 @@ import { Earthquake } from "@/types/types";
 import EarthquakeStats from "@/components/EarthquakeStats";
 import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
-import EmergencyButton from "@/components/EmergencyButton";
+
 import EarthquakeRiskAnalyzer from "@/components/EarthquakeRiskAnalyzer";
 import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 import { useAuth } from "@/hooks/useAuth";
@@ -296,7 +296,7 @@ export default function HomeScreen() {
 
 
 
-  const { sendEmergencySMS, loading } = EmergencyButton();
+
 
   // Premium hook'u
   const { hasAccessToFeature, getCurrentLevel, isPremium } = usePremium();
@@ -647,22 +647,15 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={[styles.quickAccessButton, { backgroundColor: "#e74c3c" }]}
               activeOpacity={0.8}
-              onPress={sendEmergencySMS}
-              disabled={loading}
+              onPress={() => router.push('/(protected)/emergency-notification')}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <MaterialCommunityIcons
-                    name="home-alert"
-                    size={28}
-                    color="#fff"
-                    style={{ marginBottom: 4 }}
-                  />
-                  <Text style={styles.quickAccessText}>Tehlikedeyim</Text>
-                </>
-              )}
+              <MaterialCommunityIcons
+                name="home-alert"
+                size={28}
+                color="#fff"
+                style={{ marginBottom: 4 }}
+              />
+              <Text style={styles.quickAccessText}>Tehlikedeyim</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.quickAccessButton, { backgroundColor: "#f39c12" }]}

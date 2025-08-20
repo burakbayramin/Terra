@@ -71,6 +71,12 @@ export default function AppLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="emergency-notification"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
