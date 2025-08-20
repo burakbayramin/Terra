@@ -1,11 +1,27 @@
 import { useAuth } from "@/providers/AuthProvider";
 import { Redirect, Stack } from "expo-router";
+import { useOnboarding } from "@/hooks/useOnboarding";
+import OnboardingCarousel from "@/components/OnboardingCarousel";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function AppLayout() {
   const { isAuthenticated } = useAuth();
+  const { shouldShowOnboarding, markOnboardingCompleted, isLoading } = useOnboarding();
 
   if (!isAuthenticated) {
     return <Redirect href="/sign-in" />;
+  }
+
+  // Show onboarding for new users
+  if (shouldShowOnboarding()) {
+    return (
+      <OnboardingCarousel onComplete={markOnboardingCompleted} />
+    );
+  }
+
+  // Show loading while checking onboarding status
+  if (isLoading) {
+    return <LoadingSpinner />;
   }
 
   return (

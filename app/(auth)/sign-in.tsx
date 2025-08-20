@@ -1,23 +1,18 @@
 import React from "react";
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, ImageBackground } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/constants/colors";
 
 export default function SignInScreen() {
   const router = useRouter();
 
   return (
-    <LinearGradient
-      colors={[colors.gradientOne, colors.gradientTwo]}
+    <ImageBackground
+      source={require("@/assets/gifs/TerraLoginBackground.gif")}
       style={styles.background}
+      resizeMode="cover"
     >
-      <View style={styles.topContainer}>
-        <Text style={styles.title}>Terra</Text>
-        <Text style={styles.subtitle}>Birlikte Güvendeyiz.</Text>
-      </View>
-
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={[styles.buttonBase, styles.buttonDark]}>
           <Ionicons name="walk" size={20} color="#fff" style={styles.icon} />
@@ -38,7 +33,7 @@ export default function SignInScreen() {
           <Text style={styles.footerLinkText}>Kayıt ol</Text>
         </Link>
       </View>
-    </LinearGradient>
+    </ImageBackground>
   );
 }
 
@@ -47,22 +42,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 80,
     paddingHorizontal: 24,
-  },
-  topContainer: {
-    marginTop: "90%",
-    zIndex: 1,
-  },
-  title: {
-    fontSize: 28,
-    color: "#fff",
-    fontWeight: "bold",
-    marginBottom: 4,
-    fontFamily: "NotoSans-Bold",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#ffffffaa",
-    fontFamily: "NotoSans-Bold",
   },
   buttonContainer: {
     flex: 1,
@@ -80,6 +59,10 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     marginBottom: 12,
     elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   buttonWhite: {
     backgroundColor: "rgba(255,255,255,0.9)",
@@ -89,8 +72,6 @@ const styles = StyleSheet.create({
   },
   buttonRed: {
     backgroundColor: colors.primary,
-    // borderWidth: 1,
-    // borderColor: "rgba(255,255,255,0.3)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -124,13 +105,18 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontFamily: "NotoSans-Regular",
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
   },
   footerLinkText: {
-    color: "#000",
+    color: "#fff",
     fontSize: 14,
     fontWeight: "bold",
-    textDecorationLine: "underline",
     fontFamily: "NotoSans-Bold",
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
   },
   modalContainer: {
     flex: 1,

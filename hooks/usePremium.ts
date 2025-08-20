@@ -33,16 +33,16 @@ export const usePremium = () => {
       return;
     }
 
-    // Kullanıcıları ücretsiz pakete ayarla
+    // Kullanıcıları Koruyucu (Premium 2) pakete ayarla
     setPremiumInfo({
-      isPremium: false,
-      premiumPackageType: PremiumPackageType.FREE, // Ücretsiz paket
+      isPremium: true,
+      premiumPackageType: PremiumPackageType.PROTECTOR, // Koruyucu paket (Premium 2)
       paymentPeriod: PaymentPeriod.MONTHLY,
       firstPaymentDate: '',
       nextPaymentDate: '',
       subscriptionStartDate: '',
       subscriptionEndDate: '',
-      isActive: false,
+      isActive: true,
       autoRenew: false
     });
   };
