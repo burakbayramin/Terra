@@ -1420,11 +1420,11 @@ export default function HomeScreen() {
                   style={styles.comingSoonGradient}
                 >
                   <View style={styles.comingSoonIconContainer}>
-                    <Ionicons name="people" size={24} color="#fff" />
+                    <Ionicons name="map" size={24} color="#fff" />
                   </View>
-                  <Text style={styles.comingSoonTitle}>Topluluk</Text>
+                  <Text style={styles.comingSoonTitle}>Acil Durum Rotası</Text>
                   <Text style={styles.comingSoonDescription}>
-                    Kullanıcılar arası deneyim paylaşımı
+                    Güvenli rota planlaması
                   </Text>
                   <View style={styles.comingSoonBadge}>
                     <Text style={styles.comingSoonBadgeText}>
@@ -1442,11 +1442,11 @@ export default function HomeScreen() {
                   style={styles.comingSoonGradient}
                 >
                   <View style={styles.comingSoonIconContainer}>
-                    <Ionicons name="document-text" size={24} color="#fff" />
+                    <Ionicons name="location" size={24} color="#fff" />
                   </View>
-                  <Text style={styles.comingSoonTitle}>Rapor</Text>
+                  <Text style={styles.comingSoonTitle}>Toplanma Alanları</Text>
                   <Text style={styles.comingSoonDescription}>
-                    Bölgesel deprem sıklığı raporlaması
+                    Güvenli toplanma noktaları
                   </Text>
                   <View style={styles.comingSoonBadge}>
                     <Text style={styles.comingSoonBadgeText}>
@@ -1466,7 +1466,7 @@ export default function HomeScreen() {
                   <View style={styles.comingSoonIconContainer}>
                     <Ionicons name="alert-circle" size={24} color="#fff" />
                   </View>
-                  <Text style={styles.comingSoonTitle}>Sarsıntı Alarm</Text>
+                  <Text style={styles.comingSoonTitle}>Sarsıntı Alarmı</Text>
                   <Text style={styles.comingSoonDescription}>
                     Yüksek hassasiyetli sarsıntı alarmı
                   </Text>
@@ -1502,12 +1502,12 @@ export default function HomeScreen() {
                     <Text style={styles.premiumCTAFeatureText}>Erken Uyarı Sistemi</Text>
                   </View>
                   <View style={styles.premiumCTAFeature}>
-                    <Ionicons name="people" size={16} color="#4CAF50" />
-                    <Text style={styles.premiumCTAFeatureText}>Topluluk Özellikleri</Text>
+                    <Ionicons name="map" size={16} color="#4CAF50" />
+                    <Text style={styles.premiumCTAFeatureText}>Acil Durum Rotası</Text>
                   </View>
                   <View style={styles.premiumCTAFeature}>
-                    <Ionicons name="trending-up" size={16} color="#4CAF50" />
-                    <Text style={styles.premiumCTAFeatureText}>Gelişmiş Raporlar</Text>
+                    <Ionicons name="location" size={16} color="#4CAF50" />
+                    <Text style={styles.premiumCTAFeatureText}>Toplanma Alanları</Text>
                   </View>
                 </View>
               </View>
@@ -2565,7 +2565,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   comingSoonTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: "#fff",
     fontFamily: "NotoSans-Bold",
