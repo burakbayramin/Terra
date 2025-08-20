@@ -1,47 +1,78 @@
-import React from "react";
-import { StyleSheet, Text, View, TouchableOpacity, ImageBackground } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, Text, View, TouchableOpacity, ImageBackground, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 
 export default function SignInScreen() {
   const router = useRouter();
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   return (
-    <ImageBackground
-      source={require("@/assets/gifs/TerraLoginBackground.gif")}
-      style={styles.background}
-      resizeMode="cover"
-    >
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={[styles.buttonBase, styles.buttonDark]}>
-          <Ionicons name="walk" size={20} color="#fff" style={styles.icon} />
-          <Text style={styles.buttonTextLight}>Misafir olarak devam et</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.buttonBase, styles.buttonRed]}
-          onPress={() => router.push("/(auth)/sign-in-email")}
-        >
-          <Ionicons name="mail" size={20} color="#fff" style={styles.icon} />
-          <Text style={styles.buttonTextLight}>E-posta ile Devam Et</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <ImageBackground
+        source={require("@/assets/gifs/TerraLoginBackground.gif")}
+        style={styles.background}
+        resizeMode="cover"
+        onLoad={() => setImageLoaded(true)}
+      >
+        {!imageLoaded && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#FF5700" />
+            <Text style={styles.loadingText}>Yükleniyor...</Text>
+          </View>
+        )}
+        
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={[styles.buttonBase, styles.buttonDark]}>
+            <Ionicons name="walk" size={20} color="#fff" style={styles.icon} />
+            <Text style={styles.buttonTextLight}>Misafir olarak devam et</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.buttonBase, styles.buttonRed]}
+            onPress={() => router.push("/(auth)/sign-in-email")}
+          >
+            <Ionicons name="mail" size={20} color="#fff" style={styles.icon} />
+            <Text style={styles.buttonTextLight}>E-posta ile Devam Et</Text>
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.footerText}>
-        <Text style={styles.footerLabel}>Hesabın yok mu? </Text>
-        <Link href="/(auth)/sign-up">
-          <Text style={styles.footerLinkText}>Kayıt ol</Text>
-        </Link>
-      </View>
-    </ImageBackground>
+        <View style={styles.footerText}>
+          <Text style={styles.footerLabel}>Hesabın yok mu? </Text>
+          <Link href="/(auth)/sign-up">
+            <Text style={styles.footerLinkText}>Kayıt ol</Text>
+          </Link>
+        </View>
+      </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   background: {
     flex: 1,
     paddingTop: 80,
     paddingHorizontal: 24,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 1,
+  },
+  loadingText: {
+    color: '#fff',
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   buttonContainer: {
     flex: 1,
