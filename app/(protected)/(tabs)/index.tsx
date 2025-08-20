@@ -495,7 +495,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Güvenlik Skoru Uyarı Sistemi */}
-        {securityScore < 85 && showRiskWarning && (
+        {profileData?.has_completed_safety_form && securityScore < 85 && showRiskWarning && (
           <TouchableOpacity
             style={[
               styles.securityWarningContainer,
