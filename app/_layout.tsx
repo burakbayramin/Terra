@@ -43,3 +43,4 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+console.log("Burak'ı seviyoruz.");
