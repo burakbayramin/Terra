@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
+import PredefinedQuestionsComponent from "@/components/PredefinedQuestionsComponent";
 
 interface ChatMessage {
   id: string;
@@ -532,32 +533,15 @@ export default function AnalyzerScreen() {
             </View>
           )}
 
-          {/* Hızlı sorular - AI konsepti ile */}
-          {messages.length > 1 && predefinedQuestions.filter((question) => !askedQuestions.includes(question.id)).length > 0 && (
-            <View style={styles.quickQuestionsContainer}>
-              <Text style={styles.quickQuestionsTitle}>💡 Hızlı Sorular</Text>
-              <View style={styles.quickQuestionsGrid}>
-                {predefinedQuestions
-                  .filter((question) => !askedQuestions.includes(question.id))
-                  .map((question) => (
-                    <TouchableOpacity
-                      key={question.id}
-                      onPress={() => handlePredefinedQuestion(question)}
-                      style={styles.quickQuestionCard}
-                    >
-                      <LinearGradient
-                        colors={[colors.gradientOne, colors.gradientTwo]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.quickQuestionGradient}
-                      >
-                        <Text style={styles.quickQuestionIcon}>{question.icon}</Text>
-                        <Text style={styles.quickQuestionText}>{question.question}</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  ))}
-              </View>
-            </View>
+          {/* Hızlı sorular - Dinamik component ile */}
+          {messages.length > 1 && (
+            <PredefinedQuestionsComponent
+              questions={predefinedQuestions}
+              title="💡 Hızlı Sorular"
+              maxQuestions={6}
+              onQuestionPress={handlePredefinedQuestion}
+              askedQuestions={askedQuestions}
+            />
           )}
         </ScrollView>
 
@@ -734,45 +718,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-  quickQuestionsContainer: {
-    marginTop: 15,
-    paddingHorizontal: 5,
-  },
-  quickQuestionsTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#ffffff",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  quickQuestionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  quickQuestionCard: {
-    width: "48%",
-    marginBottom: 6,
-  },
-  quickQuestionGradient: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    alignItems: "center",
-    backgroundColor: colors.light.surface,
-  },
-  quickQuestionIcon: {
-    fontSize: 24,
-    marginBottom: 6,
-  },
-  quickQuestionText: {
-    color: "#ffffff",
-    fontSize: 12,
-    textAlign: "center",
-    lineHeight: 16,
-  },
+
+
   inputContainer: {
     paddingHorizontal: 15,
     paddingTop: 5,

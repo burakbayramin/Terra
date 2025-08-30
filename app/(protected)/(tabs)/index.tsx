@@ -22,8 +22,8 @@ import { ICarouselInstance } from "react-native-reanimated-carousel";
 import { colors } from "@/constants/colors";
 import EarthquakeCarousel from "@/components/EarthquakeCarousel";
 import EarthquakeStats from "@/components/EarthquakeStats";
-import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
+import { FlashList } from "@shopify/flash-list";
 import QuickAccessButtons from "@/components/QuickAccessButtons";
 import UserComments from "@/components/UserComments";
 import UserFeltEarthquakes from "@/components/UserFeltEarthquakes";
@@ -35,6 +35,7 @@ import { useProfile } from "@/hooks/useProfiles";
 import { useAuth } from "@/hooks/useAuth";
 import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 import SecurityWarningComponent from "@/components/SecurityWarningComponent";
+import AIQuestionsComponent from "@/components/AIQuestionsComponent";
 
 const { width } = Dimensions.get("window");
 const CARD_HEIGHT = width * 0.6;
@@ -63,18 +64,10 @@ export default function HomeScreen() {
 
   // // Temporary state variables to fix errors
   // const [magnitudeNotification, setMagnitudeNotification] = useState(false);
-  // const [locationNotification, setLocationNotification] = useState(false);
+  // const [locationNotification, setLocationNotification] = useState(true);
   // const [criticalNotification, setCriticalNotification] = useState(true);
   // const [selectedMagnitude, setSelectedMagnitude] = useState("4.0");
   // const [selectedDistance, setSelectedDistance] = useState("50");
-
-  const aiQuestions = [
-    { id: "1", question: "Depremde ne yapmalıyım?" },
-    { id: "2", question: "En yakın toplanma alanı nerede?" },
-    { id: "3", question: "Deprem çantasında neler olmalı?" },
-    { id: "4", question: "Deprem anında evdeysem ne yapmalıyım?" },
-    { id: "5", question: "Afet sonrası iletişim nasıl sağlanır?" },
-  ];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -329,39 +322,10 @@ export default function HomeScreen() {
           </PremiumFeatureGate>
 
           {/* <Divider style={styles.divider} /> */}
-          <View style={styles.aiQuestionsSection}>
-            <Text style={[styles.sectionTitle, { marginBottom: 10 }]}>
-              AI'a Sor
-            </Text>
-            <FlashList
-              data={aiQuestions}
-              horizontal
-              estimatedItemSize={220}
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{
-                paddingHorizontal: 8,
-                paddingVertical: 2,
-              }}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    // Soru seçildiğinde yapılacak işlem
-                  }}
-                >
-                  <LinearGradient
-                    colors={[colors.gradientOne, colors.gradientTwo]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.aiQuestionCard}
-                  >
-                    <Text style={styles.aiQuestionText}>{item.question}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
+          <AIQuestionsComponent 
+            title="AI'a Sor"
+            maxQuestions={6}
+          />
           <Divider style={styles.divider} />
           <UserFeltEarthquakes sectionStyles={styles} />
           <Divider style={styles.divider} />
@@ -1764,31 +1728,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 2,
   },
-  aiQuestionsSection: {
-    paddingHorizontal: 10,
-    paddingBottom: 2,
-    backgroundColor: colors.light.background,
-  },
-  aiQuestionCard: {
-    minWidth: 220,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginRight: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  aiQuestionText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#fff",
-    fontFamily: "NotoSans-Medium",
-  },
+
 
   // Yakında Çıkacak Özellikler Stilleri
   comingSoonSection: {
