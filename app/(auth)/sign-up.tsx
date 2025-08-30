@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
 import { supabase } from "@/lib/supabase";
 import { colors } from "@/constants/colors";
+import Onboarding from "@/components/Onboarding";
 
 const { width, height } = Dimensions.get("window");
 
@@ -61,8 +62,10 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
-  // const [keyboardVisible, setKeyboardVisible] = useState(false);
-  // const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+  // ✅ Yeni eklenenler
+  const [pendingData, setPendingData] = useState<SignUpFields | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const router = useRouter();
 
@@ -84,50 +87,23 @@ export default function SignUp() {
     mode: "onChange",
   });
 
-  const watchedEmail = watch("email");
-  const watchedPassword = watch("password");
-  const watchedConfirmPassword = watch("confirmPassword");
-
   // Network connectivity check
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
       setIsConnected(state.isConnected ?? false);
     });
-
     return () => unsubscribe();
   }, []);
 
   // Keyboard event listeners
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      'keyboardDidShow',
-      () => {
-        // Handle keyboard show if needed
-      }
-    );
-    const keyboardDidHideListener = Keyboard.addListener(
-      'keyboardDidHide',
-      () => {
-        // Handle keyboard hide if needed
-      }
-    );
-
+    const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", () => {});
+    const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => {});
     return () => {
       keyboardDidShowListener?.remove();
       keyboardDidHideListener?.remove();
     };
   }, []);
-
-  // useEffect(() => {
-  //   if (registrationSuccess) {
-  //     const timer = setTimeout(() => {
-  //       //TODO burada bir ayarlama gerekebilir
-  //       setRegistrationSuccess(false);
-  //     }, 3500);
-
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [registrationSuccess]);
 
   // Get localized error message
   const getLocalizedErrorMessage = (error: any): string => {
@@ -143,7 +119,6 @@ export default function SignUp() {
         "İnternet bağlantısı hatası. Lütfen bağlantınızı kontrol edin.",
     };
 
-    // Handle network errors
     if (
       error?.message?.includes("fetch") ||
       error?.message?.includes("network")
@@ -158,30 +133,31 @@ export default function SignUp() {
     );
   };
 
-  // Form submission handler
-  const onSubmit = async (data: SignUpFields) => {
+  // ✅ İlk submit → onboarding göster
+  const onSubmit = (data: SignUpFields) => {
     if (!isConnected) {
       setErrorMsg("İnternet bağlantısı yok. Lütfen bağlantınızı kontrol edin.");
       return;
     }
+    setPendingData(data);
+    setShowOnboarding(true);
+  };
+
+  // ✅ Onboarding tamamlandığında gerçek signup yapılır
+  const handleOnboardingComplete = async () => {
+    if (!pendingData) return;
 
     setLoading(true);
     setErrorMsg("");
 
     try {
       const { data: authData, error } = await supabase.auth.signUp({
-        email: data.email.trim().toLowerCase(),
-        password: data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        email: pendingData.email.trim().toLowerCase(),
+        password: pendingData.password,
       });
-
       if (error) {
         setErrorMsg(getLocalizedErrorMessage(error));
       } else {
-        // Success - show verification message
-        // setRegistrationSuccess(true);
         reset();
       }
     } catch (err: any) {
@@ -189,53 +165,26 @@ export default function SignUp() {
       setErrorMsg(getLocalizedErrorMessage(err));
     } finally {
       setLoading(false);
+      setShowOnboarding(false);
+      setPendingData(null);
     }
   };
 
-  // Handle sign in navigation
   const handleSignIn = () => {
     router.push("/(auth)/sign-in-email");
   };
 
-  // Toggle password visibility
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
-
-  // Toggle confirm password visibility
   const toggleConfirmPasswordVisibility = () => {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
-  // Success message display
-  // if (registrationSuccess) {
-  //   return (
-  //     <SafeAreaView style={styles.container}>
-  //       <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
-  //       <View style={styles.gradient}>
-  //         <View style={styles.successContainer}>
-  //           <Ionicons
-  //             name="checkmark-circle"
-  //             size={80}
-  //             color={colors.primary}
-  //           />
-  //           <Text style={styles.successTitle}>Kayıt Başarılı!</Text>
-  //           <Text style={styles.successMessage}>
-  //             E-posta adresinize bir doğrulama bağlantısı gönderdik. Lütfen
-  //             hesabınızı doğrulamak için e-postanızı kontrol edin.
-  //           </Text>
-  //           {/* <TouchableOpacity
-  //             style={styles.signInButton}
-  //             onPress={handleSignIn}
-  //           >
-  //             <Text style={styles.signInButtonText}>Giriş Sayfasına Dön</Text>
-  //             <Ionicons name="arrow-forward" size={20} color="white" />
-  //           </TouchableOpacity> */}
-  //         </View>
-  //       </View>
-  //     </SafeAreaView>
-  //   );
-  // }
+  // ✅ Eğer onboarding gösterilecekse signup form yerine onu render et
+  if (showOnboarding) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -255,283 +204,279 @@ export default function SignUp() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>Hesap Oluştur</Text>
-              <Text style={styles.subtitle}>
-                Yeni bir hesap oluşturarak başlayın
-              </Text>
-            </View>
+              {/* Header */}
+              <View style={styles.header}>
+                <Text style={styles.title}>Hesap Oluştur</Text>
+                <Text style={styles.subtitle}>
+                  Yeni bir hesap oluşturarak başlayın
+                </Text>
+              </View>
 
-            {/* Form Container */}
-            <View style={styles.formContainer}>
-              <View style={styles.form}>
-                {/* Network Status */}
-                {!isConnected && (
-                  <View style={styles.networkWarning}>
-                    <Ionicons name="wifi-outline" size={20} color="#ff6b6b" />
-                    <Text style={styles.networkWarningText}>
-                      İnternet bağlantısı yok
-                    </Text>
-                  </View>
-                )}
-
-                {/* Email Input */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>E-posta</Text>
-                  <Controller
-                    control={control}
-                    name="email"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <View
-                        style={[
-                          styles.inputWrapper,
-                          errors.email && styles.inputWrapperError,
-                          value && styles.inputWrapperFocused,
-                        ]}
-                      >
-                        <Ionicons
-                          name="mail-outline"
-                          size={20}
-                          color={value ? colors.primary : "#666"}
-                          style={styles.inputIcon}
-                        />
-                        <TextInput
-                          style={styles.input}
-                          placeholder="ornek@email.com"
-                          placeholderTextColor="#666"
-                          value={value}
-                          onChangeText={onChange}
-                          onBlur={onBlur}
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          autoComplete="email"
-                          editable={!loading}
-                          returnKeyType="next"
-                        />
-                        {value && !errors.email && (
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={20}
-                            color="#4CAF50"
-                          />
-                        )}
-                      </View>
-                    )}
-                  />
-                  {errors.email && (
-                    <Text style={styles.errorText}>{errors.email.message}</Text>
+              {/* Form Container */}
+              <View style={styles.formContainer}>
+                <View style={styles.form}>
+                  {/* Network Status */}
+                  {!isConnected && (
+                    <View style={styles.networkWarning}>
+                      <Ionicons name="wifi-outline" size={20} color="#ff6b6b" />
+                      <Text style={styles.networkWarningText}>
+                        İnternet bağlantısı yok
+                      </Text>
+                    </View>
                   )}
-                </View>
 
-                {/* Password Input */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Şifre</Text>
-                  <Controller
-                    control={control}
-                    name="password"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <View
-                        style={[
-                          styles.inputWrapper,
-                          errors.password && styles.inputWrapperError,
-                          value && styles.inputWrapperFocused,
-                        ]}
-                      >
-                        <Ionicons
-                          name="lock-closed-outline"
-                          size={20}
-                          color={value ? colors.primary : "#666"}
-                          style={styles.inputIcon}
-                        />
-                        <TextInput
-                          style={styles.input}
-                          placeholder="••••••••"
-                          placeholderTextColor="#666"
-                          value={value}
-                          onChangeText={onChange}
-                          onBlur={onBlur}
-                          secureTextEntry={!showPassword}
-                          autoComplete="new-password"
-                          editable={!loading}
-                          returnKeyType="next"
-                        />
-                        <TouchableOpacity
-                          onPress={togglePasswordVisibility}
-                          style={styles.eyeIcon}
-                          disabled={!value}
-                        >
-                          <Ionicons
-                            name={
-                              showPassword ? "eye-off-outline" : "eye-outline"
-                            }
-                            size={20}
-                            color={value ? colors.primary : "#666"}
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  />
-                  {errors.password && (
-                    <Text style={styles.errorText}>
-                      {errors.password.message}
-                    </Text>
-                  )}
-                </View>
-
-                {/* Confirm Password Input */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Şifre Tekrar</Text>
-                  <Controller
-                    control={control}
-                    name="confirmPassword"
-                    render={({ field: { onChange, onBlur, value } }) => (
-                      <View
-                        style={[
-                          styles.inputWrapper,
-                          errors.confirmPassword && styles.inputWrapperError,
-                          value && styles.inputWrapperFocused,
-                        ]}
-                      >
-                        <Ionicons
-                          name="lock-closed-outline"
-                          size={20}
-                          color={value ? colors.primary : "#666"}
-                          style={styles.inputIcon}
-                        />
-                        <TextInput
-                          style={styles.input}
-                          placeholder="••••••••"
-                          placeholderTextColor="#666"
-                          value={value}
-                          onChangeText={onChange}
-                          onBlur={onBlur}
-                          secureTextEntry={!showConfirmPassword}
-                          autoComplete="new-password"
-                          editable={!loading}
-                          returnKeyType="done"
-                        />
-                        <TouchableOpacity
-                          onPress={toggleConfirmPasswordVisibility}
-                          style={styles.eyeIcon}
-                          disabled={!value}
-                        >
-                          <Ionicons
-                            name={
-                              showConfirmPassword
-                                ? "eye-off-outline"
-                                : "eye-outline"
-                            }
-                            size={20}
-                            color={value ? colors.primary : "#666"}
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  />
-                  {errors.confirmPassword && (
-                    <Text style={styles.errorText}>
-                      {errors.confirmPassword.message}
-                    </Text>
-                  )}
-                </View>
-
-                {/* Terms and Conditions */}
-                <View style={styles.termsContainer}>
-                  <Controller
-                    control={control}
-                    name="termsAccepted"
-                    render={({ field: { onChange, value } }) => (
-                      <TouchableOpacity
-                        style={styles.termsRow}
-                        onPress={() => onChange(!value)}
-                        disabled={loading}
-                      >
+                  {/* Email Input */}
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>E-posta</Text>
+                    <Controller
+                      control={control}
+                      name="email"
+                      render={({ field: { onChange, onBlur, value } }) => (
                         <View
                           style={[
-                            styles.checkbox,
-                            value && styles.checkboxChecked,
+                            styles.inputWrapper,
+                            errors.email && styles.inputWrapperError,
+                            value && styles.inputWrapperFocused,
                           ]}
                         >
-                          {value && (
+                          <Ionicons
+                            name="mail-outline"
+                            size={20}
+                            color={value ? colors.primary : "#666"}
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={styles.input}
+                            placeholder="ornek@email.com"
+                            placeholderTextColor="#666"
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            autoComplete="email"
+                            editable={!loading}
+                            returnKeyType="next"
+                          />
+                          {value && !errors.email && (
                             <Ionicons
-                              name="checkmark"
-                              size={16}
-                              color="white"
+                              name="checkmark-circle"
+                              size={20}
+                              color="#4CAF50"
                             />
                           )}
                         </View>
-                        <Text style={styles.termsText}>
-                          <Text>Kullanım şartlarını ve </Text>
-                          <Text
-                            style={styles.termsLink}
-                            onPress={() =>
-                              router.push("/(auth)/privacy-policy")
-                            }
-                          >
-                            gizlilik politikasını{" "}
-                          </Text>
-                          <Text>kabul ediyorum</Text>
-                        </Text>
-                      </TouchableOpacity>
+                      )}
+                    />
+                    {errors.email && (
+                      <Text style={styles.errorText}>{errors.email.message}</Text>
                     )}
-                  />
-                  {errors.termsAccepted && (
-                    <Text style={styles.errorText}>
-                      {errors.termsAccepted.message}
-                    </Text>
-                  )}
-                </View>
-
-                {/* Error Message */}
-                {errorMsg && (
-                  <View style={styles.errorContainer}>
-                    <Ionicons name="alert-circle" size={20} color="#ff6b6b" />
-                    <Text style={styles.errorMessage}>{errorMsg}</Text>
                   </View>
-                )}
 
-                {/* Sign Up Button */}
-                <TouchableOpacity
-                  style={[
-                    styles.signInButton,
-                    (!isValid || loading || !isConnected) &&
-                      styles.signInButtonDisabled,
-                  ]}
-                  onPress={handleSubmit(onSubmit)}
-                  disabled={!isValid || loading || !isConnected}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="black" size="small" />
-                  ) : (
-                    <>
-                      <Text style={styles.signInButtonText}>Kayıt Ol</Text>
-                      <Ionicons name="arrow-forward" size={20} color="white" />
-                    </>
+                  {/* Password Input */}
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Şifre</Text>
+                    <Controller
+                      control={control}
+                      name="password"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <View
+                          style={[
+                            styles.inputWrapper,
+                            errors.password && styles.inputWrapperError,
+                            value && styles.inputWrapperFocused,
+                          ]}
+                        >
+                          <Ionicons
+                            name="lock-closed-outline"
+                            size={20}
+                            color={value ? colors.primary : "#666"}
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={styles.input}
+                            placeholder="••••••••"
+                            placeholderTextColor="#666"
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            secureTextEntry={!showPassword}
+                            autoComplete="new-password"
+                            editable={!loading}
+                            returnKeyType="next"
+                          />
+                          <TouchableOpacity
+                            onPress={togglePasswordVisibility}
+                            style={styles.eyeIcon}
+                            disabled={!value}
+                          >
+                            <Ionicons
+                              name={
+                                showPassword ? "eye-off-outline" : "eye-outline"
+                              }
+                              size={20}
+                              color={value ? colors.primary : "#666"}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    />
+                    {errors.password && (
+                      <Text style={styles.errorText}>
+                        {errors.password.message}
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Confirm Password Input */}
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Şifre Tekrar</Text>
+                    <Controller
+                      control={control}
+                      name="confirmPassword"
+                      render={({ field: { onChange, onBlur, value } }) => (
+                        <View
+                          style={[
+                            styles.inputWrapper,
+                            errors.confirmPassword && styles.inputWrapperError,
+                            value && styles.inputWrapperFocused,
+                          ]}
+                        >
+                          <Ionicons
+                            name="lock-closed-outline"
+                            size={20}
+                            color={value ? colors.primary : "#666"}
+                            style={styles.inputIcon}
+                          />
+                          <TextInput
+                            style={styles.input}
+                            placeholder="••••••••"
+                            placeholderTextColor="#666"
+                            value={value}
+                            onChangeText={onChange}
+                            onBlur={onBlur}
+                            secureTextEntry={!showConfirmPassword}
+                            autoComplete="new-password"
+                            editable={!loading}
+                            returnKeyType="done"
+                          />
+                          <TouchableOpacity
+                            onPress={toggleConfirmPasswordVisibility}
+                            style={styles.eyeIcon}
+                            disabled={!value}
+                          >
+                            <Ionicons
+                              name={
+                                showConfirmPassword
+                                  ? "eye-off-outline"
+                                  : "eye-outline"
+                              }
+                              size={20}
+                              color={value ? colors.primary : "#666"}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    />
+                    {errors.confirmPassword && (
+                      <Text style={styles.errorText}>
+                        {errors.confirmPassword.message}
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Terms and Conditions */}
+                  <View style={styles.termsContainer}>
+                    <Controller
+                      control={control}
+                      name="termsAccepted"
+                      render={({ field: { onChange, value } }) => (
+                        <TouchableOpacity
+                          style={styles.termsRow}
+                          onPress={() => onChange(!value)}
+                          disabled={loading}
+                        >
+                          <View
+                            style={[
+                              styles.checkbox,
+                              value && styles.checkboxChecked,
+                            ]}
+                          >
+                            {value && (
+                              <Ionicons name="checkmark" size={16} color="white" />
+                            )}
+                          </View>
+                          <Text style={styles.termsText}>
+                            <Text>Kullanım şartlarını ve </Text>
+                            <Text
+                              style={styles.termsLink}
+                              onPress={() =>
+                                router.push("/(auth)/privacy-policy")
+                              }
+                            >
+                              gizlilik politikasını{" "}
+                            </Text>
+                            <Text>kabul ediyorum</Text>
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    />
+                    {errors.termsAccepted && (
+                      <Text style={styles.errorText}>
+                        {errors.termsAccepted.message}
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Error Message */}
+                  {errorMsg && (
+                    <View style={styles.errorContainer}>
+                      <Ionicons name="alert-circle" size={20} color="#ff6b6b" />
+                      <Text style={styles.errorMessage}>{errorMsg}</Text>
+                    </View>
                   )}
-                </TouchableOpacity>
 
-                {/* Divider */}
-                <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>veya</Text>
-                  <View style={styles.dividerLine} />
+                  {/* Sign Up Button */}
+                  <TouchableOpacity
+                    style={[
+                      styles.signInButton,
+                      (!isValid || loading || !isConnected) &&
+                        styles.signInButtonDisabled,
+                    ]}
+                    onPress={handleSubmit(onSubmit)}
+                    disabled={!isValid || loading || !isConnected}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="black" size="small" />
+                    ) : (
+                      <>
+                        <Text style={styles.signInButtonText}>Kayıt Ol</Text>
+                        <Ionicons name="arrow-forward" size={20} color="white" />
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Divider */}
+                  <View style={styles.divider}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>veya</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  {/* Sign In Link */}
+                  <TouchableOpacity
+                    style={styles.signUpContainer}
+                    onPress={handleSignIn}
+                    disabled={loading}
+                  >
+                    <Text style={styles.signUpText}>
+                      Zaten bir hesabınız var mı?{" "}
+                      <Text style={styles.signUpLink}>Giriş Yapın</Text>
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-
-                {/* Sign In Link */}
-                <TouchableOpacity
-                  style={styles.signUpContainer}
-                  onPress={handleSignIn}
-                  disabled={loading}
-                >
-                  <Text style={styles.signUpText}>
-                    Zaten bir hesabınız var mı?{" "}
-                    <Text style={styles.signUpLink}>Giriş Yapın</Text>
-                  </Text>
-                </TouchableOpacity>
               </View>
-            </View>
             </ScrollView>
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>

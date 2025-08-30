@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Entypo } from "@expo/vector-icons";
+import { Entypo, Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { formatDistanceToNowStrict, isToday } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -79,8 +79,19 @@ export default function NewsDetailScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={colors.light.textPrimary} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Haber Detayı</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        showsVerticalScrollIndicator={false}
+        // YENİ: Pull to refresh
         refreshControl={
           <RefreshControl
             refreshing={isFetching}
@@ -90,59 +101,77 @@ export default function NewsDetailScreen() {
           />
         }
       >
-        {/* Header */}
+        {/* Category and Time Header */}
         <View style={styles.headerRow}>
           <View style={styles.categoryRow}>
-            {(news.category || []).map((cat, idx) => (
+            {(Array.isArray(news.category)
+              ? news.category
+              : typeof news.category === "string"
+              ? (news.category as string)
+                  .replace(/[{}]/g, "")
+                  .split(",")
+                  .map((cat: string) => cat.trim().replace(/"/g, ""))
+              : []
+            ).slice(0, 3).map((cat, idx) => (
               <View key={idx} style={styles.chip}>
                 <Text style={styles.chipText}>{cat}</Text>
               </View>
             ))}
             {isNewsToday && (
               <View style={styles.hotChip}>
-                <Text style={styles.hotChipText}>🔥 Yeni</Text>
+                <Ionicons name="flame" size={12} color="#ffffff" />
+                <Text style={styles.hotChipText}>Yeni</Text>
               </View>
             )}
           </View>
-          <Text style={styles.timeText}>
-            {formatDistanceToNowStrict(new Date(news.created_at), {
-              locale: tr,
-              addSuffix: true,
-            })}
-          </Text>
+          <View style={styles.timeContainer}>
+            <Ionicons name="time-outline" size={14} color={colors.light.textSecondary} />
+            <Text style={styles.timeText}>
+              {formatDistanceToNowStrict(new Date(news.created_at), {
+                locale: tr,
+                addSuffix: true,
+              })}
+            </Text>
+          </View>
         </View>
 
-        {/* Başlık */}
+        {/* Title */}
         <Text style={styles.title}>{news.title}</Text>
 
-        {/* Kapak Görseli */}
-        {news.image && (
-          <Image
-            source={{ uri: news.image }}
-            style={styles.image}
-            resizeMode="cover"
-          />
+        {/* Cover Image */}
+        {!!news.image && (
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: news.image }}
+              style={styles.image}
+              resizeMode="cover"
+              onError={(error) => console.log('Image loading error:', error)}
+            />
+            <View style={styles.imageOverlay} />
+          </View>
         )}
 
-        {/* İçerik */}
+        {/* Content */}
         <View style={styles.contentBox}>
           <Text style={styles.contentText}>{news.content}</Text>
         </View>
 
-        {/* Kaynak ve Deprem Bilgisi */}
-        <View style={styles.footer}>
-          <Text style={styles.sourceText}>Kaynak: {news.source}</Text>
-
+        {/* Source and Earthquake Info */}
+        <View style={styles.footerSection}>
+          <View style={styles.sourceContainer}>
+            <Ionicons name="newspaper-outline" size={16} color={colors.primary} />
+            <Text style={styles.sourceText}>Kaynak: {news.source}</Text>
+          </View>
+          
           {news.earthquake_id && (
             <Pressable
               style={styles.earthquakeButton}
-              onPress={() => router.push(`/earthquakes/${news.earthquake_id}`)}
+              onPress={() => router.push("/earthquakes")}
             >
-              <Entypo
-                name="info-with-circle"
+              <Ionicons
+                name="information-circle-outline"
                 size={20}
-                color="#fff"
-                style={{ marginRight: 8 }}
+                color="#ffffff"
               />
               <Text style={styles.earthquakeButtonText}>
                 Deprem Bilgisine Git
@@ -151,32 +180,52 @@ export default function NewsDetailScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* Arka planda güncelleme göstergesi */}
-      {isFetching && !showLoading && (
-        <View style={styles.refreshIndicator}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      )}
     </View>
   );
 }
 
+// Styles aynı kalıyor - hiçbir şey değiştirmeyin
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.light.background,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: colors.light.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.light.surface,
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: colors.light.surface,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: "NotoSans-Bold",
+    color: colors.light.textPrimary,
+    flex: 1,
+    textAlign: "center",
+  },
+  headerSpacer: {
+    width: 40,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
   },
   loadingText: {
     fontSize: 16,
     color: colors.light.textSecondary,
     fontFamily: "NotoSans-Medium",
-    marginTop: 10,
+    marginTop: 16,
   },
   errorContainer: {
     flex: 1,
@@ -186,80 +235,81 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: "#ff0000",
+    color: colors.error,
     fontFamily: "NotoSans-Medium",
     textAlign: "center",
-    marginBottom: 20,
+    marginTop: 16,
+    marginBottom: 24,
   },
   retryButton: {
     backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  backButton: {
-    backgroundColor: colors.light.textSecondary,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
   retryButtonText: {
     color: "#ffffff",
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: "NotoSans-Medium",
     fontWeight: "600",
-  },
-  refreshIndicator: {
-    position: "absolute",
-    top: 60,
-    right: 20,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    padding: 8,
-    borderRadius: 20,
-    zIndex: 100,
   },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 30,
-    marginHorizontal: 16,
+    marginTop: 20,
+    marginHorizontal: 20,
+    marginBottom: 16,
   },
   categoryRow: {
     flexDirection: "row",
-    gap: 6,
+    gap: 8,
     flexWrap: "wrap",
-    flex: 1,
+    alignItems: "center",
   },
   chip: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
     borderColor: colors.primary,
-    borderWidth: 1.5,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    marginRight: 3,
-    marginBottom: 2,
   },
   hotChip: {
-    borderColor: colors.primary,
-    borderWidth: 1.5,
-    backgroundColor: colors.light.background,
-    borderRadius: 16,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    marginRight: 3,
-    marginBottom: 2,
+    backgroundColor: colors.error,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   chipText: {
     fontSize: 12,
     color: colors.primary,
-    fontWeight: "500",
+    fontWeight: "600",
     fontFamily: "NotoSans-Medium",
+    letterSpacing: 0.2,
   },
   hotChipText: {
     fontSize: 12,
-    color: colors.primary,
-    fontWeight: "500",
+    color: "#ffffff",
+    fontWeight: "600",
     fontFamily: "NotoSans-Medium",
+    letterSpacing: 0.2,
+  },
+  timeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   timeText: {
     fontSize: 12,
@@ -267,70 +317,102 @@ const styles = StyleSheet.create({
     fontFamily: "NotoSans-Regular",
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
     color: colors.light.textPrimary,
-    marginTop: 10,
-    marginHorizontal: 16,
-    marginBottom: 8,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    lineHeight: 30,
     letterSpacing: 0.1,
     fontFamily: "NotoSans-Bold",
   },
+  imageContainer: {
+    position: "relative",
+    marginHorizontal: 20,
+    marginBottom: 24,
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    backgroundColor: colors.light.surface,
+    minHeight: 250,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   image: {
-    width: "90%",
-    alignSelf: "center",
-    height: 210,
-    borderRadius: 14,
-    marginBottom: 15,
-    backgroundColor: "#f2f2f2",
-    marginTop: 6,
+    width: "100%",
+    height: 250,
+    borderRadius: 20,
+    backgroundColor: colors.light.surface,
+  },
+  imageOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    backgroundColor: "rgba(0,0,0,0.1)",
   },
   contentBox: {
-    marginHorizontal: 16,
-    backgroundColor: "#f8f8f8",
-    padding: 13,
-    borderRadius: 10,
-    marginBottom: 12,
-    marginTop: 4,
+    marginHorizontal: 20,
+    backgroundColor: colors.light.surface,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   contentText: {
-    fontSize: 15,
-    color: "#222",
-    lineHeight: 22,
+    fontSize: 16,
+    color: colors.light.textPrimary,
+    lineHeight: 26,
     fontFamily: "NotoSans-Regular",
   },
-  footer: {
-    marginHorizontal: 0,
-    marginBottom: 18,
-    marginTop: 2,
+  footerSection: {
+    marginHorizontal: 20,
+    gap: 16,
+  },
+  sourceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 12,
     paddingHorizontal: 16,
+    backgroundColor: colors.light.surface,
+    borderRadius: 12,
   },
   sourceText: {
-    fontSize: 13,
-    color: colors.light.textPrimary,
+    fontSize: 14,
+    color: colors.primary,
     fontStyle: "italic",
-    fontFamily: "NotoSans-Regular",
-    marginBottom: 8,
-    textAlign: "left",
-    paddingLeft: 10,
+    fontFamily: "NotoSans-Medium",
+    letterSpacing: 0.1,
   },
   earthquakeButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: colors.primary,
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 18,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    gap: 8,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
     alignSelf: "flex-start",
   },
   earthquakeButtonText: {
-    color: "#fff",
-    fontSize: 15,
+    color: "#ffffff",
+    fontSize: 16,
     fontFamily: "NotoSans-Bold",
+    fontWeight: "600",
   },
 });

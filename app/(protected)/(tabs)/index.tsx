@@ -11,33 +11,29 @@ import {
   Image,
   Linking,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Divider } from "react-native-paper";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { useRouter } from "expo-router";
 import { useSharedValue } from "react-native-reanimated";
 import { ICarouselInstance } from "react-native-reanimated-carousel";
 import { colors } from "@/constants/colors";
 import EarthquakeCarousel from "@/components/EarthquakeCarousel";
-import { Earthquake } from "@/types/types";
 import EarthquakeStats from "@/components/EarthquakeStats";
 import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
-import EmergencyButton from "@/components/EmergencyButton";
-import EarthquakeRiskAnalyzer from "@/components/EarthquakeRiskAnalyzer";
+import QuickAccessButtons from "@/components/QuickAccessButtons";
+import UserComments from "@/components/UserComments";
+import UserFeltEarthquakes from "@/components/UserFeltEarthquakes";
 // import PremiumFeatureGate from "@/components/PremiumFeatureGate";
-import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
 import { useEarthquakes } from "@/hooks/useEarthquakes";
-// import { useLocation } from "@/hooks/useLocation";
-import { useSafetyScore, useProfile } from "@/hooks/useProfile";
 import { useNews } from "@/hooks/useNews";
-// import { usePremium } from "@/hooks/usePremium";
 import { TASK_DATA } from "@/constants/taskConstants";
+import { useProfile } from "@/hooks/useProfiles";
+import { useAuth } from "@/hooks/useAuth";
+import PremiumFeatureGate from "@/components/PremiumFeatureGate";
 
 const { width } = Dimensions.get("window");
 const CARD_HEIGHT = width * 0.6;
@@ -47,118 +43,27 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
-  // const {
-  //   getAndSaveLocation,
-  //   hasPermission,
-  //   requestLocationPermission,
-  //   authLoading,
-  // } = useLocation();
-
   const [activeSegment, setActiveSegment] = useState<
     "afad" | "kandilli" | "usgs" | "iris" | "emsc"
   >("kandilli");
   const carouselRef = useRef<ICarouselInstance | null>(null);
   const progress = useSharedValue(0);
-  const { data: securityScore = 0, isLoading: isLoadingSafetyScore } =
-    useSafetyScore(user?.id || "");
-  const { data: profileData } = useProfile(user?.id || "");
+
+  const { data: profile } = useProfile();
   const { data: earthquakes = [], isLoading: isLoadingEarthquakes } =
     useEarthquakes();
   const { data: news = [], isLoading: isLoadingNews } = useNews();
 
-  const { data: userFeltEarthquakes, isLoading: isLoadingFeltEarthquakes } =
-    useQuery({
-      queryKey: ["user-felt-earthquakes", user?.id],
-      queryFn: async () => {
-        if (!user?.id) return [];
-
-        const { data, error } = await supabase
-          .from("earthquake_felt_reports")
-          .select("earthquake_id, created_at")
-          .eq("profile_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(10);
-
-        if (error) {
-          console.error("Error fetching user felt earthquakes:", error);
-          return [];
-        }
-
-        // Earthquake ID'leri ile gerçek deprem verilerini eşleştir
-        const earthquakeIds = data?.map((report) => report.earthquake_id) || [];
-        const filteredEarthquakes = earthquakes
-          .filter((eq: Earthquake) => earthquakeIds.includes(eq.id))
-          .map((eq: Earthquake) => {
-            const report = data?.find((r) => r.earthquake_id === eq.id);
-            return {
-              ...eq,
-              felt_at: report?.created_at,
-            };
-          });
-
-        return filteredEarthquakes;
-      },
-      enabled: !!user?.id && earthquakes.length > 0,
-      staleTime: 5 * 60 * 1000, // 5 dakika fresh
-    });
-
-  // Kullanıcının yorumları
-  const { data: userComments, isLoading: isLoadingComments } = useQuery({
-    queryKey: ["user-comments", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-
-      const { data, error } = await supabase
-        .from("earthquake_comments")
-        .select(
-          `
-          id,
-          comment,
-          created_at,
-          is_edited,
-          edited_at,
-          earthquake_id
-        `
-        )
-        .eq("profile_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (error) {
-        console.error("Error fetching user comments:", error);
-        return [];
-      }
-
-      // Manually fetch earthquake details for each comment
-      const commentsWithEarthquakes = await Promise.all(
-        (data || []).map(async (comment) => {
-          // Find earthquake data from the existing earthquakes
-          const earthquake = earthquakes.find(
-            (eq: Earthquake) => eq.id === comment.earthquake_id
-          );
-
-          return {
-            ...comment,
-            earthquake: earthquake || null,
-          };
-        })
-      );
-
-      return commentsWithEarthquakes;
-    },
-    enabled: !!user?.id && earthquakes.length > 0,
-    staleTime: 5 * 60 * 1000, // 5 dakika fresh
-  });
-
   const [visibleTasks, setVisibleTasks] = useState(() => TASK_DATA.slice(0, 4));
   const [nextTaskIndex, setNextTaskIndex] = useState(4);
 
-  const { sendEmergencySMS, loading } = EmergencyButton();
+  // // Temporary state variables to fix errors
+  // const [magnitudeNotification, setMagnitudeNotification] = useState(false);
+  // const [locationNotification, setLocationNotification] = useState(false);
+  // const [criticalNotification, setCriticalNotification] = useState(true);
+  // const [selectedMagnitude, setSelectedMagnitude] = useState("4.0");
+  // const [selectedDistance, setSelectedDistance] = useState("50");
 
-  // Premium hook'u
-  // const { hasAccessToFeature, getCurrentLevel, isPremium } = usePremium();
-
-  // AI sorulari için örnek veriler
   const aiQuestions = [
     { id: "1", question: "Depremde ne yapmalıyım?" },
     { id: "2", question: "En yakın toplanma alanı nerede?" },
@@ -167,60 +72,6 @@ export default function HomeScreen() {
     { id: "5", question: "Afet sonrası iletişim nasıl sağlanır?" },
   ];
 
-  const [magnitudeNotification, setMagnitudeNotification] = useState(true);
-  const [selectedMagnitude, setSelectedMagnitude] = useState("4.0");
-  const [locationNotification, setLocationNotification] = useState(true);
-  const [selectedDistance, setSelectedDistance] = useState("50");
-  const [criticalNotification, setCriticalNotification] = useState(true);
-
-  // useEffect(() => {
-  //   const handleLocationOnLoad = async () => {
-  //     if (authLoading) {
-  //       console.log("Auth still loading, waiting...");
-  //       return;
-  //     }
-
-  //     if (user) {
-  //       try {
-  //         if (!hasPermission) {
-  //           Alert.alert(
-  //             "Konum İzni",
-  //             "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar.",
-  //             [
-  //               {
-  //                 text: "İptal",
-  //                 style: "cancel",
-  //               },
-  //               {
-  //                 text: "İzin Ver",
-  //                 onPress: async () => {
-  //                   const permissionGranted = await requestLocationPermission();
-  //                   if (permissionGranted) {
-  //                     const success = await getAndSaveLocation();
-  //                     if (success) {
-  //                       console.log("Konum başarıyla kaydedildi");
-  //                     }
-  //                   }
-  //                 },
-  //               },
-  //             ]
-  //           );
-  //         } else {
-  //           const success = await getAndSaveLocation();
-  //           if (success) {
-  //             console.log("Konum başarıyla kaydedildi");
-  //           } else {
-  //             console.log("Konum kaydedilemedi");
-  //           }
-  //         }
-  //       } catch (error) {
-  //         console.error("Konum alma hatası:", error);
-  //       }
-  //     }
-  //   };
-
-  //   handleLocationOnLoad();
-  // }, [user, authLoading]); 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
@@ -245,39 +96,39 @@ export default function HomeScreen() {
               style={[
                 styles.securityScoreChip,
                 {
-                  borderColor: profileData?.has_completed_safety_form
-                    ? getScoreColor(securityScore)
+                  borderColor: profile?.has_completed_safety_form
+                    ? getScoreColor(profile.safety_score || 0)
                     : "#e74c3c",
-                  backgroundColor: profileData?.has_completed_safety_form
+                  backgroundColor: profile?.has_completed_safety_form
                     ? "transparent"
                     : "#e74c3c",
                 },
               ]}
               activeOpacity={0.7}
               onPress={() => {
-                if (profileData?.has_completed_safety_form) {
+                if (profile?.has_completed_safety_form) {
                   router.push("/(protected)/risk-form?showResults=true");
                 } else {
                   router.push("/(protected)/risk-form");
                 }
               }}
             >
-              {isLoadingSafetyScore ? (
+              {!profile ? (
                 <ActivityIndicator size="small" color={colors.primary} />
-              ) : profileData?.has_completed_safety_form ? (
+              ) : profile?.has_completed_safety_form ? (
                 <>
                   <MaterialCommunityIcons
                     name="shield-check"
                     size={16}
-                    color={getScoreColor(securityScore)}
+                    color={getScoreColor(profile.safety_score || 0)}
                   />
                   <Text
                     style={[
                       styles.securityScoreText,
-                      { color: getScoreColor(securityScore) },
+                      { color: getScoreColor(profile.safety_score || 0) },
                     ]}
                   >
-                    % {securityScore}
+                    % {profile.safety_score || 0}
                   </Text>
                 </>
               ) : (
@@ -375,7 +226,6 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-
         <View style={styles.content}>
           <View style={styles.carouselContainer}>
             <EarthquakeCarousel
@@ -390,68 +240,15 @@ export default function HomeScreen() {
               isLoading={isLoadingEarthquakes}
             />
           </View>
-
           <Divider style={styles.divider} />
           <EarthquakeStats />
           <Divider style={styles.divider} />
-          {/* Quick Access Buttons */}
           <Text style={styles.sectionTitle}>Hızlı Erişim</Text>
-          <View style={styles.quickAccessContainer}>
-            <TouchableOpacity
-              style={[styles.quickAccessButton, { backgroundColor: "#e74c3c" }]}
-              activeOpacity={0.8}
-              onPress={sendEmergencySMS}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <MaterialCommunityIcons
-                    name="home-alert"
-                    size={28}
-                    color="#fff"
-                    style={{ marginBottom: 4 }}
-                  />
-                  <Text style={styles.quickAccessText}>Tehlikedeyim</Text>
-                </>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.quickAccessButton, { backgroundColor: "#f39c12" }]}
-              activeOpacity={0.8}
-              onPress={() => {
-                router.push("/(protected)/whistle");
-              }}
-            >
-              <MaterialCommunityIcons
-                name="whistle"
-                size={28}
-                color="#fff"
-                style={{ marginBottom: 4 }}
-              />
-              <Text style={styles.quickAccessText}>Deprem Düdüğü</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.quickAccessButton, { backgroundColor: "#27ae60" }]}
-              activeOpacity={0.8}
-              onPress={() => {
-                router.push("/(protected)/first-aid");
-              }}
-            >
-              <Ionicons
-                name="medkit"
-                size={28}
-                color="#fff"
-                style={{ marginBottom: 4 }}
-              />
-              <Text style={styles.quickAccessText}>İlk Yardım</Text>
-            </TouchableOpacity>
-          </View>
+          <QuickAccessButtons />
           <Divider style={styles.divider} />
 
           {/* Deprem Risk Analizi Modülü - Premium Özellik */}
-          {/* <PremiumFeatureGate featureId="earthquake-risk-analysis">
+          <PremiumFeatureGate featureId="earthquake-risk-analysis">
             <View style={styles.riskAnalysisContainer}>
               <Text style={styles.sectionTitle}>
                 Konumuna Göre Deprem Riskini Öğren
@@ -517,7 +314,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          </PremiumFeatureGate> */}
+          </PremiumFeatureGate>
 
           {/* <Divider style={styles.divider} /> */}
           <View style={styles.aiQuestionsSection}>
@@ -553,344 +350,16 @@ export default function HomeScreen() {
               )}
             />
           </View>
-
           <Divider style={styles.divider} />
-
-          {/* Kullanıcının hissettiği deprem listesi */}
-          {user && (
-            <View style={styles.feltEarthquakesSection}>
-              <Text style={styles.sectionTitle}>Hissettiğim Depremler</Text>
-
-              {isLoadingFeltEarthquakes ? (
-                <View style={styles.feltEarthquakesLoading}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={styles.feltEarthquakesLoadingText}>
-                    Yükleniyor...
-                  </Text>
-                </View>
-              ) : userFeltEarthquakes && userFeltEarthquakes.length > 0 ? (
-                <View style={styles.feltEarthquakesContainer}>
-                  <FlashList
-                    data={userFeltEarthquakes}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    estimatedItemSize={316}
-                    keyExtractor={(item) => `${item.id}-${item.felt_at}`}
-                    contentContainerStyle={{}}
-                    renderItem={({ item }) => {
-                      const getMagnitudeColor = (magnitude: number) => {
-                        if (magnitude >= 5.0) return "#FF4444";
-                        if (magnitude >= 4.0) return "#FF8800";
-                        if (magnitude >= 3.0) return "#FFB800";
-                        return "#4CAF50";
-                      };
-
-                      const formatDate = (dateString: string) => {
-                        const date = new Date(dateString);
-                        return date.toLocaleDateString("tr-TR", {
-                          day: "numeric",
-                          month: "short",
-                        });
-                      };
-
-                      const formatTime = (dateString: string) => {
-                        const date = new Date(dateString);
-                        return date.toLocaleTimeString("tr-TR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-                      };
-
-                      return (
-                        <TouchableOpacity
-                          style={styles.feltEarthquakeCard}
-                          activeOpacity={0.8}
-                          onPress={() =>
-                            router.push(
-                              `/(protected)/(tabs)/earthquakes/${item.id}`
-                            )
-                          }
-                        >
-                          <View style={styles.feltEarthquakeHeader}>
-                            <View
-                              style={[
-                                styles.feltEarthquakeMagnitude,
-                                {
-                                  backgroundColor: getMagnitudeColor(item.mag),
-                                },
-                              ]}
-                            >
-                              <Text style={styles.feltEarthquakeMagnitudeText}>
-                                {item.mag.toFixed(1)}
-                              </Text>
-                            </View>
-                          </View>
-
-                          <Text
-                            style={styles.feltEarthquakeTitle}
-                            numberOfLines={2}
-                          >
-                            {item.title}
-                          </Text>
-
-                          <View style={styles.feltEarthquakeDetails}>
-                            <View style={styles.feltEarthquakeDetailItem}>
-                              <Ionicons
-                                name="calendar-outline"
-                                size={12}
-                                color="#6b7280"
-                              />
-                              <Text style={styles.feltEarthquakeDetailText}>
-                                {formatDate(item.date)}
-                              </Text>
-                            </View>
-                            <View style={styles.feltEarthquakeDetailItem}>
-                              <Ionicons
-                                name="time-outline"
-                                size={12}
-                                color="#6b7280"
-                              />
-                              <Text style={styles.feltEarthquakeDetailText}>
-                                {formatTime(item.date)}
-                              </Text>
-                            </View>
-                            <View style={styles.feltEarthquakeDetailItem}>
-                              <Ionicons
-                                name="layers-outline"
-                                size={12}
-                                color="#6b7280"
-                              />
-                              <Text style={styles.feltEarthquakeDetailText}>
-                                {item.depth} km
-                              </Text>
-                            </View>
-                          </View>
-
-                          <View style={styles.feltEarthquakeFooter}>
-                            <Text style={styles.feltEarthquakeFeltDate}>
-                              {new Date(item.felt_at).toLocaleDateString(
-                                "tr-TR",
-                                {
-                                  day: "numeric",
-                                  month: "short",
-                                }
-                              )}{" "}
-                              tarihinde hissettim
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    }}
-                  />
-                </View>
-              ) : (
-                <View style={styles.feltEarthquakesEmpty}>
-                  <Ionicons name="heart-outline" size={48} color="#cbd5e0" />
-                  <Text style={styles.feltEarthquakesEmptyTitle}>
-                    Henüz deprem hissetmediniz
-                  </Text>
-                  <Text style={styles.feltEarthquakesEmptyDescription}>
-                    Deprem detaylarına giderek hissettiğiniz depremleri
-                    işaretleyebilirsiniz
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-
+          <UserFeltEarthquakes sectionStyles={styles} />
           <Divider style={styles.divider} />
-
-          {/* Kullanıcının yorumları */}
-          {user && (
-            <View style={styles.userCommentsSection}>
-              <Text style={styles.sectionTitle}>Yaptığım Yorumlar</Text>
-
-              {isLoadingComments ? (
-                <View style={styles.userCommentsLoading}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={styles.userCommentsLoadingText}>
-                    Yorumlar yükleniyor...
-                  </Text>
-                </View>
-              ) : userComments && userComments.length > 0 ? (
-                <View style={styles.userCommentsContainer}>
-                  <FlashList
-                    data={userComments}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    estimatedItemSize={352}
-                    keyExtractor={(item) => item.id}
-                    contentContainerStyle={{}}
-                    renderItem={({ item }) => {
-                      const getMagnitudeColor = (magnitude: number) => {
-                        if (magnitude >= 5.0) return "#FF4444";
-                        if (magnitude >= 4.0) return "#FF8800";
-                        if (magnitude >= 3.0) return "#FFB800";
-                        return "#4CAF50";
-                      };
-
-                      const formatDate = (dateString: string) => {
-                        const date = new Date(dateString);
-                        return date.toLocaleDateString("tr-TR", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-                      };
-
-                      const formatCommentDate = (dateString: string) => {
-                        const date = new Date(dateString);
-                        const now = new Date();
-                        const diffMs = now.getTime() - date.getTime();
-                        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                        const diffDays = Math.floor(diffHours / 24);
-
-                        if (diffHours < 1) return "Az önce yorum yaptım";
-                        if (diffHours < 24)
-                          return `${diffHours} saat önce yorum yaptım`;
-                        if (diffDays < 7)
-                          return `${diffDays} gün önce yorum yaptım`;
-
-                        return (
-                          date.toLocaleDateString("tr-TR", {
-                            day: "numeric",
-                            month: "short",
-                          }) + " tarihinde yorum yaptım"
-                        );
-                      };
-
-                      return (
-                        <TouchableOpacity
-                          style={styles.userCommentCard}
-                          activeOpacity={0.8}
-                          onPress={() =>
-                            router.push(
-                              `/(protected)/(tabs)/earthquakes/${item.earthquake_id}`
-                            )
-                          }
-                        >
-                          {/* Deprem Bilgileri Header */}
-                          <View style={styles.commentEarthquakeHeader}>
-                            <View
-                              style={[
-                                styles.commentEarthquakeMagnitude,
-                                {
-                                  backgroundColor: getMagnitudeColor(
-                                    item.earthquake?.mag || 0
-                                  ),
-                                },
-                              ]}
-                            >
-                              <Text
-                                style={styles.commentEarthquakeMagnitudeText}
-                              >
-                                {item.earthquake?.mag?.toFixed(1) || "0.0"}
-                              </Text>
-                            </View>
-                            <View style={styles.commentEarthquakeInfo}>
-                              <Text style={styles.commentEarthquakeDate}>
-                                {formatDate(
-                                  item.earthquake?.date || item.created_at
-                                )}
-                              </Text>
-                              <Text style={styles.commentEarthquakeDepth}>
-                                {item.earthquake?.depth || 0} km derinlik
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Deprem Başlığı */}
-                          <Text
-                            style={styles.commentEarthquakeTitle}
-                            numberOfLines={2}
-                          >
-                            {item.earthquake?.title || "Bilinmeyen Deprem"}
-                          </Text>
-
-                          {/* Yorum İçeriği */}
-                          <View style={styles.commentContentContainer}>
-                            <View style={styles.commentHeader}>
-                              <Ionicons
-                                name="chatbubble"
-                                size={14}
-                                color={colors.primary}
-                              />
-                              <Text style={styles.commentLabel}>Yorumum:</Text>
-                            </View>
-                            <Text style={styles.commentText} numberOfLines={3}>
-                              {item.comment}
-                            </Text>
-                          </View>
-
-                          {/* Footer */}
-                          <View style={styles.commentFooter}>
-                            <Text style={styles.commentDateText}>
-                              {formatCommentDate(item.created_at)}
-                            </Text>
-                            {item.is_edited && (
-                              <View style={styles.editedBadge}>
-                                <Ionicons
-                                  name="create-outline"
-                                  size={12}
-                                  color="#9ca3af"
-                                />
-                                <Text style={styles.editedText}>
-                                  düzenlendi
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-
-                          {/* View Details Button */}
-                          <TouchableOpacity
-                            style={styles.viewCommentButton}
-                            onPress={() =>
-                              router.push(
-                                `/(protected)/(tabs)/earthquakes/${item.earthquake_id}`
-                              )
-                            }
-                          >
-                            <Text style={styles.viewCommentButtonText}>
-                              Detayları Gör
-                            </Text>
-                            <Ionicons
-                              name="chevron-forward"
-                              size={14}
-                              color={colors.primary}
-                            />
-                          </TouchableOpacity>
-                        </TouchableOpacity>
-                      );
-                    }}
-                  />
-                </View>
-              ) : (
-                <View style={styles.userCommentsEmpty}>
-                  <Ionicons
-                    name="chatbubbles-outline"
-                    size={48}
-                    color="#cbd5e0"
-                  />
-                  <Text style={styles.userCommentsEmptyTitle}>
-                    Henüz yorum yapmadınız
-                  </Text>
-                  <Text style={styles.userCommentsEmptyDescription}>
-                    Deprem detaylarına giderek deneyimlerinizi ve
-                    düşüncelerinizi paylaşabilirsiniz
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-
+          <UserComments sectionStyles={styles} />
           <Divider style={styles.divider} />
 
           {/* Bildirim Ayarları */}
-          <View style={styles.notificationSection}>
+          {/* <View style={styles.notificationSection}>
             <Text style={styles.sectionTitle}>Bildirim Ayarları</Text>
 
-            {/* 1. Anlık Deprem Bildirimi */}
             <View style={styles.notificationCard}>
               <View style={styles.notificationHeader}>
                 <View style={styles.notificationIconContainer}>
@@ -960,7 +429,6 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {/* 2. Konuma Göre Deprem Bildirimi */}
             <View style={styles.notificationCard}>
               <View style={styles.notificationHeader}>
                 <View style={styles.notificationIconContainer}>
@@ -1028,7 +496,6 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {/* 3. Kritik Büyüklükteki Depremler */}
             <View style={styles.notificationCard}>
               <View style={styles.notificationHeader}>
                 <View style={styles.notificationIconContainer}>
@@ -1067,7 +534,7 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* <PremiumFeatureGate
+            <PremiumFeatureGate
               featureId="smart-notification-engine"
               compact={true}
             >
@@ -1102,8 +569,8 @@ export default function HomeScreen() {
                   </View>
                 </LinearGradient>
               </TouchableOpacity>
-            </PremiumFeatureGate> */}
-          </View>
+            </PremiumFeatureGate>
+          </View> */}
 
           {/* <Divider style={styles.divider} /> */}
 
@@ -1317,11 +784,13 @@ export default function HomeScreen() {
                 contentContainerStyle={{ paddingHorizontal: 12 }}
                 renderItem={({ item }) => (
                   <TouchableOpacity style={styles.newsCard} activeOpacity={0.8}>
-                    <Image
-                      source={{ uri: item.image }}
-                      style={styles.newsImage}
-                      resizeMode="cover"
-                    />
+                    {item.image && (
+                      <Image
+                        source={{ uri: item.image }}
+                        style={styles.newsImage}
+                        resizeMode="cover"
+                      />
+                    )}
                     <View style={styles.newsOverlay}>
                       <Text style={styles.newsSnippet} numberOfLines={2}>
                         {item.snippet}
@@ -1527,7 +996,6 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Mevcut styles objesinin sonuna ekleyin (son } parantezinden önce)
   notificationSection: {
     paddingHorizontal: 12,
     paddingBottom: 10,

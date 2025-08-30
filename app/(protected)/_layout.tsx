@@ -37,12 +37,12 @@ export default function AppLayout() {
           headerShown: false,
         }}
       />
-      {/* <Stack.Screen
+      <Stack.Screen
         name="premium-packages"
         options={{
           headerShown: false,
         }}
-      /> */}
+      />
       {/* <Stack.Screen
         name="notification-settings"
         options={{

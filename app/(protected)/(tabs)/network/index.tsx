@@ -12,13 +12,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  Ionicons,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
-import { useCreateNetwork, useJoinNetwork, useMyNetworks } from "@/hooks/useNetwork";
+import {
+  useCreateNetwork,
+  useJoinNetwork,
+  useMyNetworks,
+} from "@/hooks/useNetwork";
 
 export default function NetworkScreen() {
   const insets = useSafeAreaInsets();
@@ -39,8 +40,10 @@ export default function NetworkScreen() {
   const joinNetworkMutation = useJoinNetwork();
 
   // Filter networks by role
-  const createdNetworks = myNetworks?.filter(memberData => memberData.role === 'creator') || [];
-  const joinedNetworks = myNetworks?.filter(memberData => memberData.role === 'member') || [];
+  const createdNetworks =
+    myNetworks?.filter((memberData) => memberData.role === "creator") || [];
+  const joinedNetworks =
+    myNetworks?.filter((memberData) => memberData.role === "member") || [];
 
   // Navigate to network detail
   const navigateToNetworkDetail = (networkId: string) => {
@@ -73,6 +76,42 @@ export default function NetworkScreen() {
     );
   };
 
+  const handleCreateFamilyNetwork = () => {
+    createNetworkMutation.mutate(
+      {
+        name: "ailem",
+        description: "ailem ağım",
+        max_members: 50,
+      },
+      {
+        onSuccess: () => {
+          Alert.alert("Başarılı", "Aile ağınız başarıyla oluşturuldu!");
+        },
+        onError: (error) => {
+          Alert.alert("Hata", error.message);
+        },
+      }
+    );
+  };
+
+  const handleCreateFriendsNetwork = () => {
+    createNetworkMutation.mutate(
+      {
+        name: "Arkadaşlar",
+        description: "Arkadaşlar ağım",
+        max_members: 50,
+      },
+      {
+        onSuccess: () => {
+          Alert.alert("Başarılı", "Arkadaşlar ağınız başarıyla oluşturuldu!");
+        },
+        onError: (error) => {
+          Alert.alert("Hata", error.message);
+        },
+      }
+    );
+  };
+
   const handleJoinNetwork = () => {
     if (!networkCode.trim()) {
       Alert.alert("Uyarı", "Lütfen ağ kodunu girin.");
@@ -93,7 +132,10 @@ export default function NetworkScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Ağ Yönetimi</Text>
@@ -104,6 +146,75 @@ export default function NetworkScreen() {
 
         {/* Main Options */}
         <View style={styles.optionsContainer}>
+          {/* Quick Create Networks - Side by Side */}
+          <View style={styles.quickCreateContainer}>
+            {/* Family Network Option */}
+            <TouchableOpacity
+              style={styles.quickOptionCard}
+              onPress={handleCreateFamilyNetwork}
+              disabled={createNetworkMutation.isPending}
+            >
+              <View style={styles.optionIcon}>
+                <MaterialCommunityIcons
+                  name="home-heart"
+                  size={40}
+                  color="#FF6B6B"
+                />
+              </View>
+              <Text style={styles.quickOptionTitle}>Aile Ağı</Text>
+              <Text style={styles.quickOptionDescription}>Aileniz için</Text>
+              <View style={styles.quickOptionButton}>
+                <LinearGradient
+                  colors={["#FF6B6B", "#FF8E8E"]}
+                  style={styles.quickGradientButton}
+                >
+                  {createNetworkMutation.isPending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Text style={styles.quickOptionButtonText}>Oluştur</Text>
+                      <Ionicons name="add" size={16} color="#fff" />
+                    </>
+                  )}
+                </LinearGradient>
+              </View>
+            </TouchableOpacity>
+
+            {/* Friends Network Option */}
+            <TouchableOpacity
+              style={styles.quickOptionCard}
+              onPress={handleCreateFriendsNetwork}
+              disabled={createNetworkMutation.isPending}
+            >
+              <View style={styles.optionIcon}>
+                <MaterialCommunityIcons
+                  name="account-multiple"
+                  size={40}
+                  color="#4ECDC4"
+                />
+              </View>
+              <Text style={styles.quickOptionTitle}>Arkadaşlar Ağı</Text>
+              <Text style={styles.quickOptionDescription}>
+                Arkadaşlarınız için
+              </Text>
+              <View style={styles.quickOptionButton}>
+                <LinearGradient
+                  colors={["#4ECDC4", "#6ED7D3"]}
+                  style={styles.quickGradientButton}
+                >
+                  {createNetworkMutation.isPending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Text style={styles.quickOptionButtonText}>Oluştur</Text>
+                      <Ionicons name="add" size={16} color="#fff" />
+                    </>
+                  )}
+                </LinearGradient>
+              </View>
+            </TouchableOpacity>
+          </View>
+
           {/* Create Network Option */}
           <TouchableOpacity
             style={styles.optionCard}
@@ -175,7 +286,9 @@ export default function NetworkScreen() {
               <TouchableOpacity
                 key={memberData.id}
                 style={styles.networkItem}
-                onPress={() => navigateToNetworkDetail(memberData.networks?.id || '')}
+                onPress={() =>
+                  navigateToNetworkDetail(memberData.networks?.id || "")
+                }
               >
                 <View style={styles.networkInfo}>
                   <MaterialCommunityIcons
@@ -184,7 +297,9 @@ export default function NetworkScreen() {
                     color="#FFD700"
                   />
                   <View style={styles.networkDetails}>
-                    <Text style={styles.networkName}>{memberData.networks?.name}</Text>
+                    <Text style={styles.networkName}>
+                      {memberData.networks?.name}
+                    </Text>
                     {memberData.networks?.description && (
                       <Text style={styles.networkDescription}>
                         {memberData.networks.description}
@@ -197,7 +312,11 @@ export default function NetworkScreen() {
                 </View>
                 <View style={styles.networkStatus}>
                   <Text style={styles.creatorBadge}>Yönetici</Text>
-                  <Ionicons name="chevron-forward" size={20} color={colors.light.textSecondary} />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={colors.light.textSecondary}
+                  />
                 </View>
               </TouchableOpacity>
             ))}
@@ -212,7 +331,9 @@ export default function NetworkScreen() {
               <TouchableOpacity
                 key={memberData.id}
                 style={styles.networkItem}
-                onPress={() => navigateToNetworkDetail(memberData.networks?.id || '')}
+                onPress={() =>
+                  navigateToNetworkDetail(memberData.networks?.id || "")
+                }
               >
                 <View style={styles.networkInfo}>
                   <MaterialCommunityIcons
@@ -221,20 +342,31 @@ export default function NetworkScreen() {
                     color={colors.primary}
                   />
                   <View style={styles.networkDetails}>
-                    <Text style={styles.networkName}>{memberData.networks?.name}</Text>
+                    <Text style={styles.networkName}>
+                      {memberData.networks?.name}
+                    </Text>
                     {memberData.networks?.description && (
                       <Text style={styles.networkDescription}>
                         {memberData.networks.description}
                       </Text>
                     )}
                     <Text style={styles.joinDate}>
-                      Katıldığınız tarih: {new Date(memberData.joined_at).toLocaleDateString('tr-TR')}
+                      Katıldığınız tarih:{" "}
+                      {memberData.joined_at
+                        ? new Date(memberData.joined_at).toLocaleDateString(
+                            "tr-TR"
+                          )
+                        : "Tarih yok"}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.networkStatus}>
                   <Text style={styles.memberBadge}>Üye</Text>
-                  <Ionicons name="chevron-forward" size={20} color={colors.light.textSecondary} />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={colors.light.textSecondary}
+                  />
                 </View>
               </TouchableOpacity>
             ))}
@@ -242,19 +374,22 @@ export default function NetworkScreen() {
         )}
 
         {/* No Networks Message */}
-        {!isLoadingNetworks && createdNetworks.length === 0 && joinedNetworks.length === 0 && (
-          <View style={styles.noNetworksContainer}>
-            <MaterialCommunityIcons
-              name="account-group-outline"
-              size={64}
-              color={colors.light.textSecondary}
-            />
-            <Text style={styles.noNetworksTitle}>Henüz Ağınız Yok</Text>
-            <Text style={styles.noNetworksDescription}>
-              Yukarıdaki seçenekleri kullanarak yeni bir ağ oluşturun veya mevcut bir ağa katılın
-            </Text>
-          </View>
-        )}
+        {!isLoadingNetworks &&
+          createdNetworks.length === 0 &&
+          joinedNetworks.length === 0 && (
+            <View style={styles.noNetworksContainer}>
+              <MaterialCommunityIcons
+                name="account-group-outline"
+                size={64}
+                color={colors.light.textSecondary}
+              />
+              <Text style={styles.noNetworksTitle}>Henüz Ağınız Yok</Text>
+              <Text style={styles.noNetworksDescription}>
+                Yukarıdaki seçenekleri kullanarak yeni bir ağ oluşturun veya
+                mevcut bir ağa katılın
+              </Text>
+            </View>
+          )}
       </ScrollView>
 
       {/* Create Network Modal */}
@@ -354,7 +489,11 @@ export default function NetworkScreen() {
             />
 
             <View style={styles.infoBox}>
-              <Ionicons name="information-circle" size={20} color={colors.primary} />
+              <Ionicons
+                name="information-circle"
+                size={20}
+                color={colors.primary}
+              />
               <Text style={styles.infoText}>
                 Ağ kodu, ağ sahibinden alabileceğiniz benzersiz bir koddur
               </Text>
@@ -411,6 +550,52 @@ const styles = StyleSheet.create({
   optionsContainer: {
     paddingHorizontal: 20,
     gap: 20,
+  },
+  quickCreateContainer: {
+    flexDirection: "row",
+    gap: 15,
+    marginBottom: 10,
+  },
+  quickOptionCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  quickOptionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: colors.light.textPrimary,
+    marginBottom: 4,
+  },
+  quickOptionDescription: {
+    fontSize: 12,
+    color: colors.light.textSecondary,
+    textAlign: "center",
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  quickOptionButton: {
+    width: "100%",
+  },
+  quickGradientButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  quickOptionButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   optionCard: {
     backgroundColor: "#fff",

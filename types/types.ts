@@ -86,142 +86,178 @@ export interface LocationData {
   latitude: number;
   longitude: number;
 }
-// export interface PremiumPackage {
-//   id: string;
-//   name: string;
-//   price: number;
-//   currency: string;
-//   period: "monthly" | "yearly";
-//   features: string[];
-//   isPopular?: boolean;
-//   isCurrent?: boolean;
-// }
 
-// export interface UserSubscription {
-//   packageId: string;
-//   startDate: string;
-//   endDate: string;
-//   isActive: boolean;
-//   autoRenew: boolean;
-// }
+// Premium Package Types - matches subscription_plans.name constraint
+export enum PremiumPackageType {
+  FREE = 'FREE',
+  SUPPORTER = 'SUPPORTER',     // Seviye 1
+  PROTECTOR = 'PROTECTOR',     // Seviye 2
+  SPONSOR = 'SPONSOR'          // Seviye 3
+}
 
-// export interface NotificationSetting {
-//   id: string;
-//   name: string;
-//   isActive: boolean;
-//   sources: string[]; // ['kandilli', 'afad', 'all'] gibi
-//   magnitudeRange: {
-//     min: number;
-//     max: number;
-//   };
-//   location: {
-//     type: "all" | "cities";
-//     cities?: string[];
-//   };
-//   created_at: string;
-//   updated_at: string;
-// }
+// Payment Period - matches subscription_plans.billing_period constraint
+export enum PaymentPeriod {
+  MONTHLY = 'monthly',
+  YEARLY = 'yearly'
+}
 
-// export interface NotificationSource {
-//   id: string;
-//   name: string;
-//   code: string;
-//   description: string;
-// }
+// Subscription Status - matches profiles.subscription_status
+export enum SubscriptionStatus {
+  FREE = 'free',
+  ACTIVE = 'active',
+  CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
+  PENDING = 'pending'
+}
 
-// // Premium Package Types
-// export enum PremiumPackageType {
-//   FREE = 'free',
-//   SUPPORTER = 'supporter', // Seviye 1
-//   PROTECTOR = 'protector', // Seviye 2
-//   SPONSOR = 'sponsor'      // Seviye 3
-// }
+// Subscription Plan - matches subscription_plans table
+export interface SubscriptionPlan {
+  id: string; // uuid
+  name: PremiumPackageType;
+  billing_period: PaymentPeriod;
+  price: number; // numeric(10,2)
+  features: PremiumFeature[] | null; // jsonb
+  duration_in_days: number;
+  is_active: boolean;
+  created_at: string; // timestamp with time zone
+}
 
-// export enum PaymentPeriod {
-//   MONTHLY = 'monthly',
-//   YEARLY = 'yearly'
-// }
+// User Profile with Premium Info - matches profiles table
+export interface UserProfile {
+  id: string; // uuid
+  updated_at: string | null;
+  name: string | null;
+  surname: string | null;
+  city: string | null;
+  district: string | null;
+  created_at: string;
+  emergency_phone: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  safety_score: number; // smallint default 100
+  has_completed_safety_form: boolean;
+  username: string | null;
+  subscription_plan_id: string | null; // uuid reference to subscription_plans
+  subscription_status: SubscriptionStatus;
+  subscription_start_date: string | null;
+  subscription_end_date: string | null;
+  auto_renew: boolean;
+  address: string | null;
+}
 
-// export interface UserPremiumInfo {
-//   isPremium: boolean;
-//   premiumPackageType: PremiumPackageType;
-//   paymentPeriod: PaymentPeriod;
-//   firstPaymentDate: string;
-//   nextPaymentDate: string;
-//   subscriptionStartDate: string;
-//   subscriptionEndDate: string;
-//   isActive: boolean;
-//   autoRenew: boolean;
-// }
+// Derived Premium Info from User Profile and Subscription Plan
+export interface UserPremiumInfo {
+  isPremium: boolean;
+  premiumPackageType: PremiumPackageType;
+  paymentPeriod: PaymentPeriod | null;
+  subscriptionStartDate: string | null;
+  subscriptionEndDate: string | null;
+  isActive: boolean;
+  autoRenew: boolean;
+  subscriptionStatus: SubscriptionStatus;
+  price?: number;
+  durationInDays?: number;
+}
 
-// // Premium Feature Requirements
-// export interface PremiumFeature {
-//   id: string;
-//   name: string;
-//   description: string;
-//   requiredLevel: PremiumPackageType;
-//   location: string; // Screen/component where this feature is used
-// }
+// Premium Feature for jsonb storage in subscription_plans.features
+export interface PremiumFeature {
+  id: string;
+  name: string;
+  description: string;
+  requiredLevel: PremiumPackageType;
+  location: string; // Screen/component where this feature is used
+}
 
-// // Premium Features Configuration
-// export const PREMIUM_FEATURES: PremiumFeature[] = [
-//   {
-//     id: 'all-comments',
-//     name: 'Tüm Yorumları Gör',
-//     description: 'Deprem detay sayfasında tüm kullanıcı deneyimlerini ve yorumlarını görüntüleyerek topluluk bilgilerine erişim sağlayın',
-//     requiredLevel: PremiumPackageType.SUPPORTER,
-//     location: 'earthquake-detail'
-//   },
-//   {
-//     id: 'terra-ai-comment',
-//     name: 'Terra AI Yorumu',
-//     description: 'Deprem hakkında AI tarafından oluşturulan detaylı teknik analiz, etki alanı hesaplaması ve güvenlik önerilerini görün',
-//     requiredLevel: PremiumPackageType.SUPPORTER,
-//     location: 'earthquake-detail'
-//   },
-//   {
-//     id: 'earthquake-risk-analysis',
-//     name: 'Deprem Risk Analizi',
-//     description: 'İl, ilçe, mahalle ve konum bazlı zemin analizi, altyapı sistemleri ve fay hatlarına göre kişiselleştirilmiş risk değerlendirmesi yapın',
-//     requiredLevel: PremiumPackageType.PROTECTOR,
-//     location: 'home'
-//   },
-//   {
-//     id: 'detailed-statistics',
-//     name: 'Detaylı İstatistikler',
-//     description: 'Gelişmiş deprem istatistikleri, trend analizleri, bölgesel karşılaştırmalar ve gelecek tahmin modellerine erişim',
-//     requiredLevel: PremiumPackageType.PROTECTOR,
-//     location: 'home'
-//   },
-//   {
-//     id: 'smart-notification-engine',
-//     name: 'Akıllı Bildirim Kural Motoru',
-//     description: 'Kişiselleştirilmiş bildirim kuralları, otomatik filtreleme, öncelik sıralaması ve gelişmiş uyarı sistemleri',
-//     requiredLevel: PremiumPackageType.SUPPORTER,
-//     location: 'home'
-//   },
-//   {
-//     id: 'risk-assessment-ai',
-//     name: 'Risk Değerlendirme AI Yorumu',
-//     description: 'Risk formu sonuçlarında AI tarafından oluşturulan detaylı analiz, iyileştirme önerileri ve kişiselleştirilmiş güvenlik planları',
-//     requiredLevel: PremiumPackageType.SUPPORTER,
-//     location: 'risk-form'
-//   },
-//   {
-//     id: 'terra-ai-daily-questions',
-//     name: 'Terra AI Günlük 3+ Soru Kullanımı',
-//     description: 'Günlük AI soru limitini aşın, sınırsız AI desteği alın ve deprem güvenliği konusunda uzman seviyesinde bilgi edinin',
-//     requiredLevel: PremiumPackageType.SUPPORTER,
-//     location: 'ai-menu'
-//   },
-//   {
-//     id: 'smart-emergency-route',
-//     name: 'Akıllı Acil Durum Rotası',
-//     description: 'Ağ grubunuz için özelleştirilmiş acil durum rotaları oluşturun, kullanıcıların rota seçimi yapmasını sağlayın ve kriz anında otomatik yönlendirme alın',
-//     requiredLevel: PremiumPackageType.PROTECTOR,
-//     location: 'network'
-//   }
-// ];
+// Premium Features Configuration
+export const PREMIUM_FEATURES: PremiumFeature[] = [
+  {
+    id: 'all-comments',
+    name: 'Tüm Yorumları Gör',
+    description: 'Deprem detay sayfasında tüm kullanıcı deneyimlerini ve yorumlarını görüntüleyerek topluluk bilgilerine erişim sağlayın',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'earthquake-detail'
+  },
+  {
+    id: 'terra-ai-comment',
+    name: 'Terra AI Yorumu',
+    description: 'Deprem hakkında AI tarafından oluşturulan detaylı teknik analiz, etki alanı hesaplaması ve güvenlik önerilerini görün',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'earthquake-detail'
+  },
+  {
+    id: 'earthquake-risk-analysis',
+    name: 'Deprem Risk Analizi',
+    description: 'İl, ilçe, mahalle ve konum bazlı zemin analizi, altyapı sistemleri ve fay hatlarına göre kişiselleştirilmiş risk değerlendirmesi yapın',
+    requiredLevel: PremiumPackageType.PROTECTOR,
+    location: 'home'
+  },
+  {
+    id: 'detailed-statistics',
+    name: 'Detaylı İstatistikler',
+    description: 'Gelişmiş deprem istatistikleri, trend analizleri, bölgesel karşılaştırmalar ve gelecek tahmin modellerine erişim',
+    requiredLevel: PremiumPackageType.PROTECTOR,
+    location: 'home'
+  },
+  {
+    id: 'smart-notification-engine',
+    name: 'Akıllı Bildirim Kural Motoru',
+    description: 'Kişiselleştirilmiş bildirim kuralları, otomatik filtreleme, öncelik sıralaması ve gelişmiş uyarı sistemleri',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'home'
+  },
+  {
+    id: 'risk-assessment-ai',
+    name: 'Risk Değerlendirme AI Yorumu',
+    description: 'Risk formu sonuçlarında AI tarafından oluşturulan detaylı analiz, iyileştirme önerileri ve kişiselleştirilmiş güvenlik planları',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'risk-form'
+  },
+  {
+    id: 'terra-ai-daily-questions',
+    name: 'Terra AI Günlük 3+ Soru Kullanımı',
+    description: 'Günlük AI soru limitini aşın, sınırsız AI desteği alın ve deprem güvenliği konusunda uzman seviyesinde bilgi edinin',
+    requiredLevel: PremiumPackageType.SUPPORTER,
+    location: 'ai-menu'
+  },
+  {
+    id: 'smart-emergency-route',
+    name: 'Akıllı Acil Durum Rotası',
+    description: 'Ağ grubunuz için özelleştirilmiş acil durum rotaları oluşturun, kullanıcıların rota seçimi yapmasını sağlayın ve kriz anında otomatik yönlendirme alın',
+    requiredLevel: PremiumPackageType.PROTECTOR,
+    location: 'network'
+  },
+  {
+    id: 'network-management',
+    name: 'Ağ Yönetimi',
+    description: 'Aileniz ve sevdiklerinizle güvenli iletişim kurun, acil durum planları oluşturun ve koordinasyon sağlayın',
+    requiredLevel: PremiumPackageType.PROTECTOR,
+    location: 'network'
+  }
+];
+
+// Helper function to derive UserPremiumInfo from UserProfile and SubscriptionPlan
+export function deriveUserPremiumInfo(
+  profile: UserProfile,
+  subscriptionPlan?: SubscriptionPlan | null
+): UserPremiumInfo {
+  const isPremium = profile.subscription_status !== 'free' && 
+                    profile.subscription_status !== null &&
+                    profile.subscription_plan_id !== null;
+  
+  return {
+    isPremium,
+    premiumPackageType: subscriptionPlan?.name || PremiumPackageType.FREE,
+    paymentPeriod: subscriptionPlan?.billing_period || null,
+    subscriptionStartDate: profile.subscription_start_date,
+    subscriptionEndDate: profile.subscription_end_date,
+    isActive: profile.subscription_status === 'active',
+    autoRenew: profile.auto_renew,
+    subscriptionStatus: profile.subscription_status || SubscriptionStatus.FREE,
+    price: subscriptionPlan?.price,
+    durationInDays: subscriptionPlan?.duration_in_days
+  };
+}
+
 
 // Smart Emergency Route Types
 export interface SmartRouteSettings {

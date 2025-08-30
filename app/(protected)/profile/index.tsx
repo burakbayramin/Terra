@@ -22,9 +22,7 @@ import AnimatedProgressBar from "@/components/AnimatedProgressBar";
 export default function ProfileScreen() {
   const router = useRouter();
 
-  // useAuth'a gerek yok, useProfile zaten userId verilmezse
-  // otomatik olarak auth user'ı kullanıyor
-  const { data: profile, isLoading } = useProfile(); // userId parametresi yok
+  const { data: profile, isLoading } = useProfile(); 
 
   const { data: planData } = useSubscriptionPlanName(
     profile?.subscription_plan_id

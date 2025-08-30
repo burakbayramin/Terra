@@ -12,12 +12,13 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/constants/colors";
 import { useNews } from "@/hooks/useNews";
-import LoadingView from "@/components/LoadingView";
-import ErrorView from "@/components/ErrorView";
+import { News } from "@/types/types";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 export default function NewsScreen() {
   const [activeSegment, setActiveSegment] = useState<
-    "latest" | "experts" | "analysis"
+    "latest" | "expert_opinions" | "earthquake_analysis"
   >("latest");
 
   const {
@@ -28,117 +29,306 @@ export default function NewsScreen() {
     isFetching,
     isRefetching, // Pull to refresh için
   } = useNews();
-
+  
   const insets = useSafeAreaInsets();
 
-  // ÖNEMLİ: Sadece veri yoksa ve yükleniyorsa loading göster
-  const showLoading = isLoading && news.length === 0;
-  const showError = error && news.length === 0;
-
-  const filteredNews = news.filter((item) => {
-    return item.category?.includes(activeSegment) || false;
-  });
-
-  // Loading durumu - SADECE veri yoksa göster
-  if (showLoading) {
-    return <LoadingView />;
-  }
-
-  // Error durumu - SADECE veri yoksa göster
-  if (showError) {
+  // Loading durumu için UI
+  if (isLoading) {
     return (
-      <ErrorView
-        message={error instanceof Error ? error.message : undefined}
-        onRetry={refetch}
-      />
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Haberler</Text>
+          <Text style={styles.headerSubtitle}>
+            Güncel deprem ve afet haberleri
+          </Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Haberler yükleniyor...</Text>
+          <Text style={styles.loadingSubtext}>
+            {activeSegment === "latest"
+              ? "NewsAPI'den deprem haberleri getiriliyor..."
+              : activeSegment === "expert_opinions"
+              ? "Uzman yorumları getiriliyor..."
+              : "Deprem analizleri yükleniyor..."}
+          </Text>
+        </View>
+      </View>
     );
   }
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.mainHeader}>
-        <Text style={styles.inboxText}>Haberler</Text>
-        {/* Opsiyonel: Arka planda güncelleme göstergesi */}
-        {isFetching && !isRefetching && (
-          <View style={styles.backgroundRefreshIndicator}>
-            <ActivityIndicator size="small" color={colors.primary} />
-          </View>
-        )}
-      </View>
-
-      <View style={styles.segmentedControl}>
-        <TouchableOpacity
-          style={[
-            styles.segmentButton,
-            activeSegment === "latest" && styles.activeSegmentButton,
-          ]}
-          onPress={() => setActiveSegment("latest")}
-        >
-          <Text
-            style={[
-              styles.segmentText,
-              activeSegment === "latest" && styles.activeSegmentText,
-            ]}
-          >
-            Güncel Haberler
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.segmentButton,
-            activeSegment === "analysis" && styles.activeSegmentButton,
-          ]}
-          onPress={() => setActiveSegment("analysis")}
-        >
-          <Text
-            style={[
-              styles.segmentText,
-              activeSegment === "analysis" && styles.activeSegmentText,
-            ]}
-          >
-            Analizler
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.segmentButton,
-            activeSegment === "experts" && styles.activeSegmentButton,
-          ]}
-          onPress={() => setActiveSegment("experts")}
-        >
-          <Text
-            style={[
-              styles.segmentText,
-              activeSegment === "experts" && styles.activeSegmentText,
-            ]}
-          >
-            Uzman Görüşleri
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Veri varsa göster, yoksa boş mesaj */}
-      {filteredNews.length > 0 ? (
-        <FlashList
-          data={filteredNews}
-          renderItem={({ item }) => <NewsListItem news={item} />}
-          estimatedItemSize={365}
-          contentContainerStyle={{ paddingBottom: insets.bottom }}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching} // isFetching yerine isRefetching
-              onRefresh={() => refetch()}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
-            />
-          }
-        />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            Bu kategoride henüz haber bulunmuyor
+  // Error durumu için UI
+  if (error) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Haberler</Text>
+          <Text style={styles.headerSubtitle}>
+            Güncel deprem ve afet haberleri
           </Text>
         </View>
+        <View style={styles.errorContainer}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={64}
+            color={colors.error}
+          />
+          <Text style={styles.errorText}>
+            {error instanceof Error ? error.message : "Bir hata oluştu"}
+          </Text>
+          <Text style={styles.errorSubtext}>
+            NewsAPI'den veri alınamadı. Lütfen internet bağlantınızı kontrol
+            edin.
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => refetch()}
+          >
+            <Ionicons name="refresh" size={20} color="#ffffff" />
+            <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  const newsData = news as News[];
+
+  // Deprem Analizleri sekmesi için içerik
+  const renderEarthquakeAnalysis = () => {
+    return (
+      <>
+        {/* Mahalle Bazlı Bina Sayıları Analizi */}
+        <View style={styles.analysisSection}>
+          <View style={styles.analysisHeader}>
+            <Ionicons
+              name="analytics-outline"
+              size={24}
+              color={colors.primary}
+            />
+            <Text style={styles.analysisTitle}>
+              Mahalle Bazlı Bina Sayıları Analizi
+            </Text>
+          </View>
+          <Text style={styles.analysisSubtitle}>
+            İstanbul'daki mahallelerin bina yapıları, yaş grupları ve kat
+            sayılarına göre deprem risk analizi
+          </Text>
+          <TouchableOpacity
+            style={styles.analysisButton}
+            onPress={() => {
+              router.push("/(protected)/(tabs)/news/earthquake-analysis");
+            }}
+          >
+            <Ionicons name="arrow-forward" size={20} color="#ffffff" />
+            <Text style={styles.analysisButtonText}>Analizi Görüntüle</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Olası Deprem Senaryosu Analizi */}
+        <View style={styles.analysisSection}>
+          <View style={styles.analysisHeader}>
+            <Ionicons
+              name="trending-up-outline"
+              size={24}
+              color={colors.primary}
+            />
+            <Text style={styles.analysisTitle}>
+              Olası Deprem Senaryosu Analizi
+            </Text>
+          </View>
+          <Text style={styles.analysisSubtitle}>
+            7.5 Mw büyüklüğünde gece olacak deprem senaryosuna göre yapılan
+            analizlerin sonuçları
+          </Text>
+          <TouchableOpacity
+            style={styles.analysisButton}
+            onPress={() => {
+              router.push("/(protected)/(tabs)/news/earthquake-scenario");
+            }}
+          >
+            <Ionicons name="arrow-forward" size={20} color="#ffffff" />
+            <Text style={styles.analysisButtonText}>Analizi Görüntüle</Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    );
+  };
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Haberler</Text>
+        <Text style={styles.headerSubtitle}>
+          Güncel deprem ve afet haberleri
+        </Text>
+      </View>
+
+      {/* Segmented Control */}
+      <View style={styles.segmentedControlContainer}>
+        <View style={styles.segmentedControl}>
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              activeSegment === "latest" && styles.activeSegmentButton,
+            ]}
+            onPress={() => setActiveSegment("latest")}
+          >
+            <Ionicons
+              name="time-outline"
+              size={14}
+              color={
+                activeSegment === "latest"
+                  ? "#ffffff"
+                  : colors.light.textSecondary
+              }
+            />
+            <Text
+              style={[
+                styles.segmentText,
+                activeSegment === "latest" && styles.activeSegmentText,
+              ]}
+            >
+              Güncel Haberler
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              activeSegment === "expert_opinions" && styles.activeSegmentButton,
+            ]}
+            onPress={() => setActiveSegment("expert_opinions")}
+          >
+            <Ionicons
+              name="people-circle-outline"
+              size={14}
+              color={
+                activeSegment === "expert_opinions"
+                  ? "#ffffff"
+                  : colors.light.textSecondary
+              }
+            />
+            <Text
+              style={[
+                styles.segmentText,
+                activeSegment === "expert_opinions" && styles.activeSegmentText,
+              ]}
+            >
+              Uzman Yorumları
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              activeSegment === "earthquake_analysis" &&
+                styles.activeSegmentButton,
+            ]}
+            onPress={() => setActiveSegment("earthquake_analysis")}
+          >
+            <Ionicons
+              name="analytics-outline"
+              size={14}
+              color={
+                activeSegment === "earthquake_analysis"
+                  ? "#ffffff"
+                  : colors.light.textSecondary
+              }
+            />
+            <Text
+              style={[
+                styles.segmentText,
+                activeSegment === "earthquake_analysis" &&
+                  styles.activeSegmentText,
+              ]}
+            >
+              Deprem Analizleri
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Content based on active segment */}
+      {activeSegment === "earthquake_analysis" ? (
+        renderEarthquakeAnalysis()
+      ) : (
+        <>
+          {/* Results Count */}
+          <View style={styles.resultsContainer}>
+            <Text style={styles.resultsText}>
+              {newsData.length} haber bulundu
+            </Text>
+            <Text style={styles.sourceText}>
+              {activeSegment === "latest"
+                ? "Türk haber kaynaklarından deprem haberleri"
+                : "Deprem uzmanlarından güncel yorumlar"}
+            </Text>
+            {activeSegment === "expert_opinions" && (
+              <View style={styles.expertInfoContainer}>
+                <Text style={styles.expertInfoText}>
+                  Aranan uzmanlar: Yoshinori Moriwaki, Naci Görür, Celâl Şengör,
+                  Şener Üşümezsoy
+                </Text>
+                {newsData.length === 0 && (
+                  <Text style={styles.noResultsInfo}>
+                    Sonuç bulunamadı. Lütfen daha sonra tekrar deneyin veya
+                    farklı bir sekme seçin.
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* News List */}
+          <FlashList
+            data={newsData}
+            renderItem={({ item }) => <NewsListItem news={item} />}
+            estimatedItemSize={365}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+            showsVerticalScrollIndicator={false}
+            // Pull to refresh
+            refreshControl={
+              <RefreshControl
+                refreshing={isFetching}
+                onRefresh={() => refetch()}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+            // Empty state
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons
+                  name="newspaper-outline"
+                  size={64}
+                  color={colors.light.textSecondary}
+                />
+                <Text style={styles.emptyTitle}>Haber bulunamadı</Text>
+                <Text style={styles.emptySubtitle}>
+                  {activeSegment === "latest"
+                    ? "Bu kategoride henüz haber yok"
+                    : "Uzman yorumları bulunamadı"}
+                </Text>
+                <Text style={styles.emptySubtext}>
+                  NewsAPI'den veri alınamadı veya bu kategoride haber
+                  bulunamadı.
+                </Text>
+                {activeSegment === "expert_opinions" && (
+                  <View style={styles.emptyExpertInfo}>
+                    <Text style={styles.emptyExpertText}>Aranan uzmanlar:</Text>
+                    <Text style={styles.emptyExpertNames}>
+                      • Yoshinori Moriwaki{"\n"}• Naci Görür{"\n"}• Celâl Şengör
+                      {"\n"}• Şener Üşümezsoy
+                    </Text>
+                    <Text style={styles.emptyExpertNote}>
+                      Bu uzmanların son yorumları henüz NewsAPI'de bulunamadı.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            }
+          />
+        </>
       )}
     </View>
   );
@@ -150,49 +340,167 @@ const styles = StyleSheet.create({
     backgroundColor: colors.light.background,
   },
   header: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.surface,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: colors.light.background,
   },
-  mainHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    marginTop: 15,
-  },
-  inboxText: {
-    fontSize: 25,
+  headerTitle: {
+    fontSize: 28,
     fontFamily: "NotoSans-Bold",
-    flex: 1,
-    textAlign: "center",
+    color: colors.light.textPrimary,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    fontFamily: "NotoSans-Regular",
+    color: colors.light.textSecondary,
+  },
+  segmentedControlContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
   segmentedControl: {
     flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light.surface,
-    marginBottom: 10,
-    paddingHorizontal: 15,
+    backgroundColor: colors.light.surface,
+    borderRadius: 12,
+    padding: 4,
+    gap: 2,
   },
   segmentButton: {
     flex: 1,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 10,
-    position: "relative",
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 4,
   },
   activeSegmentButton: {
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primary,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
   segmentText: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.light.textSecondary,
     fontFamily: "NotoSans-Medium",
-    fontWeight: "500",
+    fontWeight: "600",
+    textAlign: "center",
   },
   activeSegmentText: {
-    color: colors.light.textPrimary,
+    color: "#ffffff",
+    fontFamily: "NotoSans-Medium",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  resultsContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  resultsText: {
+    fontSize: 14,
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Regular",
+    marginBottom: 4,
+  },
+  sourceText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontFamily: "NotoSans-Regular",
+    fontStyle: "italic",
+    marginBottom: 4,
+  },
+  expertInfoContainer: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: colors.light.surface,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  expertInfoText: {
+    fontSize: 11,
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Regular",
+    marginBottom: 4,
+  },
+  expertSearchInfo: {
+    fontSize: 10,
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Regular",
+    opacity: 0.8,
+    marginBottom: 4,
+  },
+  noResultsInfo: {
+    fontSize: 11,
+    color: colors.error,
+    fontFamily: "NotoSans-Medium",
+    fontStyle: "italic",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Medium",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Regular",
+    textAlign: "center",
+    opacity: 0.7,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.error,
+    fontFamily: "NotoSans-Medium",
+    textAlign: "center",
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Regular",
+    textAlign: "center",
+    marginBottom: 24,
+    opacity: 0.7,
+    lineHeight: 20,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  retryButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
     fontFamily: "NotoSans-Medium",
     fontWeight: "600",
   },
@@ -201,17 +509,111 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
+    paddingVertical: 60,
   },
-  emptyText: {
+  emptyTitle: {
+    fontSize: 20,
+    fontFamily: "NotoSans-Bold",
+    color: colors.light.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
     fontSize: 16,
+    fontFamily: "NotoSans-Regular",
     color: colors.light.textSecondary,
-    fontFamily: "NotoSans-Medium",
     textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 8,
   },
-  backgroundRefreshIndicator: {
-    position: "absolute",
-    right: 15,
-    top: "50%",
-    transform: [{ translateY: -10 }],
+  emptySubtext: {
+    fontSize: 14,
+    fontFamily: "NotoSans-Regular",
+    color: colors.light.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+    opacity: 0.7,
+    marginBottom: 16,
+  },
+  emptyExpertInfo: {
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: colors.light.surface,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  emptyExpertText: {
+    fontSize: 14,
+    fontFamily: "NotoSans-Medium",
+    color: colors.light.textPrimary,
+    marginBottom: 8,
+  },
+  emptyExpertNames: {
+    fontSize: 12,
+    fontFamily: "NotoSans-Regular",
+    color: colors.light.textSecondary,
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  emptyExpertNote: {
+    fontSize: 11,
+    fontFamily: "NotoSans-Regular",
+    color: colors.light.textSecondary,
+    textAlign: "center",
+    fontStyle: "italic",
+    opacity: 0.8,
+  },
+  analysisSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: colors.light.surface,
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  analysisHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  analysisTitle: {
+    fontSize: 18,
+    fontFamily: "NotoSans-Bold",
+    color: colors.light.textPrimary,
+    marginLeft: 8,
+  },
+  analysisSubtitle: {
+    fontSize: 14,
+    color: colors.light.textSecondary,
+    fontFamily: "NotoSans-Regular",
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  analysisButton: {
+    backgroundColor: colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  analysisButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontFamily: "NotoSans-Medium",
+    fontWeight: "600",
   },
 });

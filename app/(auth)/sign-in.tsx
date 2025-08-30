@@ -1,34 +1,40 @@
 import React from "react";
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  ImageBackground,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/constants/colors";
 
 export default function SignInScreen() {
   const router = useRouter();
 
   return (
-    <LinearGradient
-      colors={[colors.gradientOne, colors.gradientTwo]}
+    <ImageBackground
+      source={require("@/assets/images/sign-in-bg.png")}
       style={styles.background}
+      resizeMode="cover"
     >
-      <View style={styles.topContainer}>
-        <Text style={styles.title}>Terra</Text>
-        <Text style={styles.subtitle}>Birlikte Güvendeyiz.</Text>
-      </View>
-
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={[styles.buttonBase, styles.buttonDark]}>
           <Ionicons name="walk" size={20} color="#fff" style={styles.icon} />
           <Text style={styles.buttonTextLight}>Misafir olarak devam et</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.buttonBase, styles.buttonRed]}
+          style={[styles.buttonBase, styles.buttonWhite]}
           onPress={() => router.push("/(auth)/sign-in-email")}
         >
-          <Ionicons name="mail" size={20} color="#fff" style={styles.icon} />
-          <Text style={styles.buttonTextLight}>E-posta ile Devam Et</Text>
+          <Ionicons
+            name="mail"
+            size={20}
+            color={colors.primary}
+            style={styles.icon}
+          />
+          <Text style={styles.buttonTextRed}>E-posta ile Devam Et</Text>
         </TouchableOpacity>
       </View>
 
@@ -38,7 +44,7 @@ export default function SignInScreen() {
           <Text style={styles.footerLinkText}>Kayıt ol</Text>
         </Link>
       </View>
-    </LinearGradient>
+    </ImageBackground>
   );
 }
 
@@ -87,17 +93,16 @@ const styles = StyleSheet.create({
   buttonDark: {
     backgroundColor: "rgba(17,17,17,0.9)",
   },
-  buttonRed: {
-    backgroundColor: colors.primary,
-    // borderWidth: 1,
-    // borderColor: "rgba(255,255,255,0.3)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
   buttonTextLight: {
     color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
+    fontFamily: "NotoSans-Medium",
+    letterSpacing: 0.3,
+  },
+  buttonTextRed: {
+    color: colors.primary,
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 8,

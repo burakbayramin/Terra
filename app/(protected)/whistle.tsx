@@ -12,6 +12,8 @@ import {
   Dimensions,
 } from "react-native";
 import { Audio } from "expo-av";
+import { CameraView, useCameraPermissions, type FlashMode } from "expo-camera";
+import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 
 interface WhistlePageProps {}
@@ -22,6 +24,8 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
   const [soundType, setSoundType] = useState<string>("whistle");
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isFlashlightOn, setIsFlashlightOn] = useState<boolean>(false);
+  const [permission, requestPermission] = useCameraPermissions();
 
   const { width } = Dimensions.get("window");
 
@@ -37,10 +41,16 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
     setupAudio();
     return () => {
       if (sound) {
-        sound.unloadAsync();
+        sound.unloadAsync().catch(console.error);
+      }
+      Vibration.cancel();
+
+      // Feneri kapat (opsiyonel)
+      if (isFlashlightOn) {
+        setIsFlashlightOn(false);
       }
     };
-  }, []);
+  }, [sound, isFlashlightOn]);
 
   const setupAudio = async () => {
     try {
@@ -62,6 +72,7 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
     try {
       if (sound) {
         await sound.unloadAsync();
+        setSound(null);
       }
 
       const { sound: newSound } = await Audio.Sound.createAsync(
@@ -93,8 +104,20 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
   const stopSound = async () => {
     try {
       if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
+        // Ses durdurma işlemi için timeout ekle
+        const stopPromise = sound.stopAsync();
+        const stopTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Stop timeout")), 2000)
+        );
+
+        await Promise.race([stopPromise, stopTimeout]);
+
+        const unloadPromise = sound.unloadAsync();
+        const unloadTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Unload timeout")), 2000)
+        );
+
+        await Promise.race([unloadPromise, unloadTimeout]);
         setSound(null);
       }
 
@@ -102,8 +125,10 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
       setIsPlaying(false);
     } catch (error) {
       console.error("Ses durdurulamadı:", error);
-      Vibration.cancel();
+      // Hata durumunda state'i zorla temizle
+      setSound(null);
       setIsPlaying(false);
+      Vibration.cancel();
     }
   };
 
@@ -115,18 +140,72 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
     }
   };
 
+  // Zorla ses durdurma fonksiyonu
+  const forceStop = async () => {
+    try {
+      if (sound) {
+        // Zorla durdurma için timeout kullanma
+        try {
+          await sound.stopAsync();
+        } catch (e) {}
+
+        try {
+          await sound.unloadAsync();
+        } catch (e) {}
+      }
+
+      // State'i hemen temizle
+      setSound(null);
+      setIsPlaying(false);
+      Vibration.cancel();
+    } catch (error) {
+      console.error("Force stop hatası:", error);
+      // Hata durumunda da state'i temizle
+      setSound(null);
+      setIsPlaying(false);
+      Vibration.cancel();
+    }
+  };
+
+  // Fener açma/kapama fonksiyonu (kamera önizlemesi göstermeden)
+  const toggleFlashlight = async () => {
+    try {
+      // İzin yoksa iste
+      if (!permission?.granted) {
+        const res = await requestPermission();
+        if (!res.granted) {
+          Alert.alert(
+            "Kamera İzni Gerekli",
+            "Feneri kullanmak için kamera donanımına erişim izni gerekir."
+          );
+          return;
+        }
+      }
+
+      // Haptic feedback
+      if (isFlashlightOn) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      // Hidden CameraView üzerinden torch'u değiştir
+      setIsFlashlightOn((prev) => !prev);
+    } catch (error) {
+      console.error("Fener hatası:", error);
+    }
+  };
+
   const changeSoundType = async (newType: string) => {
-    const wasPlaying = isPlaying;
+    // Eğer ses çalıyorsa önce durdur
     if (isPlaying) {
       await stopSound();
     }
+
+    // Ses tipini değiştir
     setSoundType(newType);
-    if (wasPlaying) {
-      // Kısa bir gecikme ile yeni sesi başlat
-      setTimeout(() => {
-        startSound();
-      }, 300);
-    }
+
+    // Yeni ses otomatik başlamayacak, kullanıcı manuel olarak başlatmalı
   };
 
   const changeVolume = (direction: "up" | "down") => {
@@ -173,6 +252,16 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Gizli kamera görünümü: Sadece torch kontrolü için mount edilir */}
+      {permission?.granted && (
+        <CameraView
+          facing="back"
+          // "torch" sürekli açık ışık sağlar; kapalıyken "off"
+          flash={(isFlashlightOn ? "torch" : "off") as FlashMode}
+          // UI'da görünmemesi için tamamen gizli boyut ve saydamlık
+          style={{ width: 1, height: 1, opacity: 0, position: "absolute" }}
+        />
+      )}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
@@ -189,12 +278,19 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
             style={[
               styles.whistleButton,
               {
-                backgroundColor: isPlaying
-                  ? currentSoundOption?.color
-                  : "#dc2626",
+                backgroundColor: currentSoundOption?.color || "#dc2626",
+                // Aktif olduğunda daha parlak, pasif olduğunda daha soluk
+                opacity: isPlaying ? 1 : 0.8,
+                // Seçilen ses tipinin rengiyle uyumlu gölge
+                shadowColor: currentSoundOption?.color || "#dc2626",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: isPlaying ? 0.4 : 0.2,
+                shadowRadius: isPlaying ? 12 : 8,
+                elevation: isPlaying ? 12 : 8,
               },
             ]}
             onPress={toggleSound}
+            onLongPress={forceStop}
             activeOpacity={0.8}
           >
             <View style={styles.whistleButtonContent}>
@@ -212,6 +308,11 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
               </Text>
             </View>
           </TouchableOpacity>
+
+          {/* Force Stop Hint */}
+          {isPlaying && (
+            <Text style={styles.forceStopHint}>Uzun basarak zorla durdur</Text>
+          )}
 
           {/* Current Settings Display */}
           <View style={styles.currentSettings}>
@@ -305,6 +406,18 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
         {/* Sound Type Selection */}
         <View style={styles.soundTypeContainer}>
           <Text style={styles.soundTypeTitle}>Ses Tipi Seçimi</Text>
+
+          {/* Active Sound Type Info */}
+          {isPlaying && (
+            <View style={styles.activeSoundInfo}>
+              <Ionicons name="information-circle" size={16} color="#f59e0b" />
+              <Text style={styles.activeSoundInfoText}>
+                Aktif ses: {currentSoundOption?.label} - Yeni ses tipi
+                seçildiğinde otomatik durur
+              </Text>
+            </View>
+          )}
+
           <View style={styles.soundTypeGrid}>
             {soundOptions.map((option) => (
               <TouchableOpacity
@@ -312,7 +425,15 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
                 style={[
                   styles.soundTypeButton,
                   soundType === option.value && styles.soundTypeButtonActive,
-                  { borderColor: option.color },
+                  {
+                    borderColor: option.color,
+                    borderWidth: soundType === option.value ? 3 : 2,
+                    shadowColor: option.color,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: soundType === option.value ? 0.3 : 0.1,
+                    shadowRadius: soundType === option.value ? 8 : 4,
+                    elevation: soundType === option.value ? 8 : 4,
+                  },
                 ]}
                 onPress={() => changeSoundType(option.value)}
               >
@@ -368,14 +489,25 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.emergencyButton}
-              onPress={() => {
-                Vibration.vibrate([200, 200, 200]);
-                Alert.alert("Fener", "Telefon feneri açılacak");
-              }}
+              style={[
+                styles.emergencyButton,
+                isFlashlightOn && styles.emergencyButtonActive,
+              ]}
+              onPress={toggleFlashlight}
             >
-              <Ionicons name="flashlight" size={24} color="#f59e0b" />
-              <Text style={styles.emergencyButtonText}>Fener</Text>
+              <Ionicons
+                name={isFlashlightOn ? "flashlight" : "flashlight-outline"}
+                size={24}
+                color={isFlashlightOn ? "#ffffff" : "#f59e0b"}
+              />
+              <Text
+                style={[
+                  styles.emergencyButtonText,
+                  isFlashlightOn && styles.emergencyButtonTextActive,
+                ]}
+              >
+                Fener
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -397,7 +529,10 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
             • Ana butona basarak seçili sesi başlatın/durdurun
           </Text>
           <Text style={styles.instructionText}>
-            • Ses tipi seçerek farklı uyarı seslerini kullanın
+            • Ses durdurulamıyorsa uzun basarak zorla durdurun
+          </Text>
+          <Text style={styles.instructionText}>
+            • Ses tipi değiştirildiğinde önceki ses otomatik durur
           </Text>
           <Text style={styles.instructionText}>
             • Ses seviyesini + ve - butonlarıyla ayarlayın
@@ -406,7 +541,10 @@ const WhistlePage: React.FC<WhistlePageProps> = () => {
             • Acil durum butonlarını kullanarak ek aksiyonlar alın
           </Text>
           <Text style={styles.instructionText}>
-            • Ses dosyalarını assets/sounds/ klasörüne eklemeyi unutmayın
+            • Fener butonuna basarak telefon fenerini açıp kapatın
+          </Text>
+          <Text style={styles.instructionText}>
+            • Fener açılamadığında simülasyon modu devreye girer
           </Text>
         </View>
       </ScrollView>
@@ -461,11 +599,6 @@ const styles = StyleSheet.create({
     borderRadius: 80,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
   whistleButtonContent: {
     alignItems: "center",
@@ -656,6 +789,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9fafb",
     minWidth: 80,
   },
+  emergencyButtonActive: {
+    backgroundColor: "#f59e0b",
+  },
   emergencyButtonText: {
     fontSize: 12,
     color: colors.light.textPrimary,
@@ -663,6 +799,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "500",
     fontFamily: "NotoSans-Medium",
+  },
+  emergencyButtonTextActive: {
+    color: "#ffffff",
   },
   instructions: {
     backgroundColor: "#fef3c7",
@@ -704,6 +843,31 @@ const styles = StyleSheet.create({
     color: "#1e40af",
     marginBottom: 4,
     fontFamily: "NotoSans-Regular",
+  },
+  forceStopHint: {
+    fontSize: 12,
+    color: "#dc2626",
+    marginTop: 8,
+    textAlign: "center",
+    fontStyle: "italic",
+    fontFamily: "NotoSans-Regular",
+  },
+  activeSoundInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fef3c7",
+    borderColor: "#f59e0b",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  activeSoundInfoText: {
+    fontSize: 12,
+    color: "#92400e",
+    fontFamily: "NotoSans-Medium",
+    flex: 1,
   },
 });
 

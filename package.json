@@ -11,7 +11,6 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.1.1",
-    "@maplibre/maplibre-react-native": "^10.2.0",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/netinfo": "11.4.1",
     "@react-native-community/slider": "^4.5.7",
@@ -47,8 +46,10 @@
     "react-native-screens": "~4.11.1",
     "react-native-svg": "^15.12.1",
     "react-native-view-shot": "^4.0.3",
+    "react-native-webview": "13.13.5",
     "victory-native": "^41.17.4",
-    "zod": "^3.25.67"
+    "zod": "^3.25.67",
+    "expo-camera": "~16.1.11"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

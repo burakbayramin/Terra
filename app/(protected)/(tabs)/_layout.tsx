@@ -82,7 +82,7 @@ export default function TabLayout() {
           tabBarInactiveTintColor: colors.light.textSecondary,
           tabBarIcon: ({ color }) => (
             <Foundation name="list" size={24} color={color} />
-          )
+          ),
         }}
       />
       <Tabs.Screen

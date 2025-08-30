@@ -1,45 +1,117 @@
 {
   "expo": {
-    "name": "Terra",
-    "slug": "Terra",
+    "name": "Terra - Deprem Uyarı",
+    "slug": "terra-deprem",
     "scheme": "terra",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "privacy": "public",
+    "platforms": ["ios", "android"],
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.terra.deprem.app",
+      "buildNumber": "1",
+      "config": {
+        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+      },
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar."
+        "NSLocationWhenInUseUsageDescription": "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Terra uygulaması arka planda çalışırken de deprem uyarıları gönderebilmek için sürekli konum erişimine ihtiyaç duyar.",
+        "NSMicrophoneUsageDescription": "Terra uygulaması acil durum sesli mesajları kaydedebilmek için mikrofon erişimine ihtiyaç duyar.",
+        "NSContactsUsageDescription": "Terra uygulaması acil durumlarda yakınlarınızı arayabilmeniz için rehber erişimine ihtiyaç duyar.",
+        "NSCameraUsageDescription": "Terra uygulaması acil durum fotoğrafları çekebilmeniz için kamera erişimine ihtiyaç duyar.",
+        "NSPhotoLibraryUsageDescription": "Terra uygulaması acil durum fotoğrafları paylaşabilmeniz için fotoğraf galerisine erişim gerekir.",
+        "UIBackgroundModes": ["location", "audio", "background-processing"],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSExceptionDomains": {
+            "earthquake-api.com": {
+              "NSExceptionRequiresForwardSecrecy": false,
+              "NSExceptionMinimumTLSVersion": "TLSv1.2"
+            }
+          }
+        }
       }
     },
     "android": {
+      "package": "com.terra.deprem.app",
+      "versionCode": 1,
+      "compileSdkVersion": 34,
+      "targetSdkVersion": 34,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "RECORD_AUDIO",
+        "READ_CONTACTS",
+        "WRITE_CONTACTS",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "WAKE_LOCK",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "FOREGROUND_SERVICE"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+        }
+      },
       "edgeToEdgeEnabled": true,
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "terra"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
-      "favicon": "./assets/images/favicon.ico"
+      "favicon": "./assets/images/favicon.ico",
+      "bundler": "metro"
     },
     "plugins": [
       "expo-router",
-      "expo-av",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Terra uygulaması acil durum sesli mesajları kaydedebilmek için mikrofon erişimine ihtiyaç duyar."
+        }
+      ],
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Terra uygulaması size yakın depremleri gösterebilmek ve acil durumlarda konumunuzu paylaşabilmek için konum bilginize ihtiyaç duyar."
+          "locationAlwaysAndWhenInUsePermission": "Terra uygulaması arka planda çalışırken de deprem uyarıları gönderebilmek için sürekli konum erişimine ihtiyaç duyar.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
-      "@maplibre/maplibre-react-native"
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Terra uygulaması acil durumlarda yakınlarınızı arayabilmeniz için rehber erişimine ihtiyaç duyar."
+        }
+      ]
     ]
   }
 }
