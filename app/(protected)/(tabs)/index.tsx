@@ -34,6 +34,7 @@ import { TASK_DATA } from "@/constants/taskConstants";
 import { useProfile } from "@/hooks/useProfiles";
 import { useAuth } from "@/hooks/useAuth";
 import PremiumFeatureGate from "@/components/PremiumFeatureGate";
+import SecurityWarningComponent from "@/components/SecurityWarningComponent";
 
 const { width } = Dimensions.get("window");
 const CARD_HEIGHT = width * 0.6;
@@ -56,6 +57,9 @@ export default function HomeScreen() {
 
   const [visibleTasks, setVisibleTasks] = useState(() => TASK_DATA.slice(0, 4));
   const [nextTaskIndex, setNextTaskIndex] = useState(4);
+
+  // State tanımla
+  const [showRiskWarning, setShowRiskWarning] = useState(true);
 
   // // Temporary state variables to fix errors
   // const [magnitudeNotification, setMagnitudeNotification] = useState(false);
@@ -139,6 +143,14 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Security Warning Component */}
+        <SecurityWarningComponent
+          securityScore={profile?.safety_score || 0}
+          hasCompletedSafetyForm={profile?.has_completed_safety_form || false}
+          showWarning={showRiskWarning}
+          onClose={() => setShowRiskWarning(false)}
+        />
 
         <View style={styles.segmentedControl}>
           <TouchableOpacity
