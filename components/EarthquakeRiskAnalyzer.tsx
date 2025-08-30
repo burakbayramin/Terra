@@ -8,7 +8,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Modal,
+  FlatList,
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
@@ -16,85 +16,21 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// Import Turkey cities and districts data
-import turkeyData from '@/assets/data/turkey-cities-districts.json';
-
-// Use real data from JSON file
-const cities = turkeyData.cities;
-const districts = turkeyData.districts;
+import MapView, { Marker } from 'react-native-maps';
 
 // Import new fault line utilities
 import { findNearestFaultLine, NearestFaultLine, calculateDistance } from '@/utils/faultLineUtils';
 
-// Legacy fault line data (kept for backward compatibility)
-const FAULT_LINE_DATA = [
-  { 
-    faultLine: "Kuzey Anadolu Fay Hattı", 
-    count: 287, 
-    region: "Marmara-Ege", 
-    description: "Türkiye'nin en aktif fay hattı",
-    coordinates: { lat: 40.5, lng: 29.5 } // İstanbul area
-  },
-  { 
-    faultLine: "Doğu Anadolu Fay Hattı", 
-    count: 189, 
-    region: "Doğu Anadolu", 
-    description: "Yüksek tektonik aktivite",
-    coordinates: { lat: 38.5, lng: 39.5 } // Elazığ area
-  },
-  { 
-    faultLine: "Batı Anadolu Fay Sistemi", 
-    count: 134, 
-    region: "Ege", 
-    description: "Çoklu fay sistemi",
-    coordinates: { lat: 38.2, lng: 27.1 } // İzmir area
-  },
-  { 
-    faultLine: "Güney Anadolu Fay Hattı", 
-    count: 89, 
-    region: "Akdeniz", 
-    description: "Orta düzey aktivite",
-    coordinates: { lat: 36.5, lng: 32.5 } // Mersin area
-  },
-  { 
-    faultLine: "İç Anadolu Fay Sistemi", 
-    count: 67, 
-    region: "İç Anadolu", 
-    description: "Düşük aktivite",
-    coordinates: { lat: 39.9, lng: 32.9 } // Ankara area
-  },
-  { 
-    faultLine: "Güneydoğu Anadolu Fay Hattı", 
-    count: 45, 
-    region: "Güneydoğu", 
-    description: "Minimal aktivite",
-    coordinates: { lat: 37.0, lng: 40.0 } // Diyarbakır area
-  },
-];
-
-// Dummy neighborhoods data (will be replaced with real data later)
-const dummyNeighborhoods = {
-  1: [ // Kadıköy
-    { id: 1, name: 'Fenerbahçe' },
-    { id: 2, name: 'Caddebostan' },
-    { id: 3, name: 'Göztepe' },
-    { id: 4, name: 'Eğitim' },
-  ],
-  2: [ // Beşiktaş
-    { id: 5, name: 'Levent' },
-    { id: 6, name: 'Etiler' },
-    { id: 7, name: 'Bebek' },
-    { id: 8, name: 'Ortaköy' },
-  ],
-};
+interface AddressSuggestion {
+  id: string;
+  description: string;
+  coordinates: { lat: number; lng: number };
+}
 
 interface LocationData {
-  city: { id: number; name: string } | null;
-  district: { id: number; name: string } | null;
-  neighborhood: { id: number; name: string } | null;
   address: string;
   coordinates: { lat: number; lng: number } | null;
+  selectedAddress: string;
 }
 
 interface RiskAnalysisResult {
@@ -132,154 +68,145 @@ interface RiskAnalysisResult {
 
 export default function EarthquakeRiskAnalyzer() {
   const [locationData, setLocationData] = useState<LocationData>({
-    city: null,
-    district: null,
-    neighborhood: null,
     address: '',
     coordinates: null,
+    selectedAddress: '',
   });
 
-  const [showCityModal, setShowCityModal] = useState(false);
-  const [showDistrictModal, setShowDistrictModal] = useState(false);
-  const [showNeighborhoodModal, setShowNeighborhoodModal] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<RiskAnalysisResult | null>(null);
   const [aiAnalysisText, setAiAnalysisText] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [nearestFaultLine, setNearestFaultLine] = useState<NearestFaultLine | null>(null);
+  const [mapRegion, setMapRegion] = useState({
+    latitude: 39.9334,
+    longitude: 32.8597,
+    latitudeDelta: 8.0,
+    longitudeDelta: 8.0,
+  });
 
-  const availableDistricts = locationData.city 
-    ? (districts as any)[locationData.city.id.toString()] || []
-    : [];
-
-  const availableNeighborhoods = locationData.district 
-    ? dummyNeighborhoods[locationData.district.id as keyof typeof dummyNeighborhoods] || []
-    : [];
-
-
-
-  // Find nearest fault line
-    const findNearestFaultLineLegacy = (coordinates: { lat: number; lng: number }) => {
-    let nearest = FAULT_LINE_DATA[0];
-    let minDistance = calculateDistance(
-      coordinates.lat,
-      coordinates.lng,
-      FAULT_LINE_DATA[0].coordinates.lat,
-      FAULT_LINE_DATA[0].coordinates.lng
-    );
-
-    FAULT_LINE_DATA.forEach(fault => {
-      const distance = calculateDistance(
-        coordinates.lat,
-        coordinates.lng,
-        fault.coordinates.lat,
-        fault.coordinates.lng
-      );
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearest = fault;
+  // Debounced address search
+  useEffect(() => {
+    const searchTimeout = setTimeout(() => {
+      if (locationData.address.length > 3) {
+        searchAddresses();
+      } else {
+        setAddressSuggestions([]);
+        setShowSuggestions(false);
       }
+    }, 300); // Reduced delay for faster response
+
+    return () => clearTimeout(searchTimeout);
+  }, [locationData.address]);
+
+  const searchAddresses = async () => {
+    if (locationData.address.length <= 3) return;
+
+    setIsSearching(true);
+    try {
+      // Google Places API call for address autocomplete
+      const apiKey = 'YOUR_GOOGLE_MAPS_API_KEY'; // Replace with your actual API key
+      const query = encodeURIComponent(locationData.address);
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&components=country:tr&language=tr&key=${apiKey}`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.status === 'OK' && data.predictions) {
+        // Get detailed information for each prediction including coordinates
+        const detailedSuggestions = await Promise.all(
+          data.predictions.slice(0, 5).map(async (prediction: any) => {
+            try {
+              // Get place details to retrieve coordinates
+              const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${prediction.place_id}&fields=geometry&key=${apiKey}`;
+              const detailsResponse = await fetch(detailsUrl);
+              const detailsData = await detailsResponse.json();
+              
+              return {
+                id: prediction.place_id,
+                description: prediction.description,
+                coordinates: {
+                  lat: detailsData.result.geometry.location.lat,
+                  lng: detailsData.result.geometry.location.lng,
+                }
+              };
+            } catch (error) {
+              console.error('Error fetching place details:', error);
+              // Fallback to Turkey center coordinates if details fail
+              return {
+                id: prediction.place_id,
+                description: prediction.description,
+                coordinates: { lat: 39.9334, lng: 32.8597 }
+              };
+            }
+          })
+        );
+
+        setAddressSuggestions(detailedSuggestions);
+        setShowSuggestions(true);
+      } else {
+        // If API fails, show fallback suggestions
+        console.log('Google Places API error or no results:', data.status);
+        setAddressSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Address search error:', error);
+      // Show user-friendly error message
+      Alert.alert('Bağlantı Hatası', 'Adres arama sırasında bir hata oluştu. İnternet bağlantınızı kontrol edin.');
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleAddressSelect = (suggestion: AddressSuggestion) => {
+    setLocationData(prev => ({
+      ...prev,
+      coordinates: suggestion.coordinates,
+      selectedAddress: suggestion.description,
+    }));
+    
+    // Update map region to show selected location
+    setMapRegion({
+      latitude: suggestion.coordinates.lat,
+      longitude: suggestion.coordinates.lng,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
     });
 
-    return {
-      faultLine: nearest.faultLine,
-      distance: minDistance,
-      region: nearest.region,
-      description: nearest.description
-    };
+    setShowSuggestions(false);
+    setAddressSuggestions([]);
+    
+    // Find nearest fault line
+    const nearestFault = findNearestFaultLine(suggestion.coordinates.lat, suggestion.coordinates.lng);
+    setNearestFaultLine(nearestFault);
   };
 
-  // New function using advanced fault line detection
-  const findNearestFaultLineAdvanced = (coordinates: { lat: number; lng: number }) => {
-    return findNearestFaultLine(coordinates.lat, coordinates.lng);
-  };
-
-  const handleCitySelect = (city: { id: number; name: string }) => {
+  const handleMapPress = (event: any) => {
+    const { coordinate } = event.nativeEvent;
     setLocationData(prev => ({
       ...prev,
-      city,
-      district: null,
-      neighborhood: null,
+      coordinates: coordinate,
+      selectedAddress: `Lat: ${coordinate.latitude.toFixed(6)}, Lng: ${coordinate.longitude.toFixed(6)}`,
     }));
-    setShowCityModal(false);
+
+    // Find nearest fault line for new coordinates
+    const nearestFault = findNearestFaultLine(coordinate.latitude, coordinate.longitude);
+    setNearestFaultLine(nearestFault);
   };
 
-  const handleDistrictSelect = (district: { id: number; name: string }) => {
-    setLocationData(prev => ({
-      ...prev,
-      district,
-      neighborhood: null,
-    }));
-    setShowDistrictModal(false);
-  };
-
-  const handleNeighborhoodSelect = (neighborhood: { id: number; name: string }) => {
-    setLocationData(prev => ({
-      ...prev,
-      neighborhood,
-    }));
-    setShowNeighborhoodModal(false);
-  };
-
-  const searchGoogleAddress = async () => {
-    if (!locationData.address.trim()) {
-      Alert.alert('Hata', 'Lütfen bir adres girin');
+  const useCurrentLocation = async () => {
+    if (!locationData.coordinates) {
+      Alert.alert('Hata', 'Önce harita üzerinde bir konum seçin');
       return;
     }
 
-    try {
-      // Google Maps Geocoding API call
-      const address = encodeURIComponent(locationData.address);
-      const apiKey = 'YOUR_GOOGLE_MAPS_API_KEY'; // Replace with actual API key
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${address}&key=${apiKey}`;
-      
-      // For now, simulate the API call with mock data
-      // In production, you would make a real HTTP request here
-      console.log('Searching for address:', locationData.address);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock coordinates based on selected city
-      let mockCoordinates;
-      if (locationData.city?.name === 'İstanbul') {
-        mockCoordinates = {
-          lat: 41.0082 + (Math.random() - 0.5) * 0.1,
-          lng: 28.9784 + (Math.random() - 0.5) * 0.1,
-        };
-      } else if (locationData.city?.name === 'Ankara') {
-        mockCoordinates = {
-          lat: 39.9334 + (Math.random() - 0.5) * 0.1,
-          lng: 32.8597 + (Math.random() - 0.5) * 0.1,
-        };
-      } else if (locationData.city?.name === 'İzmir') {
-        mockCoordinates = {
-          lat: 38.4192 + (Math.random() - 0.5) * 0.1,
-          lng: 27.1287 + (Math.random() - 0.5) * 0.1,
-        };
-      } else {
-        // Default to Turkey center
-        mockCoordinates = {
-          lat: 39.9334 + (Math.random() - 0.5) * 0.5,
-          lng: 32.8597 + (Math.random() - 0.5) * 0.5,
-        };
-      }
-
-      setLocationData(prev => ({
-        ...prev,
-        coordinates: mockCoordinates,
-      }));
-
-      // Find nearest fault line
-          const nearestFault = findNearestFaultLineAdvanced(mockCoordinates);
-    setNearestFaultLine(nearestFault);
-
-      // Automatically start risk analysis after getting coordinates
-      await analyzeRisk();
-    } catch (error) {
-      Alert.alert('Hata', 'Adres bulunamadı. Lütfen tekrar deneyin.');
-    }
+    await analyzeRisk();
   };
 
   const analyzeRisk = async () => {
@@ -417,16 +344,32 @@ Bu verilere göre bölgenin deprem risk seviyesini, en yakın fay hattının etk
 
   const resetForm = () => {
     setLocationData({
-      city: null,
-      district: null,
-      neighborhood: null,
       address: '',
       coordinates: null,
+      selectedAddress: '',
     });
     setAnalysisResult(null);
     setAiAnalysisText('');
     setNearestFaultLine(null);
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
+    setMapRegion({
+      latitude: 39.9334,
+      longitude: 32.8597,
+      latitudeDelta: 8.0,
+      longitudeDelta: 8.0,
+    });
   };
+
+  const renderAddressSuggestion = ({ item }: { item: AddressSuggestion }) => (
+    <TouchableOpacity
+      style={styles.suggestionItem}
+      onPress={() => handleAddressSelect(item)}
+    >
+      <Ionicons name="location-outline" size={16} color={colors.primary} />
+      <Text style={styles.suggestionText}>{item.description}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
@@ -442,81 +385,98 @@ Bu verilere göre bölgenin deprem risk seviyesini, en yakın fay hattının etk
       </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Location Selection */}
+        {/* Address Search Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Konum Seçimi</Text>
+          <Text style={styles.sectionTitle}>Adres Arama</Text>
           
-          {/* City Selection */}
-          <TouchableOpacity
-            style={styles.selectionButton}
-            onPress={() => setShowCityModal(true)}
-          >
-            <View style={styles.selectionContent}>
-              <Ionicons name="location" size={20} color={colors.primary} />
-              <Text style={styles.selectionText}>
-                {locationData.city ? locationData.city.name : 'İl Seçin'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-down" size={20} color="#666" />
-          </TouchableOpacity>
-
-          {/* District Selection */}
-          {locationData.city && (
-            <TouchableOpacity
-              style={styles.selectionButton}
-              onPress={() => setShowDistrictModal(true)}
-            >
-              <View style={styles.selectionContent}>
-                <Ionicons name="business" size={20} color={colors.primary} />
-                <Text style={styles.selectionText}>
-                  {locationData.district ? locationData.district.name : 'İlçe Seçin'}
-                </Text>
-              </View>
-              <Ionicons name="chevron-down" size={20} color="#666" />
-            </TouchableOpacity>
-          )}
-
-          {/* Neighborhood Selection */}
-          {locationData.district && (
-            <TouchableOpacity
-              style={styles.selectionButton}
-              onPress={() => setShowNeighborhoodModal(true)}
-            >
-              <View style={styles.selectionContent}>
-                <Ionicons name="home" size={20} color={colors.primary} />
-                <Text style={styles.selectionText}>
-                  {locationData.neighborhood ? locationData.neighborhood.name : 'Mahalle Seçin'}
-                </Text>
-              </View>
-              <Ionicons name="chevron-down" size={20} color="#666" />
-            </TouchableOpacity>
-          )}
-
-          {/* Address Input */}
-          <View style={styles.addressContainer}>
-            <Text style={styles.addressLabel}>Detaylı Adres</Text>
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.addressSearchContainer}>
+            <View style={styles.addressInputContainer}>
+              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
               <TextInput
                 style={styles.addressInput}
-                placeholder="Sokak, cadde, bina numarası..."
+                placeholder="Adres yazın (en az 4 karakter)..."
                 value={locationData.address}
                 onChangeText={(text) => setLocationData(prev => ({ ...prev, address: text }))}
-                multiline
+                onFocus={() => setShowSuggestions(addressSuggestions.length > 0)}
               />
-            </TouchableWithoutFeedback>
-            <TouchableOpacity
-              style={styles.searchButton}
-              onPress={searchGoogleAddress}
-            >
-              <Ionicons name="analytics" size={20} color="#fff" />
-              <Text style={styles.searchButtonText}>Risk Analizi Yap</Text>
-            </TouchableOpacity>
-          </View>
+              {isSearching && (
+                <ActivityIndicator size="small" color={colors.primary} style={styles.searchLoader} />
+              )}
+            </View>
 
-          {/* Coordinates are hidden from UI but used for analysis */}
+            {/* Address Suggestions */}
+            {showSuggestions && addressSuggestions.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                <FlatList
+                  data={addressSuggestions}
+                  renderItem={renderAddressSuggestion}
+                  keyExtractor={(item) => item.id}
+                  style={styles.suggestionsList}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled={true}
+                  scrollEnabled={true}
+                />
+              </View>
+            )}
+
+            {/* Selected Address Display */}
+            {locationData.selectedAddress && (
+              <View style={styles.selectedAddressContainer}>
+                <Ionicons name="checkmark-circle" size={20} color="#27ae60" />
+                <Text style={styles.selectedAddressText}>{locationData.selectedAddress}</Text>
+              </View>
+            )}
+          </View>
         </View>
 
-        {/* Analysis is now triggered automatically after address search */}
+        {/* Map Section - Always visible after address search */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Konum Haritası</Text>
+          <Text style={styles.mapSubtitle}>
+            {locationData.coordinates 
+              ? 'Konumu düzenlemek için haritayı kaydırın ve istediğiniz yere dokunun'
+              : 'Önce yukarıdan bir adres seçin'
+            }
+          </Text>
+          
+          <View style={styles.mapContainer}>
+            <MapView
+              style={styles.map}
+              region={mapRegion}
+              onRegionChangeComplete={setMapRegion}
+              onPress={handleMapPress}
+              showsUserLocation={false}
+              showsMyLocationButton={false}
+            >
+              {locationData.coordinates && (
+                <Marker
+                  coordinate={locationData.coordinates}
+                  title="Seçilen Konum"
+                  description={locationData.selectedAddress}
+                  pinColor={colors.primary}
+                />
+              )}
+            </MapView>
+          </View>
+
+          {/* Use Location Button - Only show when coordinates are available */}
+          {locationData.coordinates && (
+            <TouchableOpacity
+              style={styles.useLocationButton}
+              onPress={useCurrentLocation}
+              disabled={isAnalyzing}
+            >
+              {isAnalyzing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="analytics" size={20} color="#fff" />
+              )}
+              <Text style={styles.useLocationButtonText}>
+                {isAnalyzing ? 'Analiz Ediliyor...' : 'Bu Konumu Kullan'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Analysis Results */}
         {analysisResult && (
@@ -625,11 +585,11 @@ Bu verilere göre bölgenin deprem risk seviyesini, en yakın fay hattının etk
                   <MaterialCommunityIcons name="map-marker-path" size={20} color="#9b59b6" />
                   <View style={styles.faultLineContent}>
                     <Text style={styles.faultLineLabel}>En Yakın Fay Hattı</Text>
-                                    <Text style={styles.faultLineName}>{nearestFaultLine.faultSystem}</Text>
-                <Text style={styles.faultLineDetails}>
-                  {nearestFaultLine.distance.toFixed(1)} km uzaklıkta • {nearestFaultLine.faultRegion} bölgesi
-                </Text>
-                <Text style={styles.faultLineDescription}>{nearestFaultLine.description}</Text>
+                    <Text style={styles.faultLineName}>{nearestFaultLine.faultSystem}</Text>
+                    <Text style={styles.faultLineDetails}>
+                      {nearestFaultLine.distance.toFixed(1)} km uzaklıkta • {nearestFaultLine.faultRegion} bölgesi
+                    </Text>
+                    <Text style={styles.faultLineDescription}>{nearestFaultLine.description}</Text>
                   </View>
                 </View>
               )}
@@ -691,96 +651,6 @@ Bu verilere göre bölgenin deprem risk seviyesini, en yakın fay hattının etk
           </View>
         )}
       </ScrollView>
-
-      {/* City Selection Modal */}
-      <Modal
-        visible={showCityModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowCityModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>İl Seçin</Text>
-              <TouchableOpacity onPress={() => setShowCityModal(false)}>
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-                         <ScrollView style={styles.modalList}>
-               {cities.map((city) => (
-                <TouchableOpacity
-                  key={city.id}
-                  style={styles.modalItem}
-                  onPress={() => handleCitySelect(city)}
-                >
-                  <Text style={styles.modalItemText}>{city.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* District Selection Modal */}
-      <Modal
-        visible={showDistrictModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowDistrictModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>İlçe Seçin</Text>
-              <TouchableOpacity onPress={() => setShowDistrictModal(false)}>
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalList}>
-                             {availableDistricts.map((district: any) => (
-                <TouchableOpacity
-                  key={district.id}
-                  style={styles.modalItem}
-                  onPress={() => handleDistrictSelect(district)}
-                >
-                  <Text style={styles.modalItemText}>{district.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Neighborhood Selection Modal */}
-      <Modal
-        visible={showNeighborhoodModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowNeighborhoodModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Mahalle Seçin</Text>
-              <TouchableOpacity onPress={() => setShowNeighborhoodModal(false)}>
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalList}>
-              {availableNeighborhoods.map((neighborhood) => (
-                <TouchableOpacity
-                  key={neighborhood.id}
-                  style={styles.modalItem}
-                  onPress={() => handleNeighborhoodSelect(neighborhood)}
-                >
-                  <Text style={styles.modalItemText}>{neighborhood.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -815,7 +685,7 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 30,
-    marginTop: 20, // Başlık ile konum seçimi arasındaki mesafeyi artır
+    marginTop: 20,
   },
   sectionTitle: {
     fontSize: 18,
@@ -823,88 +693,112 @@ const styles = StyleSheet.create({
     color: colors.light.textPrimary,
     marginBottom: 15,
   },
-  selectionButton: {
+  // Address Search Styles
+  addressSearchContainer: {
+    position: 'relative',
+    zIndex: 1,
+  },
+  addressInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  addressInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.light.textPrimary,
+  },
+  searchLoader: {
+    marginLeft: 10,
+  },
+  suggestionsContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
+    maxHeight: 200,
+    zIndex: 1000,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  suggestionsList: {
+    maxHeight: 200,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 15,
     paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
+  },
+  suggestionText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.light.textPrimary,
+    marginLeft: 10,
+    lineHeight: 18,
+  },
+  selectedAddressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e8f5e8',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  selectedAddressText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#27ae60',
+    marginLeft: 8,
+    fontWeight: '600',
+  },
+  // Map Styles
+  mapSubtitle: {
+    fontSize: 14,
+    color: colors.light.textSecondary,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  mapContainer: {
+    height: 300,
     borderRadius: 12,
-    marginBottom: 10,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  selectionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+  map: {
+    width: '100%',
+    height: '100%',
   },
-  selectionText: {
-    fontSize: 16,
-    color: colors.light.textPrimary,
-    marginLeft: 10,
-  },
-  addressContainer: {
-    marginTop: 15,
-  },
-  addressLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.light.textPrimary,
-    marginBottom: 8,
-  },
-  addressInput: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginBottom: 10,
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  searchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-  },
-  searchButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  coordinatesContainer: {
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 12,
-    marginTop: 10,
-  },
-  coordinatesLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.light.textPrimary,
-    marginBottom: 5,
-  },
-  coordinatesText: {
-    fontSize: 14,
-    color: colors.light.textSecondary,
-    fontFamily: 'monospace',
-  },
-  analysisSection: {
-    marginBottom: 30,
-  },
-  analyzeButton: {
+  useLocationButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -912,21 +806,20 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderRadius: 12,
+    marginTop: 15,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
-  analyzeButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  analyzeButtonText: {
+  useLocationButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 10,
   },
+  // Results Styles
   resultsSection: {
     marginBottom: 30,
   },
@@ -1031,42 +924,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '70%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.light.textPrimary,
-  },
-  modalList: {
-    padding: 20,
-  },
-  modalItem: {
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  modalItemText: {
-    fontSize: 16,
-    color: colors.light.textPrimary,
-  },
   // AI Analysis Styles
   aiAnalysisCard: {
     backgroundColor: '#fff',
@@ -1140,4 +997,4 @@ const styles = StyleSheet.create({
     color: colors.light.textSecondary,
     fontStyle: 'italic',
   },
-}); 
+});

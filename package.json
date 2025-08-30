@@ -23,6 +23,7 @@
     "expo": "~53.0.12",
     "expo-av": "~15.1.7",
     "expo-blur": "~14.1.5",
+    "expo-camera": "~16.1.11",
     "expo-constants": "~17.1.6",
     "expo-contacts": "~14.2.5",
     "expo-haptics": "~14.1.4",
@@ -38,7 +39,7 @@
     "react-hook-form": "^7.58.1",
     "react-native": "0.79.4",
     "react-native-gesture-handler": "~2.24.0",
-    "react-native-maps": "1.20.1",
+    "react-native-maps": "^1.20.1",
     "react-native-paper": "^5.14.5",
     "react-native-reanimated": "~3.17.4",
     "react-native-reanimated-carousel": "^4.0.2",
@@ -48,8 +49,7 @@
     "react-native-view-shot": "^4.0.3",
     "react-native-webview": "13.13.5",
     "victory-native": "^41.17.4",
-    "zod": "^3.25.67",
-    "expo-camera": "~16.1.11"
+    "zod": "^3.25.67"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
