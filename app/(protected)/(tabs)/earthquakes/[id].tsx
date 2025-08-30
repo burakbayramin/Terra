@@ -40,6 +40,7 @@ import {
   getMercalliDescription, 
   formatDate 
 } from '@/utils/earthquakeUtils';
+import { findNearestFaultLine, NearestFaultLine } from '@/utils/faultLineUtils';
 
 
 
@@ -441,13 +442,23 @@ export default function EarthquakeDetailScreen() {
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
       
       // Deprem verilerini hazırla
+      let faultlineInfo = earthquake.faultline;
+      
+      // Eğer depremde fay bilgisi yoksa, koordinatlara göre en yakın fay hattını bul
+      if (!faultlineInfo) {
+        const nearestFault = findNearestFaultLine(earthquake.latitude, earthquake.longitude);
+        if (nearestFault) {
+          faultlineInfo = `${nearestFault.faultSystem} - ${nearestFault.faultRegion} (${nearestFault.distance.toFixed(1)} km uzaklıkta)`;
+        }
+      }
+      
       const earthquakeData = {
         title: earthquake.title,
         magnitude: earthquake.mag,
         depth: earthquake.depth,
         date: earthquake.date,
         region: earthquake.region,
-        faultline: earthquake.faultline,
+        faultline: faultlineInfo,
         latitude: earthquake.latitude,
         longitude: earthquake.longitude,
         provider: earthquake.provider

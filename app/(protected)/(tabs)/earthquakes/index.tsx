@@ -19,6 +19,7 @@ import {
   formatSourceName, 
   formatDate 
 } from '@/utils/earthquakeUtils';
+import { findNearestFaultLine } from '@/utils/faultLineUtils';
 import LoadingView from "@/components/LoadingView";
 import ErrorView from "@/components/ErrorView";
 
@@ -187,11 +188,19 @@ export default function EarthquakesScreen() {
                     </View>
                   )}
 
-                  {eq.faultline && eq.faultline.trim() !== "" && (
+                  {(eq.faultline && eq.faultline.trim() !== "") || (
                     <View style={styles.detailItem}>
                       <Text style={styles.detailLabel}>Fay Hattı</Text>
                       <Text style={styles.detailValue}>
-                        {String(eq.faultline)}
+                        {eq.faultline && eq.faultline.trim() !== "" 
+                          ? String(eq.faultline)
+                          : (() => {
+                              const nearestFault = findNearestFaultLine(eq.latitude, eq.longitude);
+                              return nearestFault 
+                                ? `${nearestFault.faultSystem} - ${nearestFault.faultRegion} (${nearestFault.distance.toFixed(1)} km)`
+                                : 'Belirtilmemiş';
+                            })()
+                        }
                       </Text>
                     </View>
                   )}

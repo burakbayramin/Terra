@@ -24,7 +24,10 @@ import turkeyData from '@/assets/data/turkey-cities-districts.json';
 const cities = turkeyData.cities;
 const districts = turkeyData.districts;
 
-// Fault line data with coordinates
+// Import new fault line utilities
+import { findNearestFaultLine, NearestFaultLine, calculateDistance } from '@/utils/faultLineUtils';
+
+// Legacy fault line data (kept for backward compatibility)
 const FAULT_LINE_DATA = [
   { 
     faultLine: "Kuzey Anadolu Fay Hattı", 
@@ -143,12 +146,7 @@ export default function EarthquakeRiskAnalyzer() {
   const [analysisResult, setAnalysisResult] = useState<RiskAnalysisResult | null>(null);
   const [aiAnalysisText, setAiAnalysisText] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [nearestFaultLine, setNearestFaultLine] = useState<{
-    faultLine: string;
-    distance: number;
-    region: string;
-    description: string;
-  } | null>(null);
+  const [nearestFaultLine, setNearestFaultLine] = useState<NearestFaultLine | null>(null);
 
   const availableDistricts = locationData.city 
     ? (districts as any)[locationData.city.id.toString()] || []
@@ -158,26 +156,15 @@ export default function EarthquakeRiskAnalyzer() {
     ? dummyNeighborhoods[locationData.district.id as keyof typeof dummyNeighborhoods] || []
     : [];
 
-  // Calculate distance between two coordinates using Haversine formula
-  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLng/2) * Math.sin(dLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
+
 
   // Find nearest fault line
-  const findNearestFaultLine = (coordinates: { lat: number; lng: number }) => {
+    const findNearestFaultLineLegacy = (coordinates: { lat: number; lng: number }) => {
     let nearest = FAULT_LINE_DATA[0];
     let minDistance = calculateDistance(
-      coordinates.lat, 
-      coordinates.lng, 
-      FAULT_LINE_DATA[0].coordinates.lat, 
+      coordinates.lat,
+      coordinates.lng,
+      FAULT_LINE_DATA[0].coordinates.lat,
       FAULT_LINE_DATA[0].coordinates.lng
     );
 
@@ -188,7 +175,7 @@ export default function EarthquakeRiskAnalyzer() {
         fault.coordinates.lat,
         fault.coordinates.lng
       );
-      
+
       if (distance < minDistance) {
         minDistance = distance;
         nearest = fault;
@@ -201,6 +188,11 @@ export default function EarthquakeRiskAnalyzer() {
       region: nearest.region,
       description: nearest.description
     };
+  };
+
+  // New function using advanced fault line detection
+  const findNearestFaultLineAdvanced = (coordinates: { lat: number; lng: number }) => {
+    return findNearestFaultLine(coordinates.lat, coordinates.lng);
   };
 
   const handleCitySelect = (city: { id: number; name: string }) => {
@@ -280,8 +272,8 @@ export default function EarthquakeRiskAnalyzer() {
       }));
 
       // Find nearest fault line
-      const nearestFault = findNearestFaultLine(mockCoordinates);
-      setNearestFaultLine(nearestFault);
+          const nearestFault = findNearestFaultLineAdvanced(mockCoordinates);
+    setNearestFaultLine(nearestFault);
 
       // Automatically start risk analysis after getting coordinates
       await analyzeRisk();
@@ -391,7 +383,7 @@ SS Değerleri: %2=${result.ssValues.ss2}, %10=${result.ssValues.ss10}, %50=${res
 S2 Değerleri: %2=${result.s2Values.s22}, %10=${result.s2Values.s210}, %50=${result.s2Values.s250}, %68=${result.s2Values.s268}
 PGV Değerleri: %2=${result.pgvValues.pgv2}, %10=${result.pgvValues.pgv10}, %50=${result.pgvValues.pgv50}, %68=${result.pgvValues.pgv68}
 
-En Yakın Fay Hattı: ${nearestFaultLine?.faultLine} (${nearestFaultLine?.distance.toFixed(1)} km uzaklıkta, ${nearestFaultLine?.region} bölgesi)
+En Yakın Fay Hattı: ${nearestFaultLine?.faultSystem} (${nearestFaultLine?.distance.toFixed(1)} km uzaklıkta, ${nearestFaultLine?.faultRegion} bölgesi)
 
 Bu verilere göre bölgenin deprem risk seviyesini, en yakın fay hattının etkisini, alınması gereken önlemleri ve güvenlik önerilerini Türkçe olarak değerlendir. Yanıtını tam olarak 5 cümle ile sınırla.`;
 
@@ -633,11 +625,11 @@ Bu verilere göre bölgenin deprem risk seviyesini, en yakın fay hattının etk
                   <MaterialCommunityIcons name="map-marker-path" size={20} color="#9b59b6" />
                   <View style={styles.faultLineContent}>
                     <Text style={styles.faultLineLabel}>En Yakın Fay Hattı</Text>
-                    <Text style={styles.faultLineName}>{nearestFaultLine.faultLine}</Text>
-                    <Text style={styles.faultLineDetails}>
-                      {nearestFaultLine.distance.toFixed(1)} km uzaklıkta • {nearestFaultLine.region} bölgesi
-                    </Text>
-                    <Text style={styles.faultLineDescription}>{nearestFaultLine.description}</Text>
+                                    <Text style={styles.faultLineName}>{nearestFaultLine.faultSystem}</Text>
+                <Text style={styles.faultLineDetails}>
+                  {nearestFaultLine.distance.toFixed(1)} km uzaklıkta • {nearestFaultLine.faultRegion} bölgesi
+                </Text>
+                <Text style={styles.faultLineDescription}>{nearestFaultLine.description}</Text>
                   </View>
                 </View>
               )}
